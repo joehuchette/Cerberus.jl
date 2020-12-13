@@ -1,0 +1,4 @@
+name = "Cerberus"
+uuid = "482839e4-32ad-4923-b7eb-a29425f7c532"
+authors = ["Joey Huchette <joehuchette@gmail.com>"]
+version = "0.1.0"
