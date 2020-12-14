@@ -2,3 +2,8 @@ name = "Cerberus"
 uuid = "482839e4-32ad-4923-b7eb-a29425f7c532"
 authors = ["Joey Huchette <joehuchette@gmail.com>"]
 version = "0.1.0"
+
+[deps]
+DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
