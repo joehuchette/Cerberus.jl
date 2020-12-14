@@ -6,15 +6,27 @@ end
 struct Node
     vars_branched_to_zero::Set{Int}
     vars_branched_to_one::Set{Int}
-    basis::Union{Nothing,Basis}
     parent_dual_bound::Float64
+    basis::Union{Nothing,Basis}
     # TODO: Way to hot start model on dives
+
+    function Node(vars_branched_to_zero::Set{Int}, vars_branched_to_one::Set{Int}, parent_dual_bound::Float64=-Inf, basis::Union{Nothing,Basis}=nothing)
+        # TODO: Make this check more efficient
+        @assert Base.isempty(intersect(vars_branched_to_one, vars_branched_to_zero))
+        @assert all(t -> t > 0, vars_branched_to_zero)
+        @assert all(t -> t > 0, vars_branched_to_one)
+        return new(vars_branched_to_zero, vars_branched_to_one, parent_dual_bound, basis)
+    end
 end
-Node() = Node(Set{Int}(), Set{Int}(), nothing, -Inf)
+Node() = Node(Set{Int}(), Set{Int}(), -Inf, nothing)
 
 mutable struct Tree
     open_nodes::DataStructures.Stack{Node}
+
+    Tree() = new(DataStructures.Stack{Node}())
 end
 
-isempty(tree::Tree) = isempty(tree.open_nodes)
-pop_next_node!(tree::Tree) = pop!(tree.open_nodes)
+Base.isempty(tree::Tree) = Base.isempty(tree.open_nodes)
+push_node!(tree::Tree, node::Node) = push!(tree.open_nodes, node)
+pop_node!(tree::Tree) = pop!(tree.open_nodes)
+
