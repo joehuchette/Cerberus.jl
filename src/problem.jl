@@ -11,14 +11,21 @@ struct Polyhedron
         m, n = size(A)
         @assert m == length(b) == length(senses)
         @assert n == length(l) == length(u)
-        return new(sparse(A), b, senses, l, u)
+        return new(SparseArrays.sparse(A), b, senses, l, u)
     end
 end
 
-size(poly::Polyhedron) = size(poly.A)
+Base.size(poly::Polyhedron) = Base.size(poly.A)
+_ambient_dim(poly::Polyhedron) = Base.size(poly)[2]
 
 struct Disjunction
     disjuncts::Vector{Polyhedron}
+
+    function Disjunction(disjuncts::Vector{Polyhedron})
+        ambient_dims = _ambient_dim.(disjuncts)
+        @assert length(unique(ambient_dims)) == 1
+        return new(disjuncts)
+    end
 end
 
 # Assumption: Problem is being minimized
@@ -28,7 +35,7 @@ struct Formulation
     integrality::Vector{Bool}
 
     function Formulation(poly::Polyhedron, c::Vector, integrality::Vector{Bool})
-        n = size(poly)[2]
+        n = _ambient_dim(poly)
         @assert n == length(c) == length(integrality)
         return new(poly, c, integrality)
     end
@@ -43,7 +50,7 @@ struct Problem
     updaters::Vector{FormulationUpdater}
 end
 
-num_constraints(prob::Problem) = size(prob.form)[1]
-num_variables(prob::Problem) = size(prob.form)[2]
+num_constraints(prob::Problem) = num_constraints(prob.base_form)
+num_variables(prob::Problem) = num_variables(prob.base_form)
 
 
