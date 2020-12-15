@@ -42,4 +42,9 @@ end
     @test n4.vars_branched_to_one == Set{Int}([3])
     @test n4.parent_dual_bound == cost
     @test n4.basis === nothing
+
+    # Nothing to branch on, should throw. Really, should have pruned by integrality before.
+    x3 = [1.0, 0.7, 0.0]
+    result.x = x3
+    @test_throws AssertionError Cerberus.branch(pr, Cerberus.MostInfeasible(), state, n4, result)
 end
