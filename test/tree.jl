@@ -63,18 +63,23 @@ end
     @inferred Cerberus.push_node!(tree, n1)
 
     @test !isempty(tree)
+    @test Cerberus.num_open_nodes(tree) == 5
     @test Cerberus.pop_node!(tree) == n1
 
     @test !isempty(tree)
+    @test Cerberus.num_open_nodes(tree) == 4
     @test Cerberus.pop_node!(tree) == n2
 
     @test !isempty(tree)
+    @test Cerberus.num_open_nodes(tree) == 3
     @test Cerberus.pop_node!(tree) == n3
 
     @test !isempty(tree)
+    @test Cerberus.num_open_nodes(tree) == 2
     @test Cerberus.pop_node!(tree) == n4
 
     @test !isempty(tree)
+    @test Cerberus.num_open_nodes(tree) == 1
     @test Cerberus.pop_node!(tree) == n5
 
     @test isempty(tree)

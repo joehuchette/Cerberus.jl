@@ -20,6 +20,15 @@ struct Node
 end
 Node() = Node(Set{Int}(), Set{Int}(), -Inf, nothing)
 
+function Base.copy(node::Node)
+    return Node(
+        copy(node.vars_branched_to_zero),
+        copy(node.vars_branched_to_one),
+        node.parent_dual_bound,
+        node.basis,
+    )
+end
+
 mutable struct Tree
     open_nodes::DataStructures.Stack{Node}
 
@@ -29,4 +38,5 @@ end
 Base.isempty(tree::Tree) = Base.isempty(tree.open_nodes)
 push_node!(tree::Tree, node::Node) = push!(tree.open_nodes, node)
 pop_node!(tree::Tree) = pop!(tree.open_nodes)
+num_open_nodes(tree::Tree) = length(tree.open_nodes)
 

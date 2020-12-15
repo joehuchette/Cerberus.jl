@@ -43,6 +43,10 @@ end
 num_constraints(form::Formulation) = size(form.poly)[1]
 num_variables(form::Formulation) = size(form.poly)[2]
 
+function integral_indices(form::Formulation)
+    return filter(i -> form.integrality[i], 1:length(form.integrality))
+end
+
 abstract type FormulationUpdater end
 
 struct Problem

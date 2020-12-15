@@ -1,18 +1,44 @@
 @testset "AlgorithmConfig" begin
     config1 = Cerberus.AlgorithmConfig()
+    @test config1.branching_rule == Cerberus.DEFAULT_BRANCHING_RULE
     @test config1.node_limit == Cerberus.DEFAULT_NODE_LIMIT
     @test config1.gap_tol == Cerberus.DEFAULT_GAP_TOL
+    @test config1.int_tol == Cerberus.DEFAULT_INTEGRALITY_TOL
 
+    br = Cerberus.PseudocostBranching()
     nl = 10.0
     gt = 10
-    config2 = Cerberus.AlgorithmConfig(nl, gt)
-    @test config2.node_limit == nl
-    @test config2.gap_tol == gt
+    it = 1e-6
+    config2 = Cerberus.AlgorithmConfig(branching_rule=br)
+    @test config2.branching_rule == br
+    @test config2.node_limit == Cerberus.DEFAULT_NODE_LIMIT
+    @test config2.gap_tol == Cerberus.DEFAULT_GAP_TOL
+    @test config2.int_tol == Cerberus.DEFAULT_INTEGRALITY_TOL
+
+    config3 = Cerberus.AlgorithmConfig(node_limit=nl)
+    @test config3.branching_rule == Cerberus.DEFAULT_BRANCHING_RULE
+    @test config3.node_limit == nl
+    @test config3.gap_tol == Cerberus.DEFAULT_GAP_TOL
+    @test config3.int_tol == Cerberus.DEFAULT_INTEGRALITY_TOL
+
+    config4 = Cerberus.AlgorithmConfig(gap_tol=gt)
+    @test config4.branching_rule == Cerberus.DEFAULT_BRANCHING_RULE
+    @test config4.node_limit == Cerberus.DEFAULT_NODE_LIMIT
+    @test config4.gap_tol == gt
+    @test config4.int_tol == Cerberus.DEFAULT_INTEGRALITY_TOL
+
+    config5 = Cerberus.AlgorithmConfig(int_tol=it)
+    @test config5.branching_rule == Cerberus.DEFAULT_BRANCHING_RULE
+    @test config5.node_limit == Cerberus.DEFAULT_NODE_LIMIT
+    @test config5.gap_tol == Cerberus.DEFAULT_GAP_TOL
+    @test config5.int_tol == it
 
     nl_bad = -1
     nl_bad_2 = 1.2
     gt_bad = -1.0
-    @test_throws AssertionError Cerberus.AlgorithmConfig(nl_bad, gt)
-    @test_throws AssertionError Cerberus.AlgorithmConfig(nl_bad_2, gt)
-    @test_throws AssertionError Cerberus.AlgorithmConfig(nl, gt_bad)
+    it_bad = -1.3
+    @test_throws AssertionError Cerberus.AlgorithmConfig(node_limit=nl_bad)
+    @test_throws AssertionError Cerberus.AlgorithmConfig(node_limit=nl_bad)
+    @test_throws AssertionError Cerberus.AlgorithmConfig(gap_tol=gt_bad)
+    @test_throws AssertionError Cerberus.AlgorithmConfig(int_tol=it_bad)
 end

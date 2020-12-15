@@ -12,7 +12,7 @@ function optimize!(problem::Problem, config::AlgorithmConfig, primal_bound::Floa
             end
             update_state!(state, result)
             if node_count >= config.node_limit
-                state.dual_bound = minimum(node.parent_dual_bound for node in tree.open_nodes)
+                update_dual_bound!(cs)
                 break
             end
         end

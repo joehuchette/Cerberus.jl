@@ -78,6 +78,7 @@ end
     @test fm.integrality == integrality
     @test Cerberus.num_constraints(fm) == 2
     @test Cerberus.num_variables(fm) == 3
+    @test Cerberus.integral_indices(fm) == [1, 3]
 
     c_bad = c[1:2]
     integrality_bad = vcat(integrality, false)
