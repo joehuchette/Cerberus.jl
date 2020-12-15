@@ -20,15 +20,6 @@ struct Node
 end
 Node() = Node(Set{Int}(), Set{Int}(), -Inf, nothing)
 
-function Base.copy(node::Node)
-    return Node(
-        copy(node.vars_branched_to_zero),
-        copy(node.vars_branched_to_one),
-        node.parent_dual_bound,
-        node.basis,
-    )
-end
-
 mutable struct Tree
     open_nodes::DataStructures.Stack{Node}
 

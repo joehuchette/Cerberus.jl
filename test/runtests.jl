@@ -2,10 +2,12 @@ using Test
 using Cerberus
 using SparseArrays
 
+include("util.jl")
+
 for (root, dirs, files) in walkdir(@__DIR__)
     for _file in filter(f -> endswith(f, ".jl"), files)
         file = relpath(joinpath(root, _file), @__DIR__)
-        if file in ["runtests.jl"]
+        if file in ["runtests.jl", "util.jl"]
             continue
         end
 

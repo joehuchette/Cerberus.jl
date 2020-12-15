@@ -61,7 +61,20 @@ end
     @test_throws AssertionError Cerberus.Disjunction([p1, p2, p3])
 end
 
+    A = sparse([ 1.0 2.0 3.0
+                -3.5 1.2 0.0])
+    b = [3.0, 4.0]
+    senses = [Cerberus.EQUAL_TO, Cerberus.LESS_THAN]
+    l = [-1.0, -Inf, -Inf]
+    u = [1.0, 2.0, Inf]
+    p = Cerberus.Polyhedron(A, b, senses, l, u)
+    c = [1.0, -1.0, 0.0]
+    integrality = [true, false, true]
+    fm = Cerberus.Formulation(p, c, integrality)
+
 @testset "Formulation" begin
+    # Same as _build_formulation(), but write it out again to check
+    # type stability
     A = sparse([ 1.0 2.0 3.0
                 -3.5 1.2 0.0])
     b = [3.0, 4.0]
@@ -87,17 +100,7 @@ end
 end
 
 @testset "Problem" begin
-    A = sparse([ 1.0 2.0 3.0
-                -3.5 1.2 0.0])
-    b = [3.0, 4.0]
-    senses = [Cerberus.EQUAL_TO, Cerberus.LESS_THAN]
-    l = [-1.0, -Inf, -Inf]
-    u = [1.0, 2.0, Inf]
-    p = Cerberus.Polyhedron(A, b, senses, l, u)
-    c = [1.0, -1.0, 0.0]
-    integrality = [true, false, true]
-    fm = Cerberus.Formulation(p, c, integrality)
-
+    fm = _build_formulation()
     pr = @inferred Cerberus.Problem(fm, Cerberus.FormulationUpdater[])
     @test pr.base_form == fm
     @test Cerberus.num_constraints(pr) == 2

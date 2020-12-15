@@ -14,7 +14,6 @@ function _branch(node::Node, result::NodeResult, branch_idx::Int, branch_down::B
     else
         push!(vars_branched_to_one, branch_idx)
     end
-    @assert result.cost > node.parent_dual_bound
     return Node(
         vars_branched_to_zero,
         vars_branched_to_one,
