@@ -1,7 +1,19 @@
-function build_lp_model(problem::Problem, state::CurrentState, node::Node, config::AlgorithmConfig)
+# TODO: When adding hot starting, can dispatch on previous_model stored in
+# node to elide reconstruction.
+function build_base_model(form::DMIPFormulation, state::CurrentState, node::Node, config::AlgorithmConfig)
     env = state.gurobi_env
     model = Gurobi.Optimizer(env)
+    MOI.add_constrained_variables(model, form.bounds)
+    for (f, s) in form.feasible_region.aff_constrs
+        MOI.add_constraint(model, f, s)
+    end
+    MOI.set(model, MOI.ObjectiveFunction{ScalarAffineFunction}(), form.obj)
+    MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    return model
+end
 
+function update_bounds!(model::MOI.AbstractOptimizer, node::Node)
+    # TODO: Set bounds on binary variables that we've branched on so far.
 end
 
 function get_basis(model::MOI.AbstractOptimizer)::Basis

@@ -22,8 +22,14 @@ end
 
 function process_node(problem::Problem, state::CurrentState, node::Node, config::AlgorithmConfig)::NodeResult
     # 1. Build model
-    model = build_lp_model(problem, state, node, config)
+    model = build_base_model(problem, state, node, config)
+    # Update bounds on binary variables at the current node
+    update_bounds!(model, node)
     set_basis_if_available!(model, node.basis)
+
+    for formulator in problem.formulators
+        apply!(model, formulator, node)
+    end
 
     # 2. Solve model
     MOI.optimize!(model)

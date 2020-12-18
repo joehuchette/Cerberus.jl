@@ -4,6 +4,7 @@ struct Basis
 end
 
 struct Node
+    # TODO: Update below to Set{MOI.VariableIndex}
     vars_branched_to_zero::Set{Int}
     vars_branched_to_one::Set{Int}
     parent_dual_bound::Float64
