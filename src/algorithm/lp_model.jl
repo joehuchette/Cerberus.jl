@@ -13,7 +13,21 @@ function build_base_model(form::DMIPFormulation, state::CurrentState, node::Node
 end
 
 function update_bounds!(model::MOI.AbstractOptimizer, node::Node)
-    # TODO: Set bounds on binary variables that we've branched on so far.
+    for index in node.vars_branched_to_zero
+        ci = MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval}(index)
+        interval = MOI.get(model, MOI.ConstraintSet(), ci)
+        @assert interval.lower == 0.0
+        interval.upper = 0.0
+        MOI.set(model, MOI.ConstraintSet(), ci, interval)
+    end
+    for index in node.vars_branched_to_one
+        ci = MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval}(index)
+        interval = MOI.get(model, MOI.ConstraintSet(), ci)
+        interval.lower = 1.0
+        @assert interval.upper == 1.0
+        MOI.set(model, MOI.ConstraintSet(), ci, interval)
+    end
+    return nothing
 end
 
 function get_basis(model::MOI.AbstractOptimizer)::Basis

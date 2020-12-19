@@ -1,14 +1,14 @@
-function optimize!(problem::Problem, config::AlgorithmConfig, primal_bound::Float64=Inf)::Result
+function optimize!(form::DMIPFormulation, config::AlgorithmConfig, primal_bound::Float64=Inf)::Result
     result = Result()
     to = result.timings
     # TODO: Model presolve. Must happen before initial state is built.
     # Initialize search tree with LP relaxation
-    state = _initial_state(problem, primal_bound)
+    state = _initial_state(form, primal_bound)
     TimerOutputs.@timeit to "Tree search" begin
         while !isempty(state.tree)
             node = pop_next_node!(tree)
             TimerOutputs.@timeit to "Node processing" begin
-                result = process_node(problem, state, node, config)
+                result = process_node(form, state, node, config)
             end
             update_state!(state, result)
             if node_count >= config.node_limit
@@ -20,14 +20,14 @@ function optimize!(problem::Problem, config::AlgorithmConfig, primal_bound::Floa
     return Result(state)
 end
 
-function process_node(problem::Problem, state::CurrentState, node::Node, config::AlgorithmConfig)::NodeResult
+function process_node(form::DMIPFormulation, state::CurrentState, node::Node, config::AlgorithmConfig)::NodeResult
     # 1. Build model
-    model = build_base_model(problem, state, node, config)
+    model = build_base_model(form, state, node, config)
     # Update bounds on binary variables at the current node
     update_bounds!(model, node)
     set_basis_if_available!(model, node.basis)
 
-    for formulator in problem.formulators
+    for formulater in form.disjunction_formulaters
         apply!(model, formulator, node)
     end
 

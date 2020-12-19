@@ -1,19 +1,3 @@
-function _build_problem()
-    A = sparse([ 1.0 2.0 3.0
-                -3.5 1.2 0.0])
-    b = [3.0, 4.0]
-    senses = [Cerberus.EQUAL_TO, Cerberus.LESS_THAN]
-    l = [-1.0, -Inf, -Inf]
-    u = [1.0, 2.0, Inf]
-    p = Cerberus.Polyhedron(A, b, senses, l, u)
-    c = [1.0, -1.0, 0.0]
-    integrality = [true, false, true]
-    fm = Cerberus.Formulation(p, c, integrality)
-    pr = Cerberus.Problem(fm, Cerberus.FormulationUpdater[])
-
-    return pr
-end
-
 function _isnan_vector(x::Vector{Float64}, len::Int)
     return all(isnan, x) && length(x) == len
 end
@@ -28,7 +12,13 @@ end
     @test nr1.basis === nothing
     @test nr1.simplex_iters == simplex_iters
 
-    basis = Cerberus.Basis([1,2], [3])
+    basis = Cerberus.Basis(
+        _VI(1) => MOI.BASIC,
+        _VI(2) => MOI.BASIC,
+        _CI(1) => MOI.NONBASIC,
+        _CI(2) => MOI.NONBASIC,
+        _CI(3) => MOI.NONBASIC,
+    )
     nr2 = @inferred Cerberus.NodeResult(x, cost, basis, simplex_iters)
     @test nr2.x == x
     @test nr2.cost == cost
@@ -40,14 +30,14 @@ end
 end
 
 @testset "CurrentState" begin
-    pr = _build_problem()
+    fm = _build_dmip_formulation()
 
     pb_float = 12.4
     pb_int = 12
 
-    cs1 = @inferred Cerberus.CurrentState(pr)
-    cs2 = @inferred Cerberus.CurrentState(pr, pb_float)
-    cs3 = @inferred Cerberus.CurrentState(pr, pb_int)
+    cs1 = @inferred Cerberus.CurrentState(fm)
+    cs2 = @inferred Cerberus.CurrentState(fm, pb_float)
+    cs3 = @inferred Cerberus.CurrentState(fm, pb_int)
 
     @test isempty(cs1.tree)
     @test isempty(cs2.tree)
@@ -74,28 +64,28 @@ end
     @test cs3.total_simplex_iters == 0
 
     @testset "ip_feasible" begin
-        pr = _build_problem()
+        fm = _build_dmip_formulation()
         config = Cerberus.AlgorithmConfig()
-        @test !Cerberus.ip_feasible(pr, nothing, config)
+        @test !Cerberus.ip_feasible(fm, nothing, config)
         x_int = [1.0, 3.2, 0.0]
-        @test Cerberus.ip_feasible(pr, x_int, config)
+        @test Cerberus.ip_feasible(fm, x_int, config)
         x_int_2 = [1.0 - 0.9config.int_tol, 3.2, 0.0 + 0.9config.int_tol]
-        @test Cerberus.ip_feasible(pr, x_int_2, config)
+        @test Cerberus.ip_feasible(fm, x_int_2, config)
         x_int_3 = [1.0 - 2config.int_tol, 3.2, 0.0 + config.int_tol]
-        @test !Cerberus.ip_feasible(pr, x_int_3, config)
+        @test !Cerberus.ip_feasible(fm, x_int_3, config)
     end
 
     @testset "update!" begin
-        pr = _build_problem()
+        fm = _build_dmip_formulation()
         config = Cerberus.AlgorithmConfig()
         starting_pb = 12.3
         simplex_iters_per = 18
-        cs = Cerberus.CurrentState(pr, starting_pb)
+        cs = Cerberus.CurrentState(fm, starting_pb)
         node = Cerberus.Node()
 
         # 1. Prune by infeasibility
         nr1 = Cerberus.NodeResult(nothing, Inf, nothing, simplex_iters_per)
-        @inferred Cerberus.update!(cs, pr, node, nr1, config)
+        @inferred Cerberus.update!(cs, fm, node, nr1, config)
         @test isempty(cs.tree)
         @test cs.enumerated_node_count == 1
         @test cs.primal_bound == starting_pb
@@ -106,7 +96,7 @@ end
         # 2. Prune by bound
         frac_soln = [0.2, 3.4, 0.6]
         nr2 = Cerberus.NodeResult(frac_soln, 13.5, nothing, simplex_iters_per)
-        @inferred Cerberus.update!(cs, pr, node, nr2, config)
+        @inferred Cerberus.update!(cs, fm, node, nr2, config)
         @test isempty(cs.tree)
         @test cs.enumerated_node_count == 2
         @test cs.primal_bound == starting_pb
@@ -118,7 +108,7 @@ end
         int_soln = [1.0, 3.4, 0.0]
         new_pb = 11.1
         nr3 = Cerberus.NodeResult(int_soln, new_pb, nothing, simplex_iters_per)
-        @inferred Cerberus.update!(cs, pr, node, nr3, config)
+        @inferred Cerberus.update!(cs, fm, node, nr3, config)
         @test isempty(cs.tree)
         @test cs.enumerated_node_count == 3
         @test cs.primal_bound == new_pb
@@ -130,7 +120,7 @@ end
         frac_soln_2 = [0.0, 2.9, 0.6]
         db = 10.1
         nr4 = Cerberus.NodeResult(frac_soln, db, nothing, simplex_iters_per)
-        @inferred Cerberus.update!(cs, pr, node, nr4, config)
+        @inferred Cerberus.update!(cs, fm, node, nr4, config)
         @test Cerberus.num_open_nodes(cs.tree) == 2
         # @test cs.tree
         @test cs.enumerated_node_count == 4

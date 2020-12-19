@@ -1,25 +1,22 @@
-struct Basis
-    v_basis::Vector{Int}
-    c_basis::Vector{Int}
+const Basis = Dict{Any,MOI.BasisStatusCode}
+
+struct ParentInfo
+    dual_bound::Float64
+    basis::Union{Nothing,Basis}
+    hot_start_model::Union{Nothing,MOI.AbstractOptimizer}
 end
+ParentInfo() = ParentInfo(-Inf, nothing, nothing)
 
 struct Node
-    # TODO: Update below to Set{MOI.VariableIndex}
-    vars_branched_to_zero::Set{Int}
-    vars_branched_to_one::Set{Int}
-    parent_dual_bound::Float64
-    basis::Union{Nothing,Basis}
-    # TODO: Way to hot start model on dives
-
-    function Node(vars_branched_to_zero::Set{Int}, vars_branched_to_one::Set{Int}, parent_dual_bound::Float64=-Inf, basis::Union{Nothing,Basis}=nothing)
-        # TODO: Make this check more efficient
-        @assert Base.isempty(intersect(vars_branched_to_one, vars_branched_to_zero))
-        @assert all(t -> t > 0, vars_branched_to_zero)
-        @assert all(t -> t > 0, vars_branched_to_one)
-        return new(vars_branched_to_zero, vars_branched_to_one, parent_dual_bound, basis)
-    end
+    vars_branched_to_zero::Vector{MOI.VariableIndex}
+    vars_branched_to_one::Vector{MOI.VariableIndex}
+    parent_info::ParentInfo
+    # TODO: Check that branching sets do not overlap
 end
-Node() = Node(Set{Int}(), Set{Int}(), -Inf, nothing)
+Node() = Node([], [], ParentInfo())
+function Node(zero_set::Vector{MOI.VariableIndex}, one_set::Vector{MOI.VariableIndex})
+    return Node(zero_set, one_set, ParentInfo())
+end
 
 mutable struct Tree
     open_nodes::DataStructures.Stack{Node}

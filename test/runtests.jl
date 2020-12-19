@@ -1,6 +1,8 @@
 using Test
 using Cerberus
 using SparseArrays
+import MathOptInterface
+const MOI = MathOptInterface
 
 include("util.jl")
 
