@@ -24,12 +24,8 @@ function process_node(form::DMIPFormulation, state::CurrentState, node::Node, co
     # 1. Build model
     model = build_base_model(form, state, node, config)
     # Update bounds on binary variables at the current node
-    update_bounds!(model, node)
+    update_node_bounds!(model, node)
     set_basis_if_available!(model, node.basis)
-
-    for formulater in form.disjunction_formulaters
-        apply!(model, formulator, node)
-    end
 
     # 2. Solve model
     MOI.optimize!(model)

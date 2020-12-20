@@ -1,6 +1,5 @@
 _VI = MOI.VariableIndex
 _SV = MOI.SingleVariable
-# _SV(vi::MOI.VariableIndex) = _VI(vi)
 
 _CI(i::Int) = MOI.ConstraintIndex{MOI.ScalarAffineFunction{Float64},MOI.GreaterThan{Float64}}
 
