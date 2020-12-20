@@ -41,7 +41,6 @@ function branch(form::DMIPFormulation, ::MostInfeasible, state::CurrentState, pa
             most_frac_val = frac_val
         end
     end
-    @show most_frac_idx
     @assert most_frac_idx > 0
     vi = MOI.VariableIndex(most_frac_idx)
     down_node = down_branch(parent_node, result, vi)

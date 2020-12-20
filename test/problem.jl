@@ -34,6 +34,10 @@ function _test_polyhedron(p::Cerberus.Polyhedron)
     @test p.aff_constrs[2].f.constant == 0.0
     @test p.aff_constrs[2].s == MOI.LessThan(4.0)
 
+    @test p.bounds[1] == MOI.Interval{Float64}(0.5, 1.0)
+    @test p.bounds[2] == MOI.Interval{Float64}(-1.3, 2.3)
+    @test p.bounds[3] == MOI.Interval{Float64}(0.0, 1.0)
+
     return nothing
 end
 

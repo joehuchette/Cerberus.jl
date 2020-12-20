@@ -17,35 +17,27 @@ function build_base_model(form::DMIPFormulation, state::CurrentState, node::Node
 end
 
 function update_node_bounds!(model::MOI.AbstractOptimizer, node::Node)
-    @show node
     for index in node.vars_branched_to_zero
         ci = MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(index.value)
         interval = MOI.get(model, MOI.ConstraintSet(), ci)
-        @assert interval.lower == 0.0
-        interval.upper = 0.0
-        @show interval
-        MOI.set(model, MOI.ConstraintSet(), ci, interval)
+        @assert interval.lower >= 0.0
+        MOI.set(model, MOI.ConstraintSet(), ci, MOI.Interval(interval.lower, 0.0))
     end
     for index in node.vars_branched_to_one
         ci = MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(index.value)
         interval = MOI.get(model, MOI.ConstraintSet(), ci)
-        interval.lower = 1.0
-        @assert interval.upper == 1.0
-        @show interval
-        MOI.set(model, MOI.ConstraintSet(), ci, interval)
+        @assert interval.upper <= 1.0
+        MOI.set(model, MOI.ConstraintSet(), ci, MOI.Interval(1.0, interval.upper))
     end
     return nothing
 end
 
 function get_basis(model::MOI.AbstractOptimizer)::Basis
     # @assert MOI.get(model, MOI.ListOfConstraints()) == [()]
-     basis = Dict{Any,MOI.BasisStatusCode}(
-        v => MOI.get(model, MOI.ListOfVariableIndices(), v) for v in MOI.get(model, MOI.ListOfVariableIndices())
-    )
+    basis = Dict{Any,MOI.BasisStatusCode}()
     for (F, S) in MOI.get(model, MOI.ListOfConstraints())
-        for index in MOI.get(model, MOI.ListOfConstraintIndices{F,S}())
-            c = MOI.ConstraintIndex{F,S}(index)
-            basis[c] = MOI.get(model, MOI.ConstraintBasisStatus(), c)
+        for ci in MOI.get(model, MOI.ListOfConstraintIndices{F,S}())
+            basis[ci] = MOI.get(model, MOI.ConstraintBasisStatus(), ci)
         end
     end
     return basis
