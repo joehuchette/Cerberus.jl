@@ -95,3 +95,44 @@ end
         MOI.ConstraintIndex{MOI.ScalarAffineFunction{Float64},MOI.LessThan{Float64}}(3) => MOI.BASIC,
     )
 end
+
+function _set_basis_model(basis::Cerberus.Basis)
+        form = _build_dmip_formulation()
+        state = Cerberus.CurrentState(form)
+        parent_info = Cerberus.ParentInfo(-Inf, basis, nothing)
+        node = Cerberus.Node([], [], parent_info)
+        config = Cerberus.AlgorithmConfig()
+        model = Cerberus.build_base_model(form, state, node, config)
+        Cerberus.set_basis_if_available!(model, node.parent_info.basis)
+        return model
+end
+
+@testset "set_basis_if_available!" begin
+    # First, seed a suboptimal basis. This will disable presolve. It is only one pivot away from the optimal basis.
+    let
+        subopt_basis = Dict{Any,MOI.BasisStatusCode}(
+            MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(1) => MOI.BASIC,
+            MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(2) => MOI.NONBASIC_AT_LOWER,
+            MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(3) => MOI.NONBASIC_AT_LOWER,
+            MOI.ConstraintIndex{MOI.ScalarAffineFunction{Float64},MOI.EqualTo{Float64}}(2) => MOI.NONBASIC,
+            MOI.ConstraintIndex{MOI.ScalarAffineFunction{Float64},MOI.LessThan{Float64}}(3) => MOI.BASIC,
+        )
+        model = _set_basis_model(subopt_basis)
+        MOI.optimize!(model)
+        @test MOI.get(model, MOI.SimplexIterations()) == 1
+    end
+
+    # Now, seed the optimal basis. This will solve the problem without any simplex iterations.
+    let
+        opt_basis = Dict{Any,MOI.BasisStatusCode}(
+            MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(1) => MOI.NONBASIC_AT_LOWER,
+            MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(2) => MOI.BASIC,
+            MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(3) => MOI.NONBASIC_AT_LOWER,
+            MOI.ConstraintIndex{MOI.ScalarAffineFunction{Float64},MOI.EqualTo{Float64}}(2) => MOI.NONBASIC,
+            MOI.ConstraintIndex{MOI.ScalarAffineFunction{Float64},MOI.LessThan{Float64}}(3) => MOI.BASIC,
+        )
+        model = _set_basis_model(opt_basis)
+        MOI.optimize!(model)
+        @test MOI.get(model, MOI.SimplexIterations()) == 0
+    end
+end

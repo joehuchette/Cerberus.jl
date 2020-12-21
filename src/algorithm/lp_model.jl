@@ -45,6 +45,9 @@ end
 
 set_basis_if_available!(model::MOI.AbstractOptimizer, ::Nothing) = nothing
 function set_basis_if_available!(model::MOI.AbstractOptimizer, basis::Basis)::Nothing
-    # TODO: Actually set the basis. But, need to implement this in MOI first.
+    # TODO: Check that basis is, in fact, a basis after modification
+    for (key, val) in basis
+        MOI.set(model, MOI.ConstraintBasisStatus(), key, val)
+    end
     return nothing
 end
