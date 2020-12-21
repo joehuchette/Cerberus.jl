@@ -1,9 +1,7 @@
 # TODO: When adding hot starting, can dispatch on previous_model stored in
 # node to elide reconstruction.
 function build_base_model(form::DMIPFormulation, state::CurrentState, node::Node, config::AlgorithmConfig)
-    # env = state.gurobi_env
-    # model = Gurobi.Optimizer(env)
-    model = Gurobi.Optimizer()
+    model = config.lp_solver_factory(state)::Gurobi.Optimizer
     MOI.add_constrained_variables(model, form.base_form.feasible_region.bounds)
     for aff_constr in form.base_form.feasible_region.aff_constrs
         MOI.add_constraint(model, aff_constr.f, aff_constr.s)

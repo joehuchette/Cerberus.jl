@@ -12,6 +12,7 @@ mutable struct NodeResult
 end
 
 mutable struct CurrentState
+    gurobi_env::Gurobi.Env
     tree::Tree
     enumerated_node_count::Int
     primal_bound::Float64
@@ -21,6 +22,7 @@ mutable struct CurrentState
 
     function CurrentState(form::DMIPFormulation, primal_bound::Real=Inf)
         return new(
+            Gurobi.Env(),
             Tree(),
             0,
             primal_bound,

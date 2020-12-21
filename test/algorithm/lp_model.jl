@@ -68,7 +68,7 @@ end
     form = _build_dmip_formulation()
     state = Cerberus.CurrentState(form)
     node = Cerberus.Node()
-    config = Cerberus.AlgorithmConfig()
+    config = Cerberus.AlgorithmConfig(lp_solver_factory=_silent_gurobi_factory)
     model = Cerberus.build_base_model(form, state, node, config)
     MOI.optimize!(model)
     @test MOI.get(model, MOI.TerminationStatus()) == MOI.OPTIMAL
@@ -82,7 +82,7 @@ end
     form = _build_dmip_formulation()
     state = Cerberus.CurrentState(form)
     node = Cerberus.Node()
-    config = Cerberus.AlgorithmConfig()
+    config = Cerberus.AlgorithmConfig(lp_solver_factory=_silent_gurobi_factory)
     model = Cerberus.build_base_model(form, state, node, config)
     MOI.optimize!(model)
     @assert MOI.get(model, MOI.PrimalStatus()) == MOI.FEASIBLE_POINT
@@ -101,7 +101,7 @@ function _set_basis_model(basis::Cerberus.Basis)
         state = Cerberus.CurrentState(form)
         parent_info = Cerberus.ParentInfo(-Inf, basis, nothing)
         node = Cerberus.Node([], [], parent_info)
-        config = Cerberus.AlgorithmConfig()
+        config = Cerberus.AlgorithmConfig(lp_solver_factory=_silent_gurobi_factory)
         model = Cerberus.build_base_model(form, state, node, config)
         Cerberus.set_basis_if_available!(model, node.parent_info.basis)
         return model
