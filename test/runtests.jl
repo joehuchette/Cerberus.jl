@@ -1,8 +1,11 @@
 using Test
 using Cerberus
 using SparseArrays
+import Gurobi, MathOptInterface
+const MOI = MathOptInterface
 
 include("util.jl")
+include("algorithm/util.jl")
 
 for (root, dirs, files) in walkdir(@__DIR__)
     for _file in filter(f -> endswith(f, ".jl"), files)

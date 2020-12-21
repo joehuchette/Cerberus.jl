@@ -12,6 +12,7 @@ mutable struct NodeResult
 end
 
 mutable struct CurrentState
+    gurobi_env::Gurobi.Env
     tree::Tree
     enumerated_node_count::Int
     primal_bound::Float64
@@ -19,34 +20,35 @@ mutable struct CurrentState
     best_solution::Vector{Float64}
     total_simplex_iters::Int
 
-    function CurrentState(problem::Problem, primal_bound::Real=Inf)
+    function CurrentState(form::DMIPFormulation, primal_bound::Real=Inf)
         return new(
+            Gurobi.Env(),
             Tree(),
             0,
             primal_bound,
             -Inf,
-            fill(NaN, num_variables(problem)),
+            fill(NaN, num_variables(form)),
             0,
         )
     end
 end
 
 function update_dual_bound!(state::CurrentState)
-    state.dual_bound = minimum(node.parent_dual_bound for node in state.tree.open_nodes)
+    state.dual_bound = minimum(node.parent_info.dual_bound for node in state.tree.open_nodes)
     return nothing
 end
 
-ip_feasible(problem::Problem, x::Nothing, config::AlgorithmConfig) = false
-function ip_feasible(problem::Problem, x::Vector{Float64}, config::AlgorithmConfig)::Bool
-    for i in integral_indices(problem.base_form)
-        if !(abs(x[i]) <= config.int_tol || abs(1 - x[i]) <= config.int_tol)
+ip_feasible(form::DMIPFormulation, x::Nothing, config::AlgorithmConfig) = false
+function ip_feasible(form::DMIPFormulation, x::Vector{Float64}, config::AlgorithmConfig)::Bool
+    for vi in form.integrality
+        if !(abs(x[vi.value]) <= config.int_tol || abs(1 - x[vi.value]) <= config.int_tol)
             return false
         end
     end
     return true
 end
 
-function update!(state::CurrentState, problem::Problem, node::Node, result::NodeResult, config::AlgorithmConfig)
+function update!(state::CurrentState, form::DMIPFormulation, node::Node, result::NodeResult, config::AlgorithmConfig)
     state.enumerated_node_count += 1
     state.total_simplex_iters += result.simplex_iters
     # 1. Prune by infeasibility
@@ -56,7 +58,7 @@ function update!(state::CurrentState, problem::Problem, node::Node, result::Node
     elseif result.cost > state.primal_bound
         # Do nothing
     # 3. Prune by integrality
-    elseif result.x !== nothing && ip_feasible(problem, result.x, config)
+    elseif result.x !== nothing && ip_feasible(form, result.x, config)
         # Have <= to handle case where we seed the optimal cost but
         # not the optimal solution
         if result.cost <= state.primal_bound
@@ -66,7 +68,7 @@ function update!(state::CurrentState, problem::Problem, node::Node, result::Node
         end
     # 4. Branch!
     else
-        favorite_child, other_child = branch(problem, config.branching_rule, state, node, result)
+        favorite_child, other_child = branch(form, config.branching_rule, state, node, result, config)
         push_node!(state.tree, other_child)
         push_node!(state.tree, favorite_child)
     end

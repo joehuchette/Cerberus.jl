@@ -1,60 +1,72 @@
-@enum Sense EQUAL_TO LESS_THAN GREATER_THAN
+const _SUPPORTED_SETS = Union{MOI.LessThan,MOI.GreaterThan,MOI.EqualTo}
+
+struct AffineConstraint
+    f::MOI.ScalarAffineFunction{Float64}
+    s::_SUPPORTED_SETS
+end
+
+function _max_var_index(saf::MOI.ScalarAffineFunction{Float64})
+    return maximum(vi.variable_index.value for vi in saf.terms)
+end
+_max_var_index(ac::AffineConstraint) = _max_var_index(ac.f)
 
 struct Polyhedron
-    A::SparseArrays.SparseMatrixCSC{Float64,Int}
-    b::Vector{Float64}
-    senses::Vector{Sense}
-    l::Vector{Float64}
-    u::Vector{Float64}
-
-    function Polyhedron(A::AbstractMatrix, b::Vector, senses::Vector{Sense}, l::Vector, u::Vector)
-        m, n = size(A)
-        @assert m == length(b) == length(senses)
-        @assert n == length(l) == length(u)
-        return new(SparseArrays.sparse(A), b, senses, l, u)
+    aff_constrs::Vector{AffineConstraint}
+    bounds::Vector{MOI.Interval{Float64}}
+    # TODO: Enforce that all bounds are finite.
+    # TODO: Enforce that length(bound) is no less than max variable index
+    #       appearing in aff_constrs.
+    function Polyhedron(
+        aff_constrs::Vector{AffineConstraint},
+        bounds::Vector{MOI.Interval{Float64}}
+    )
+        n = length(bounds)
+        for aff_constr in aff_constrs
+            @assert _max_var_index(aff_constr) <= n
+        end
+        return new(aff_constrs, bounds)
     end
 end
 
-Base.size(poly::Polyhedron) = Base.size(poly.A)
-_ambient_dim(poly::Polyhedron) = Base.size(poly)[2]
+ambient_dim(p::Polyhedron) = length(p.bounds)
+
+# Assumption: objective sense == MINIMIZE
+struct LPRelaxation
+    feasible_region::Polyhedron
+    obj::MOI.ScalarAffineFunction{Float64}
+
+    function LPRelaxation(feasible_region::Polyhedron, obj::MOI.ScalarAffineFunction{Float64})
+        n = ambient_dim(feasible_region)
+        for aff_constr in feasible_region.aff_constrs
+            @assert _max_var_index(aff_constr) <= n
+        end
+        @assert _max_var_index(obj) <= n
+        return new(feasible_region, obj)
+    end
+    # TODO: Check that obj does not go out of index w.r.t. feasible_region size.
+end
+
+num_variables(r::LPRelaxation) = length(r.feasible_region.bounds)
 
 struct Disjunction
     disjuncts::Vector{Polyhedron}
+end
 
-    function Disjunction(disjuncts::Vector{Polyhedron})
-        ambient_dims = _ambient_dim.(disjuncts)
-        @assert length(unique(ambient_dims)) == 1
-        return new(disjuncts)
+abstract type AbstractFormulater end
+
+struct DMIPFormulation
+    base_form::LPRelaxation
+    disjunction_formulaters::Vector{AbstractFormulater}
+    integrality::Vector{MOI.VariableIndex}
+
+    function DMIPFormulation(base_form::LPRelaxation, disjunction_formulaters::Vector{AbstractFormulater}, integrality::Vector{MOI.VariableIndex})
+        n = ambient_dim(base_form.feasible_region)
+        for vi in integrality
+            @assert vi.value <= n
+        end
+        return new(base_form, disjunction_formulaters, integrality)
     end
 end
 
-# Assumption: Problem is being minimized
-struct Formulation
-    poly::Polyhedron
-    c::Vector{Float64}
-    integrality::Vector{Bool}
-
-    function Formulation(poly::Polyhedron, c::Vector, integrality::Vector{Bool})
-        n = _ambient_dim(poly)
-        @assert n == length(c) == length(integrality)
-        return new(poly, c, integrality)
-    end
-end
-num_constraints(form::Formulation) = size(form.poly)[1]
-num_variables(form::Formulation) = size(form.poly)[2]
-
-function integral_indices(form::Formulation)
-    return filter(i -> form.integrality[i], 1:length(form.integrality))
-end
-
-abstract type FormulationUpdater end
-
-struct Problem
-    base_form::Formulation
-    updaters::Vector{FormulationUpdater}
-end
-
-num_constraints(prob::Problem) = num_constraints(prob.base_form)
-num_variables(prob::Problem) = num_variables(prob.base_form)
-
+num_variables(fm::DMIPFormulation) = num_variables(fm.base_form)
 
