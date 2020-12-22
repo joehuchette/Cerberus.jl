@@ -31,18 +31,24 @@ function process_node(form::DMIPFormulation, state::CurrentState, node::Node, co
     MOI.optimize!(model)
 
     # 3. Grab solution data and bundle it into a NodeResult
-    x = nothing
     cost = MOI.get(model, MOI.ObjectiveValue())
-    basis = nothing
+    simplex_iters = MOI.get(model, MOI.SimplexIterations())
     term_status = MOI.get(model, MOI.TerminationStatus())
     if term_status == MOI.OPTIMAL
-        x = MOI.get(model, MOI.VariablePrimal(), MOI.ListOfVariableIndices())
-        basis = get_basis(model)
+        return NodeResult(
+            cost,
+            simplex_iters,
+            MOI.get(model, MOI.VariablePrimal(), MOI.ListOfVariableIndices()),
+            config.warm_start ? get_basis(model) : nothing,
+            config.hot_start ? model : nothing
+        )
     elseif term_status == MOI.INFEASIBLE
         @assert cost == Inf
+        return NodeResult(
+            cost,
+            simplex_iters,
+        )
     else
         error("Unexpected termination status $term_status at node LP.")
     end
-    return NodeResult(x, cost, basis, MOI.get(model, MOI.SimplexIterations())
-)
 end

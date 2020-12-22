@@ -7,7 +7,7 @@ struct ParentInfo
 end
 ParentInfo() = ParentInfo(-Inf, nothing, nothing)
 
-struct Node
+mutable struct Node
     vars_branched_to_zero::Vector{MOI.VariableIndex}
     vars_branched_to_one::Vector{MOI.VariableIndex}
     parent_info::ParentInfo

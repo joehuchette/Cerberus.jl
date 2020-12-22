@@ -6,11 +6,14 @@ end
     x = [1.2, 3.4]
     cost = 5.6
     simplex_iters = 3
-    nr1 = @inferred Cerberus.NodeResult(x, cost, nothing, simplex_iters)
+    basis = nothing
+    model = nothing
+    nr1 = @inferred Cerberus.NodeResult(cost, simplex_iters, x, basis, model)
     @test nr1.x == x
     @test nr1.cost == cost
-    @test nr1.basis === nothing
     @test nr1.simplex_iters == simplex_iters
+    @test nr1.basis == basis
+    @test nr1.model == model
 
     basis = Cerberus.Basis(
         _VI(1) => MOI.BASIC,
@@ -19,14 +22,15 @@ end
         _CI(2) => MOI.NONBASIC,
         _CI(3) => MOI.NONBASIC,
     )
-    nr2 = @inferred Cerberus.NodeResult(x, cost, basis, simplex_iters)
+    nr2 = @inferred Cerberus.NodeResult(cost, simplex_iters, x, basis, model)
     @test nr2.x == x
     @test nr2.cost == cost
-    @test nr2.basis == basis
     @test nr2.simplex_iters == simplex_iters
+    @test nr2.basis == basis
+    @test nr2.model == model
 
     simplex_iters_bad = -1
-    @test_throws AssertionError Cerberus.NodeResult(x, cost, nothing, simplex_iters_bad)
+    @test_throws AssertionError Cerberus.NodeResult(cost, simplex_iters_bad, x, nothing, nothing)
 end
 
 @testset "CurrentState" begin
@@ -84,8 +88,8 @@ end
         node = Cerberus.Node()
 
         # 1. Prune by infeasibility
-        nr1 = Cerberus.NodeResult(nothing, Inf, nothing, simplex_iters_per)
-        @inferred Cerberus.update!(cs, fm, node, nr1, config)
+        nr1 = Cerberus.NodeResult(Inf, simplex_iters_per)
+        @inferred Cerberus.update_state!(cs, fm, node, nr1, config)
         @test isempty(cs.tree)
         @test cs.enumerated_node_count == 1
         @test cs.primal_bound == starting_pb
@@ -95,8 +99,8 @@ end
 
         # 2. Prune by bound
         frac_soln = [0.2, 3.4, 0.6]
-        nr2 = Cerberus.NodeResult(frac_soln, 13.5, nothing, simplex_iters_per)
-        @inferred Cerberus.update!(cs, fm, node, nr2, config)
+        nr2 = Cerberus.NodeResult(13.5, simplex_iters_per, frac_soln)
+        @inferred Cerberus.update_state!(cs, fm, node, nr2, config)
         @test isempty(cs.tree)
         @test cs.enumerated_node_count == 2
         @test cs.primal_bound == starting_pb
@@ -107,8 +111,8 @@ end
         # 3. Prune by integrality
         int_soln = [1.0, 3.4, 0.0]
         new_pb = 11.1
-        nr3 = Cerberus.NodeResult(int_soln, new_pb, nothing, simplex_iters_per)
-        @inferred Cerberus.update!(cs, fm, node, nr3, config)
+        nr3 = Cerberus.NodeResult(new_pb, simplex_iters_per, int_soln)
+        @inferred Cerberus.update_state!(cs, fm, node, nr3, config)
         @test isempty(cs.tree)
         @test cs.enumerated_node_count == 3
         @test cs.primal_bound == new_pb
@@ -119,8 +123,8 @@ end
         # 4. Branch
         frac_soln_2 = [0.0, 2.9, 0.6]
         db = 10.1
-        nr4 = Cerberus.NodeResult(frac_soln, db, nothing, simplex_iters_per)
-        @inferred Cerberus.update!(cs, fm, node, nr4, config)
+        nr4 = Cerberus.NodeResult(db, simplex_iters_per, frac_soln)
+        @inferred Cerberus.update_state!(cs, fm, node, nr4, config)
         @test Cerberus.num_open_nodes(cs.tree) == 2
         # @test cs.tree
         @test cs.enumerated_node_count == 4

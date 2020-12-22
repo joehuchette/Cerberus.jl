@@ -1,13 +1,15 @@
 mutable struct NodeResult
-    x::Union{Nothing,Vector{Float64}}
     cost::Float64
-    basis::Union{Nothing,Basis}
     simplex_iters::Int
+    x::Union{Nothing,Vector{Float64}}
+    basis::Union{Nothing,Basis}
+    model::Union{Nothing,Gurobi.Optimizer}
+
     # Wall time should be tracked by CurrentState
 
-    function NodeResult(x::Union{Nothing,Vector{Float64}}, cost::Real, basis::Union{Nothing,Basis}, simplex_iters::Real)
+    function NodeResult(cost::Real, simplex_iters::Real, x::Union{Nothing,Vector{Float64}}=nothing, basis::Union{Nothing,Basis}=nothing, model::Union{Nothing,Gurobi.Optimizer}=nothing)
         @assert simplex_iters >= 0
-        return new(x, cost, basis, simplex_iters)
+        return new(cost, simplex_iters, x, basis, model)
     end
 end
 
@@ -48,7 +50,7 @@ function ip_feasible(form::DMIPFormulation, x::Vector{Float64}, config::Algorith
     return true
 end
 
-function update!(state::CurrentState, form::DMIPFormulation, node::Node, result::NodeResult, config::AlgorithmConfig)
+function update_state!(state::CurrentState, form::DMIPFormulation, node::Node, result::NodeResult, config::AlgorithmConfig)
     state.enumerated_node_count += 1
     state.total_simplex_iters += result.simplex_iters
     # 1. Prune by infeasibility
@@ -68,7 +70,18 @@ function update!(state::CurrentState, form::DMIPFormulation, node::Node, result:
         end
     # 4. Branch!
     else
-        favorite_child, other_child = branch(form, config.branching_rule, state, node, result, config)
+        favorite_child, other_child = branch(form, config.branching_rule, node, result, config)
+        favorite_child.parent_info = ParentInfo(
+            result.cost,
+            result.basis,
+            result.model,
+        )
+        # TODO: This only maintains hot start model on dives. Is this the right call?
+        other_child.parent_info = ParentInfo(
+            result.cost,
+            result.basis,
+            nothing,
+        )
         push_node!(state.tree, other_child)
         push_node!(state.tree, favorite_child)
     end
