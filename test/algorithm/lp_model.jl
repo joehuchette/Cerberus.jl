@@ -78,6 +78,41 @@ end
     @test MOI.get(model, MOI.VariablePrimal(), MOI.VariableIndex(3)) ≈ 0.0
 end
 
+@testset "_fill_solution!" begin
+    form = _build_dmip_formulation()
+    state = Cerberus.CurrentState()
+    node = Cerberus.Node()
+    config = Cerberus.AlgorithmConfig(lp_solver_factory=_silent_gurobi_factory)
+    model = Cerberus.build_base_model(form, state, node, config)
+    MOI.optimize!(model)
+    @assert MOI.get(model, MOI.PrimalStatus()) == MOI.FEASIBLE_POINT
+    x = Dict{MOI.VariableIndex,Float64}()
+    @inferred Cerberus._fill_solution!(x, model)
+    @test length(x) == 3
+    @test x[_VI(1)] ≈ 1 / 2
+    @test x[_VI(2)] ≈ 2.5 / 2.1
+    @test x[_VI(3)] ≈ 0.0
+end
+
+@testset "_fill_basis!" begin
+    form = _build_dmip_formulation()
+    state = Cerberus.CurrentState()
+    node = Cerberus.Node()
+    config = Cerberus.AlgorithmConfig(lp_solver_factory=_silent_gurobi_factory)
+    model = Cerberus.build_base_model(form, state, node, config)
+    MOI.optimize!(model)
+    @assert MOI.get(model, MOI.PrimalStatus()) == MOI.FEASIBLE_POINT
+    basis = Cerberus.Basis()
+    @inferred Cerberus._fill_basis!(basis, model)
+    @test basis == Dict{Any,MOI.BasisStatusCode}(
+        MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(1) => MOI.NONBASIC_AT_LOWER,
+        MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(2) => MOI.BASIC,
+        MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(3) => MOI.NONBASIC_AT_LOWER,
+        MOI.ConstraintIndex{MOI.ScalarAffineFunction{Float64},MOI.EqualTo{Float64}}(2) => MOI.NONBASIC,
+        MOI.ConstraintIndex{MOI.ScalarAffineFunction{Float64},MOI.LessThan{Float64}}(3) => MOI.BASIC,
+    )
+end
+
 @testset "get_basis" begin
     form = _build_dmip_formulation()
     state = Cerberus.CurrentState()

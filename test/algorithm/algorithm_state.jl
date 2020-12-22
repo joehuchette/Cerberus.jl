@@ -1,11 +1,11 @@
 @testset "NodeResult" begin
     x = [1.2, 3.4]
-    x_dict = Dict(_VI(i) => x[i] for i in 1:length(x))
+    x_dict = _vec_to_dict(x)
     cost = 5.6
     simplex_iters = 3
-    basis = nothing
+    basis = Cerberus.Basis()
     model = nothing
-    nr1 = @inferred Cerberus.NodeResult(cost, simplex_iters, x, basis, model)
+    nr1 = @inferred Cerberus.NodeResult(cost, simplex_iters, x_dict, basis, model)
     @test nr1.x == x_dict
     @test nr1.cost == cost
     @test nr1.simplex_iters == simplex_iters
@@ -19,15 +19,32 @@
         _CI(2) => MOI.NONBASIC,
         _CI(3) => MOI.NONBASIC,
     )
-    nr2 = @inferred Cerberus.NodeResult(cost, simplex_iters, x, basis, model)
+    nr2 = @inferred Cerberus.NodeResult(cost, simplex_iters, x_dict, basis, model)
     @test nr2.x == x_dict
     @test nr2.cost == cost
     @test nr2.simplex_iters == simplex_iters
     @test nr2.basis == basis
     @test nr2.model == model
 
-    simplex_iters_bad = -1
-    @test_throws AssertionError Cerberus.NodeResult(cost, simplex_iters_bad, x, nothing, nothing)
+    @testset "empty!" begin
+        cost = 5.6
+        si = 12
+        x = Dict(_VI(1) => 15.7)
+        basis = Dict{Any,MOI.BasisStatusCode}(MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(1) => MOI.BASIC)
+        model = Gurobi.Optimizer()
+        nr = Cerberus.NodeResult(cost, si, x, basis, model)
+        @test nr.cost == cost
+        @test nr.simplex_iters == si
+        @test nr.x == x
+        @test nr.basis == basis
+        @test nr.model === model
+        empty!(nr)
+        @test isnan(nr.cost)
+        @test nr.simplex_iters == 0
+        @test isempty(nr.x)
+        @test isempty(nr.basis)
+        @test nr.model === nothing
+    end
 end
 
 @testset "CurrentState" begin

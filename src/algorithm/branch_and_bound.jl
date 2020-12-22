@@ -8,9 +8,9 @@ function optimize!(form::DMIPFormulation, config::AlgorithmConfig, primal_bound:
         while !isempty(state.tree)
             node = pop_node!(state.tree)
             TimerOutputs.@timeit to "Node processing" begin
-                result = process_node(form, state, node, config)
+                process_node!(state, form, node, config)
             end
-            update_state!(state, form, node, result, config)
+            update_state!(state, form, node, config)
             # TODO: Don't do this every iteration
             update_dual_bound!(state)
             if state.total_node_count >= config.node_limit
@@ -21,7 +21,7 @@ function optimize!(form::DMIPFormulation, config::AlgorithmConfig, primal_bound:
     return Result(state, config)
 end
 
-function process_node(form::DMIPFormulation, state::CurrentState, node::Node, config::AlgorithmConfig)::NodeResult
+function process_node!(state::CurrentState, form::DMIPFormulation, node::Node, config::AlgorithmConfig)::Nothing
     # 1. Build model
     model = build_base_model(form, state, node, config)
     # Update bounds on binary variables at the current node
@@ -34,24 +34,24 @@ function process_node(form::DMIPFormulation, state::CurrentState, node::Node, co
     # 3. Grab solution data and bundle it into a NodeResult
     simplex_iters = MOI.get(model, MOI.SimplexIterations())
     term_status = MOI.get(model, MOI.TerminationStatus())
-    vs = MOI.get(model, MOI.ListOfVariableIndices())
+    empty!(state.node_result)
     if term_status == MOI.OPTIMAL
-        return NodeResult(
-            MOI.get(model, MOI.ObjectiveValue()),
-            simplex_iters,
-            # TODO: Do this lazily via stored model object
-            Dict(v => MOI.get(model, MOI.VariablePrimal(), v) for v in vs),
-            config.warm_start ? get_basis(model) : nothing,
-            config.hot_start ? model : nothing
-        )
+        state.node_result.cost = MOI.get(model, MOI.ObjectiveValue())
+        state.node_result.simplex_iters = simplex_iters
+        _fill_solution!(state.node_result.x, model)
+        if config.warm_start
+            _fill_basis!(state.node_result.basis, model)
+        end
+        if config.hot_start
+            state.node_result.model = model
+        end
     elseif term_status == MOI.INFEASIBLE
-        return NodeResult(
-            Inf,
-            simplex_iters,
-        )
+        state.node_result.cost = Inf
+        state.node_result.simplex_iters = simplex_iters
     else
         error("Unexpected termination status $term_status at node LP.")
     end
+    return nothing
 end
 
 
@@ -79,7 +79,8 @@ function _attach_parent_info!(favorite_child::Node, other_child::Node, result::N
     return nothing
 end
 
-function update_state!(state::CurrentState, form::DMIPFormulation, node::Node, result::NodeResult, config::AlgorithmConfig)
+function update_state!(state::CurrentState, form::DMIPFormulation, node::Node, config::AlgorithmConfig)
+    result = state.node_result
     state.total_node_count += 1
     state.total_simplex_iters += result.simplex_iters
     # 1. Prune by infeasibility

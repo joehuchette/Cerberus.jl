@@ -16,7 +16,7 @@ end
     x = [0.6, 0.7, 0.1]
     cost = 1.2
     config = Cerberus.AlgorithmConfig()
-    result = Cerberus.NodeResult(cost, 12, x)
+    result = Cerberus.NodeResult(cost, 12, _vec_to_dict(x), Cerberus.Basis(), nothing)
     n1, n2 = @inferred Cerberus.branch(fm, Cerberus.MostInfeasible(), node, result, config)
     @test n1.vars_branched_to_zero == _VI[]
     @test n1.vars_branched_to_one == [_VI(1)]

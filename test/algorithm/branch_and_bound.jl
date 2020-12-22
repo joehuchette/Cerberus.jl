@@ -13,14 +13,15 @@
     @test result.total_simplex_iters == 0
 end
 
-@testset "process_node" begin
+@testset "process_node!" begin
     # A feasible model
     let
         fm = _build_dmip_formulation()
         state = Cerberus.CurrentState()
         node = Cerberus.Node()
         config = Cerberus.AlgorithmConfig(lp_solver_factory=_silent_gurobi_factory)
-        result = @inferred Cerberus.process_node(fm, state, node, config)
+        @inferred Cerberus.process_node!(state, fm, node, config)
+        result = state.node_result
         @test result.cost ≈ 0.5 - 2.5 / 2.1
         @test result.simplex_iters == 0
         @test length(result.x) == 3
@@ -44,11 +45,12 @@ end
         # A bit hacky, but force infeasibility by branching both up and down.
         node = Cerberus.Node([_VI(1)], [_VI(1)])
         config = Cerberus.AlgorithmConfig(lp_solver_factory=_silent_gurobi_factory)
-        result = @inferred Cerberus.process_node(fm, state, node, config)
+        @inferred Cerberus.process_node!(state, fm, node, config)
+        result = state.node_result
         @test result.cost == Inf
         @test result.simplex_iters == 0
         @test isempty(result.x)
-        @test result.basis === nothing
+        @test isempty(result.basis)
         @test result.model === nothing
     end
 end
@@ -80,7 +82,7 @@ end
     result = Cerberus.NodeResult(
         12.3,
         1492,
-        [1.2, 2.3, 3.4],
+        _vec_to_dict([1.2, 2.3, 3.4]),
         basis,
         model,
     )
@@ -99,8 +101,10 @@ end
     node = Cerberus.Node()
 
     # 1. Prune by infeasibility
-    nr1 = Cerberus.NodeResult(Inf, simplex_iters_per)
-    @inferred Cerberus.update_state!(cs, fm, node, nr1, config)
+    nr1 = Cerberus.NodeResult()
+    cs.node_result.cost = Inf
+    cs.node_result.simplex_iters = simplex_iters_per
+    @inferred Cerberus.update_state!(cs, fm, node, config)
     @test isempty(cs.tree)
     @test cs.total_node_count == 1
     @test cs.primal_bound == starting_pb
@@ -110,9 +114,11 @@ end
 
     # 2. Prune by bound
     frac_soln = [0.2, 3.4, 0.6]
-    frac_soln_dict = Dict(_VI(i) => frac_soln[i] for i in 1:3)
-    nr2 = Cerberus.NodeResult(13.5, simplex_iters_per, frac_soln)
-    @inferred Cerberus.update_state!(cs, fm, node, nr2, config)
+    empty!(cs.node_result)
+    cs.node_result.cost = 13.5
+    cs.node_result.simplex_iters = simplex_iters_per
+    cs.node_result.x = _vec_to_dict(frac_soln)
+    @inferred Cerberus.update_state!(cs, fm, node, config)
     @test isempty(cs.tree)
     @test cs.total_node_count == 2
     @test cs.primal_bound == starting_pb
@@ -122,10 +128,13 @@ end
 
     # 3. Prune by integrality
     int_soln = [1.0, 3.4, 0.0]
-    int_soln_dict = Dict(_VI(i) => int_soln[i] for i in 1:3)
+    int_soln_dict = _vec_to_dict(int_soln)
     new_pb = 11.1
-    nr3 = Cerberus.NodeResult(new_pb, simplex_iters_per, int_soln)
-    @inferred Cerberus.update_state!(cs, fm, node, nr3, config)
+    empty!(cs.node_result)
+    cs.node_result.cost = new_pb
+    cs.node_result.simplex_iters = simplex_iters_per
+    cs.node_result.x = int_soln_dict
+    @inferred Cerberus.update_state!(cs, fm, node, config)
     @test isempty(cs.tree)
     @test cs.total_node_count == 3
     @test cs.primal_bound == new_pb
@@ -135,10 +144,17 @@ end
 
     # 4. Branch
     frac_soln_2 = [0.0, 2.9, 0.6]
-    frac_soln_dict = Dict(_VI(i) => frac_soln_2[i] for i in 1:3)
+    frac_soln_dict = _vec_to_dict(frac_soln_2)
     db = 10.1
-    nr4 = Cerberus.NodeResult(db, simplex_iters_per, frac_soln)
-    @inferred Cerberus.update_state!(cs, fm, node, nr4, config)
+    basis = Cerberus.Basis(MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(1) => MOI.BASIC)
+    model = Gurobi.Optimizer()
+    empty!(cs.node_result)
+    cs.node_result.cost = 10.1
+    cs.node_result.simplex_iters = simplex_iters_per
+    cs.node_result.x = frac_soln_dict
+    cs.node_result.basis = basis
+    cs.node_result.model = model
+    @inferred Cerberus.update_state!(cs, fm, node, config)
     @test Cerberus.num_open_nodes(cs.tree) == 2
     @test cs.total_node_count == 4
     @test cs.primal_bound == new_pb
@@ -150,9 +166,13 @@ end
     fc = Cerberus.pop_node!(cs.tree)
     @test isempty(fc.vars_branched_to_zero)
     @test fc.vars_branched_to_one == [_VI(3)]
-    @test fc.parent_info == Cerberus.ParentInfo(10.1, nothing, nothing)
+    @test fc.parent_info.dual_bound == db
+    @test fc.parent_info.basis == basis
+    @test fc.parent_info.hot_start_model === model
     oc = Cerberus.pop_node!(cs.tree)
     @test oc.vars_branched_to_zero == [_VI(3)]
     @test isempty(oc.vars_branched_to_one)
-    @test oc.parent_info == Cerberus.ParentInfo(10.1, nothing, nothing)
+    @test oc.parent_info.dual_bound == db
+    @test oc.parent_info.basis == basis
+    @test oc.parent_info.hot_start_model === nothing
 end

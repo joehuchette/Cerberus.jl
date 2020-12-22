@@ -30,14 +30,26 @@ function update_node_bounds!(model::MOI.AbstractOptimizer, node::Node)
     return nothing
 end
 
-function get_basis(model::MOI.AbstractOptimizer)::Basis
-    # @assert MOI.get(model, MOI.ListOfConstraints()) == [()]
-    basis = Dict{Any,MOI.BasisStatusCode}()
+function _fill_solution!(x::Dict{MOI.VariableIndex,Float64}, model::MOI.AbstractOptimizer)
+    for v in MOI.get(model, MOI.ListOfVariableIndices())
+        x[v] = MOI.get(model, MOI.VariablePrimal(), v)
+    end
+    return nothing
+end
+
+function _fill_basis!(basis::Dict{Any,MOI.BasisStatusCode}, model::MOI.AbstractOptimizer)
     for (F, S) in MOI.get(model, MOI.ListOfConstraints())
         for ci in MOI.get(model, MOI.ListOfConstraintIndices{F,S}())
             basis[ci] = MOI.get(model, MOI.ConstraintBasisStatus(), ci)
         end
     end
+    return nothing
+end
+
+# TODO: Do we still need this function?
+function get_basis(model::MOI.AbstractOptimizer)::Basis
+    basis = Dict{Any,MOI.BasisStatusCode}()
+    _fill_basis!(basis, model)
     return basis
 end
 

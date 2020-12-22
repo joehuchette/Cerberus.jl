@@ -2,31 +2,40 @@ mutable struct NodeResult
     cost::Float64
     simplex_iters::Int
     x::Dict{MOI.VariableIndex,Float64}
-    basis::Union{Nothing,Basis}
+    basis::Basis
     model::Union{Nothing,Gurobi.Optimizer}
-
     # Wall time should be tracked by CurrentState
-
-    function NodeResult(cost::Real, simplex_iters::Real, x::Dict{MOI.VariableIndex,Float64}=Dict{MOI.VariableIndex,Float64}(), basis::Union{Nothing,Basis}=nothing, model::Union{Nothing,Gurobi.Optimizer}=nothing)
-        @assert simplex_iters >= 0
-        return new(cost, simplex_iters, x, basis, model)
-    end
 end
 
-function NodeResult(cost::Real, simplex_iters::Real, x::Vector{Float64}, basis::Union{Nothing,Basis}=nothing, model::Union{Nothing,Gurobi.Optimizer}=nothing)
-    @warn "Slow path, only use for testing."
+function NodeResult()
     return NodeResult(
-        cost,
-        simplex_iters,
-        Dict(MOI.VariableIndex(i) => x[i] for i in 1:length(x)),
-        basis,
-        model,
+        NaN,
+        0,
+        Dict{MOI.VariableIndex,Float64}(),
+        Dict{Any,MOI.BasisStatusCode}(),
+        nothing,
     )
+end
+
+function Base.empty!(result::NodeResult)
+    result.cost = NaN
+    result.simplex_iters = 0
+    # Save sizes of x and basis; keys should not change throughout tree anyway
+    x_sz = length(result.x)
+    # TODO: Potentially more efficient, but messier, is to fill all entries with NaNs.
+    empty!(result.x)
+    x_sz > 0 && sizehint!(result.x, x_sz)
+    basis_sz = length(result.basis)
+    empty!(result.basis)
+    basis_sz > 0 && sizehint!(result.basis, basis_sz)
+    result.model = nothing
+    return nothing
 end
 
 mutable struct CurrentState
     gurobi_env::Gurobi.Env
     tree::Tree
+    node_result::NodeResult
     total_node_count::Int
     primal_bound::Float64
     dual_bound::Float64
@@ -37,6 +46,7 @@ mutable struct CurrentState
         state = new(
             Gurobi.Env(),
             Tree(),
+            NodeResult(),
             0,
             primal_bound,
             -Inf,
