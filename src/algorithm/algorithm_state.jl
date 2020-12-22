@@ -27,14 +27,14 @@ end
 mutable struct CurrentState
     gurobi_env::Gurobi.Env
     tree::Tree
-    enumerated_node_count::Int
+    total_node_count::Int
     primal_bound::Float64
     dual_bound::Float64
     best_solution::Dict{MOI.VariableIndex,Float64}
     total_simplex_iters::Int
 
     function CurrentState(primal_bound::Real=Inf)
-        return new(
+        state = new(
             Gurobi.Env(),
             Tree(),
             0,
@@ -43,10 +43,17 @@ mutable struct CurrentState
             Dict{MOI.VariableIndex,Float64}(),
             0,
         )
+        push_node!(state.tree, Node())
+        return state
     end
 end
 
 function update_dual_bound!(state::CurrentState)
-    state.dual_bound = minimum(node.parent_info.dual_bound for node in state.tree.open_nodes)
+    if isempty(state.tree)
+        # Tree is exhausted, so have proven optimality of best found solution.
+        state.dual_bound = state.primal_bound
+    else
+        state.dual_bound = minimum(node.parent_info.dual_bound for node in state.tree.open_nodes)
+    end
     return nothing
 end

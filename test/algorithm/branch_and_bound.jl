@@ -2,7 +2,15 @@
     fm = _build_dmip_formulation()
     config = Cerberus.AlgorithmConfig(lp_solver_factory=_silent_gurobi_factory)
     result = @inferred Cerberus.optimize!(fm, config)
-    @show result
+    @test result.primal_bound ≈ 0.1 / 2.1
+    @test result.dual_bound ≈ 0.1 / 2.1
+    @test length(result.best_solution) == 3
+    @test result.best_solution[_VI(1)] ≈ 1.0
+    @test result.best_solution[_VI(2)] ≈ 2 / 2.1
+    @test result.best_solution[_VI(3)] ≈ 0.0
+    @test result.termination_status == Cerberus.OPTIMAL
+    @test result.total_node_count == 3
+    @test result.total_simplex_iters == 0
 end
 
 @testset "process_node" begin
@@ -13,11 +21,11 @@ end
         node = Cerberus.Node()
         config = Cerberus.AlgorithmConfig(lp_solver_factory=_silent_gurobi_factory)
         result = @inferred Cerberus.process_node(fm, state, node, config)
-        @test result.cost ≈ -0.75
+        @test result.cost ≈ 0.5 - 2.5 / 2.1
         @test result.simplex_iters == 0
         @test length(result.x) == 3
         @test result.x[_VI(1)] ≈ 0.5
-        @test result.x[_VI(2)] ≈ 1.25
+        @test result.x[_VI(2)] ≈ 2.5 / 2.1
         @test result.x[_VI(3)] ≈ 0.0
         @test result.basis == Cerberus.Basis(
             MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(1) => MOI.NONBASIC_AT_LOWER,
@@ -87,13 +95,14 @@ end
     starting_pb = 12.3
     simplex_iters_per = 18
     cs = Cerberus.CurrentState(starting_pb)
+    @test _is_root_node(Cerberus.pop_node!(cs.tree))
     node = Cerberus.Node()
 
     # 1. Prune by infeasibility
     nr1 = Cerberus.NodeResult(Inf, simplex_iters_per)
     @inferred Cerberus.update_state!(cs, fm, node, nr1, config)
     @test isempty(cs.tree)
-    @test cs.enumerated_node_count == 1
+    @test cs.total_node_count == 1
     @test cs.primal_bound == starting_pb
     @test cs.dual_bound == -Inf
     @test isempty(cs.best_solution)
@@ -105,7 +114,7 @@ end
     nr2 = Cerberus.NodeResult(13.5, simplex_iters_per, frac_soln)
     @inferred Cerberus.update_state!(cs, fm, node, nr2, config)
     @test isempty(cs.tree)
-    @test cs.enumerated_node_count == 2
+    @test cs.total_node_count == 2
     @test cs.primal_bound == starting_pb
     @test cs.dual_bound == -Inf
     @test isempty(cs.best_solution)
@@ -118,7 +127,7 @@ end
     nr3 = Cerberus.NodeResult(new_pb, simplex_iters_per, int_soln)
     @inferred Cerberus.update_state!(cs, fm, node, nr3, config)
     @test isempty(cs.tree)
-    @test cs.enumerated_node_count == 3
+    @test cs.total_node_count == 3
     @test cs.primal_bound == new_pb
     @test cs.dual_bound == -Inf
     @test cs.best_solution == int_soln_dict
@@ -131,7 +140,7 @@ end
     nr4 = Cerberus.NodeResult(db, simplex_iters_per, frac_soln)
     @inferred Cerberus.update_state!(cs, fm, node, nr4, config)
     @test Cerberus.num_open_nodes(cs.tree) == 2
-    @test cs.enumerated_node_count == 4
+    @test cs.total_node_count == 4
     @test cs.primal_bound == new_pb
     @test cs.dual_bound == -Inf
     @test cs.best_solution == int_soln_dict

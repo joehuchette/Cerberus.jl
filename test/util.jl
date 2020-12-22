@@ -8,7 +8,7 @@ function _build_polyhedron()
     return Cerberus.Polyhedron(
         [
             Cerberus.AffineConstraint(
-                v[1] + 2.0 * v[2] + 3.0 * v[3],
+                v[1] + 2.1 * v[2] + 3.0 * v[3],
                 MOI.EqualTo(3.0)
             ),
             Cerberus.AffineConstraint(

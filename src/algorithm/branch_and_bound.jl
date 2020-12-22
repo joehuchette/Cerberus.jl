@@ -6,13 +6,14 @@ function optimize!(form::DMIPFormulation, config::AlgorithmConfig, primal_bound:
     state = CurrentState(primal_bound)
     TimerOutputs.@timeit to "Tree search" begin
         while !isempty(state.tree)
-            node = pop_next_node!(tree)
+            node = pop_node!(state.tree)
             TimerOutputs.@timeit to "Node processing" begin
                 result = process_node(form, state, node, config)
             end
             update_state!(state, form, node, result, config)
-            if node_count >= config.node_limit
-                update_dual_bound!(cs)
+            # TODO: Don't do this every iteration
+            update_dual_bound!(state)
+            if state.total_node_count >= config.node_limit
                 break
             end
         end
@@ -79,7 +80,7 @@ function _attach_parent_info!(favorite_child::Node, other_child::Node, result::N
 end
 
 function update_state!(state::CurrentState, form::DMIPFormulation, node::Node, result::NodeResult, config::AlgorithmConfig)
-    state.enumerated_node_count += 1
+    state.total_node_count += 1
     state.total_simplex_iters += result.simplex_iters
     # 1. Prune by infeasibility
     if result.cost == Inf

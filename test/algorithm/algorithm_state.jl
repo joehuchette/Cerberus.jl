@@ -40,13 +40,17 @@ end
     cs2 = @inferred Cerberus.CurrentState(pb_float)
     cs3 = @inferred Cerberus.CurrentState(pb_int)
 
-    @test isempty(cs1.tree)
-    @test isempty(cs2.tree)
-    @test isempty(cs3.tree)
+    @test length(cs1.tree) == 1
+    @test length(cs2.tree) == 1
+    @test length(cs3.tree) == 1
 
-    @test cs1.enumerated_node_count == 0
-    @test cs2.enumerated_node_count == 0
-    @test cs3.enumerated_node_count == 0
+    @test _is_root_node(Cerberus.pop_node!(cs1.tree))
+    @test _is_root_node(Cerberus.pop_node!(cs2.tree))
+    @test _is_root_node(Cerberus.pop_node!(cs3.tree))
+
+    @test cs1.total_node_count == 0
+    @test cs2.total_node_count == 0
+    @test cs3.total_node_count == 0
 
     @test cs1.primal_bound == Inf
     @test cs2.primal_bound == pb_float

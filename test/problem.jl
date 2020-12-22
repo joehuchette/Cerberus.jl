@@ -19,7 +19,7 @@ function _test_polyhedron(p::Cerberus.Polyhedron)
     @test typeof(p.aff_constrs[1].f) == MOI.ScalarAffineFunction{Float64}
     @test p.aff_constrs[1].f.terms ==
         [
-            MOI.ScalarAffineTerm{Float64}(2.0, _VI(2)),
+            MOI.ScalarAffineTerm{Float64}(2.1, _VI(2)),
             MOI.ScalarAffineTerm{Float64}(1.0, _VI(1)),
             MOI.ScalarAffineTerm{Float64}(3.0, _VI(3)),
         ]

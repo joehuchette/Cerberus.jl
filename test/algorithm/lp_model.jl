@@ -11,7 +11,7 @@
     f1 = MOI.get(model, MOI.ConstraintFunction(), c1)
     @test f1.terms == [
         MOI.ScalarAffineTerm{Float64}(1.0, _VI(1)),
-        MOI.ScalarAffineTerm{Float64}(2.0, _VI(2)),
+        MOI.ScalarAffineTerm{Float64}(2.1, _VI(2)),
         MOI.ScalarAffineTerm{Float64}(3.0, _VI(3)),
     ]
     @test f1.constant == 0.0
@@ -74,7 +74,7 @@ end
     @test MOI.get(model, MOI.TerminationStatus()) == MOI.OPTIMAL
     @test MOI.get(model, MOI.PrimalStatus()) == MOI.FEASIBLE_POINT
     @test MOI.get(model, MOI.VariablePrimal(), MOI.VariableIndex(1)) ≈ 0.5
-    @test MOI.get(model, MOI.VariablePrimal(), MOI.VariableIndex(2)) ≈ 1.25
+    @test MOI.get(model, MOI.VariablePrimal(), MOI.VariableIndex(2)) ≈ 2.5 / 2.1
     @test MOI.get(model, MOI.VariablePrimal(), MOI.VariableIndex(3)) ≈ 0.0
 end
 
