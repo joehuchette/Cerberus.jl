@@ -1,5 +1,8 @@
 @testset "optimize!" begin
-
+    fm = _build_dmip_formulation()
+    config = Cerberus.AlgorithmConfig(lp_solver_factory=_silent_gurobi_factory)
+    result = @inferred Cerberus.optimize!(fm, config)
+    @show result
 end
 
 @testset "process_node" begin

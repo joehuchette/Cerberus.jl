@@ -3,7 +3,7 @@ function optimize!(form::DMIPFormulation, config::AlgorithmConfig, primal_bound:
     to = result.timings
     # TODO: Model presolve. Must happen before initial state is built.
     # Initialize search tree with LP relaxation
-    state = Cerberus(primal_bound)
+    state = CurrentState(primal_bound)
     TimerOutputs.@timeit to "Tree search" begin
         while !isempty(state.tree)
             node = pop_next_node!(tree)
@@ -17,7 +17,7 @@ function optimize!(form::DMIPFormulation, config::AlgorithmConfig, primal_bound:
             end
         end
     end
-    return Result(state)
+    return Result(state, config)
 end
 
 function process_node(form::DMIPFormulation, state::CurrentState, node::Node, config::AlgorithmConfig)::NodeResult
