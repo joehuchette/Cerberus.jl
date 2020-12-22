@@ -17,7 +17,6 @@ mutable struct AlgorithmConfig
     gap_tol::Float64
     int_tol::Float64
     warm_start::Bool
-    # TODO: Hot start is not currently plugged in to anything.
     hot_start::Bool
 
     function AlgorithmConfig(;

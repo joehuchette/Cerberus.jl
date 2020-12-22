@@ -27,7 +27,7 @@ end
     @test n2.parent_info == Cerberus.ParentInfo(-Inf, nothing, nothing)
 
 
-    x2 = [1.0, 0.7, 0.1]
+    x2 = Dict(_VI(1) => 1.0, _VI(2) => 0.7, _VI(3) => 0.1)
     result.x = x2
     n3, n4 = @inferred Cerberus.branch(fm, Cerberus.MostInfeasible(), n2, result, config)
     @test n3.vars_branched_to_zero == [_VI(1), _VI(3)]
@@ -39,7 +39,7 @@ end
     @test n4.parent_info == Cerberus.ParentInfo(-Inf, nothing, nothing)
 
     # Nothing to branch on, should throw. Really, should have pruned by integrality before.
-    x3 = [1.0, 0.7, 0.0]
+    x3 = Dict(_VI(1) => 1.0, _VI(2) => 0.7, _VI(3) => 0.0)
     result.x = x3
     @test_throws AssertionError Cerberus.branch(fm, Cerberus.MostInfeasible(), n4, result, config)
 end

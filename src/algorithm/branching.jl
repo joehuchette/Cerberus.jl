@@ -22,11 +22,10 @@ function _branch(node::Node, branch_vi::MOI.VariableIndex, branch_down::Bool)
 end
 
 function branch(form::DMIPFormulation, ::MostInfeasible, parent_node::Node, parent_result::NodeResult, config::AlgorithmConfig)::Tuple{Node,Node}
-    most_frac_idx = 0
+    most_frac_vi = MOI.VariableIndex(0)
     most_frac_val = 1.0
     for vi in form.integrality
-        i = vi.value
-        xi = parent_result.x[i]
+        xi = parent_result.x[vi]
         @assert 0 <= xi <= 1
         if abs(xi - 0) <= config.int_tol || abs(xi - 1) <= config.int_tol
             continue
@@ -36,15 +35,14 @@ function branch(form::DMIPFormulation, ::MostInfeasible, parent_node::Node, pare
             continue
         end
         if frac_val < most_frac_val
-            most_frac_idx = i
+            most_frac_vi = vi
             most_frac_val = frac_val
         end
     end
-    @assert most_frac_idx > 0
-    vi = MOI.VariableIndex(most_frac_idx)
-    down_node = down_branch(parent_node, vi)
-    up_node = up_branch(parent_node, vi)
-    if parent_result.x[most_frac_idx] > 0.5
+    @assert most_frac_vi.value > 0
+    down_node = down_branch(parent_node, most_frac_vi)
+    up_node = up_branch(parent_node, most_frac_vi)
+    if parent_result.x[most_frac_vi] > 0.5
         return (up_node, down_node)
     else
         return (down_node, up_node)
