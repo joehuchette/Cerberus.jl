@@ -1,6 +1,6 @@
 @testset "build_base_model" begin
     form = _build_dmip_formulation()
-    state = Cerberus.CurrentState(form)
+    state = Cerberus.CurrentState()
     node = Cerberus.Node()
     config = Cerberus.AlgorithmConfig()
     model = @inferred Cerberus.build_base_model(form, state, node, config)
@@ -11,7 +11,7 @@
     f1 = MOI.get(model, MOI.ConstraintFunction(), c1)
     @test f1.terms == [
         MOI.ScalarAffineTerm{Float64}(1.0, _VI(1)),
-        MOI.ScalarAffineTerm{Float64}(2.0, _VI(2)),
+        MOI.ScalarAffineTerm{Float64}(2.1, _VI(2)),
         MOI.ScalarAffineTerm{Float64}(3.0, _VI(3)),
     ]
     @test f1.constant == 0.0
@@ -47,7 +47,7 @@ end
 
 @testset "update_node_bounds!" begin
     form = _build_dmip_formulation()
-    state = Cerberus.CurrentState(form)
+    state = Cerberus.CurrentState()
     node = Cerberus.Node()
     config = Cerberus.AlgorithmConfig()
     model = @inferred Cerberus.build_base_model(form, state, node, config)
@@ -66,7 +66,7 @@ end
 
 @testset "MOI.optimize!" begin
     form = _build_dmip_formulation()
-    state = Cerberus.CurrentState(form)
+    state = Cerberus.CurrentState()
     node = Cerberus.Node()
     config = Cerberus.AlgorithmConfig(lp_solver_factory=_silent_gurobi_factory)
     model = Cerberus.build_base_model(form, state, node, config)
@@ -74,13 +74,13 @@ end
     @test MOI.get(model, MOI.TerminationStatus()) == MOI.OPTIMAL
     @test MOI.get(model, MOI.PrimalStatus()) == MOI.FEASIBLE_POINT
     @test MOI.get(model, MOI.VariablePrimal(), MOI.VariableIndex(1)) ≈ 0.5
-    @test MOI.get(model, MOI.VariablePrimal(), MOI.VariableIndex(2)) ≈ 1.25
+    @test MOI.get(model, MOI.VariablePrimal(), MOI.VariableIndex(2)) ≈ 2.5 / 2.1
     @test MOI.get(model, MOI.VariablePrimal(), MOI.VariableIndex(3)) ≈ 0.0
 end
 
 @testset "get_basis" begin
     form = _build_dmip_formulation()
-    state = Cerberus.CurrentState(form)
+    state = Cerberus.CurrentState()
     node = Cerberus.Node()
     config = Cerberus.AlgorithmConfig(lp_solver_factory=_silent_gurobi_factory)
     model = Cerberus.build_base_model(form, state, node, config)
@@ -98,7 +98,7 @@ end
 
 function _set_basis_model(basis::Cerberus.Basis)
         form = _build_dmip_formulation()
-        state = Cerberus.CurrentState(form)
+        state = Cerberus.CurrentState()
         parent_info = Cerberus.ParentInfo(-Inf, basis, nothing)
         node = Cerberus.Node([], [], parent_info)
         config = Cerberus.AlgorithmConfig(lp_solver_factory=_silent_gurobi_factory)

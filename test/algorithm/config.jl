@@ -1,51 +1,81 @@
 @testset "AlgorithmConfig" begin
-    config1 = Cerberus.AlgorithmConfig()
-    @test config1.lp_solver_factory == Cerberus.DEFAULT_LP_SOLVER_FACTORY
-    @test config1.branching_rule == Cerberus.DEFAULT_BRANCHING_RULE
-    @test config1.node_limit == Cerberus.DEFAULT_NODE_LIMIT
-    @test config1.gap_tol == Cerberus.DEFAULT_GAP_TOL
-    @test config1.int_tol == Cerberus.DEFAULT_INTEGRALITY_TOL
+    let config = Cerberus.AlgorithmConfig()
+        @test config.lp_solver_factory == Cerberus.DEFAULT_LP_SOLVER_FACTORY
+        @test config.branching_rule == Cerberus.DEFAULT_BRANCHING_RULE
+        @test config.node_limit == Cerberus.DEFAULT_NODE_LIMIT
+        @test config.gap_tol == Cerberus.DEFAULT_GAP_TOL
+        @test config.int_tol == Cerberus.DEFAULT_INTEGRALITY_TOL
+    end
 
-    sf = _silent_gurobi_factory
-    br = Cerberus.PseudocostBranching()
-    nl = 10.0
-    gt = 10
-    it = 1e-6
+    let sf = _silent_gurobi_factory, config = Cerberus.AlgorithmConfig(lp_solver_factory=sf)
+        @test config.lp_solver_factory == sf
+        @test config.branching_rule == Cerberus.DEFAULT_BRANCHING_RULE
+        @test config.node_limit == Cerberus.DEFAULT_NODE_LIMIT
+        @test config.gap_tol == Cerberus.DEFAULT_GAP_TOL
+        @test config.int_tol == Cerberus.DEFAULT_INTEGRALITY_TOL
+        @test config.warm_start == Cerberus.DEFAULT_WARM_START
+        @test config.hot_start == Cerberus.DEFAULT_HOT_START
+    end
 
-    config2 = Cerberus.AlgorithmConfig(lp_solver_factory=sf)
-    @test config2.lp_solver_factory == sf
-    @test config2.branching_rule == Cerberus.DEFAULT_BRANCHING_RULE
-    @test config2.node_limit == Cerberus.DEFAULT_NODE_LIMIT
-    @test config2.gap_tol == Cerberus.DEFAULT_GAP_TOL
-    @test config2.int_tol == Cerberus.DEFAULT_INTEGRALITY_TOL
+    let br = Cerberus.PseudocostBranching(), config = Cerberus.AlgorithmConfig(branching_rule=br)
+        @test config.lp_solver_factory == Cerberus.DEFAULT_LP_SOLVER_FACTORY
+        @test config.branching_rule == br
+        @test config.node_limit == Cerberus.DEFAULT_NODE_LIMIT
+        @test config.gap_tol == Cerberus.DEFAULT_GAP_TOL
+        @test config.int_tol == Cerberus.DEFAULT_INTEGRALITY_TOL
+        @test config.warm_start == Cerberus.DEFAULT_WARM_START
+        @test config.hot_start == Cerberus.DEFAULT_HOT_START
+    end
 
-    config3 = Cerberus.AlgorithmConfig(branching_rule=br)
-    @test config3.lp_solver_factory == Cerberus.DEFAULT_LP_SOLVER_FACTORY
-    @test config3.branching_rule == br
-    @test config3.node_limit == Cerberus.DEFAULT_NODE_LIMIT
-    @test config3.gap_tol == Cerberus.DEFAULT_GAP_TOL
-    @test config3.int_tol == Cerberus.DEFAULT_INTEGRALITY_TOL
+    let nl = 10.0, config = Cerberus.AlgorithmConfig(node_limit=nl)
+        @test config.lp_solver_factory == Cerberus.DEFAULT_LP_SOLVER_FACTORY
+        @test config.branching_rule == Cerberus.DEFAULT_BRANCHING_RULE
+        @test config.node_limit == nl
+        @test config.gap_tol == Cerberus.DEFAULT_GAP_TOL
+        @test config.int_tol == Cerberus.DEFAULT_INTEGRALITY_TOL
+        @test config.warm_start == Cerberus.DEFAULT_WARM_START
+        @test config.hot_start == Cerberus.DEFAULT_HOT_START
+    end
 
-    config4 = Cerberus.AlgorithmConfig(node_limit=nl)
-    @test config4.lp_solver_factory == Cerberus.DEFAULT_LP_SOLVER_FACTORY
-    @test config4.branching_rule == Cerberus.DEFAULT_BRANCHING_RULE
-    @test config4.node_limit == nl
-    @test config4.gap_tol == Cerberus.DEFAULT_GAP_TOL
-    @test config4.int_tol == Cerberus.DEFAULT_INTEGRALITY_TOL
+    let gt = 10, config = Cerberus.AlgorithmConfig(gap_tol=gt)
+        @test config.lp_solver_factory == Cerberus.DEFAULT_LP_SOLVER_FACTORY
+        @test config.branching_rule == Cerberus.DEFAULT_BRANCHING_RULE
+        @test config.node_limit == Cerberus.DEFAULT_NODE_LIMIT
+        @test config.gap_tol == gt
+        @test config.int_tol == Cerberus.DEFAULT_INTEGRALITY_TOL
+        @test config.warm_start == Cerberus.DEFAULT_WARM_START
+        @test config.hot_start == Cerberus.DEFAULT_HOT_START
+    end
 
-    config5 = Cerberus.AlgorithmConfig(gap_tol=gt)
-    @test config5.lp_solver_factory == Cerberus.DEFAULT_LP_SOLVER_FACTORY
-    @test config5.branching_rule == Cerberus.DEFAULT_BRANCHING_RULE
-    @test config5.node_limit == Cerberus.DEFAULT_NODE_LIMIT
-    @test config5.gap_tol == gt
-    @test config5.int_tol == Cerberus.DEFAULT_INTEGRALITY_TOL
+    let it = 1e-6, config = Cerberus.AlgorithmConfig(int_tol=it)
+        @test config.lp_solver_factory == Cerberus.DEFAULT_LP_SOLVER_FACTORY
+        @test config.branching_rule == Cerberus.DEFAULT_BRANCHING_RULE
+        @test config.node_limit == Cerberus.DEFAULT_NODE_LIMIT
+        @test config.gap_tol == Cerberus.DEFAULT_GAP_TOL
+        @test config.int_tol == it
+        @test config.warm_start == Cerberus.DEFAULT_WARM_START
+        @test config.hot_start == Cerberus.DEFAULT_HOT_START
+    end
 
-    config6 = Cerberus.AlgorithmConfig(int_tol=it)
-    @test config6.lp_solver_factory == Cerberus.DEFAULT_LP_SOLVER_FACTORY
-    @test config6.branching_rule == Cerberus.DEFAULT_BRANCHING_RULE
-    @test config6.node_limit == Cerberus.DEFAULT_NODE_LIMIT
-    @test config6.gap_tol == Cerberus.DEFAULT_GAP_TOL
-    @test config6.int_tol == it
+    let ws = false, config = Cerberus.AlgorithmConfig(warm_start=ws)
+        @test config.lp_solver_factory == Cerberus.DEFAULT_LP_SOLVER_FACTORY
+        @test config.branching_rule == Cerberus.DEFAULT_BRANCHING_RULE
+        @test config.node_limit == Cerberus.DEFAULT_NODE_LIMIT
+        @test config.gap_tol == Cerberus.DEFAULT_GAP_TOL
+        @test config.int_tol == Cerberus.DEFAULT_INTEGRALITY_TOL
+        @test config.warm_start == ws
+        @test config.hot_start == Cerberus.DEFAULT_HOT_START
+    end
+
+    let hs = true, config = Cerberus.AlgorithmConfig(hot_start=hs)
+        @test config.lp_solver_factory == Cerberus.DEFAULT_LP_SOLVER_FACTORY
+        @test config.branching_rule == Cerberus.DEFAULT_BRANCHING_RULE
+        @test config.node_limit == Cerberus.DEFAULT_NODE_LIMIT
+        @test config.gap_tol == Cerberus.DEFAULT_GAP_TOL
+        @test config.int_tol == Cerberus.DEFAULT_INTEGRALITY_TOL
+        @test config.warm_start == Cerberus.DEFAULT_WARM_START
+        @test config.hot_start == hs
+    end
 
     nl_bad = -1
     nl_bad_2 = 1.2

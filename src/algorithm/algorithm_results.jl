@@ -1,30 +1,34 @@
-@enum TerminationStatus OPTIMAL INFEASIBLE UNBOUNDED EARLY_TERMINATION
+@enum TerminationStatus OPTIMAL INFEASIBLE UNBOUNDED EARLY_TERMINATION NOT_OPTIMIZED
 
-struct Result
+mutable struct Result
     primal_bound::Float64
     dual_bound::Float64
+    best_solution::Dict{MOI.VariableIndex,Float64}
     termination_status::TerminationStatus
-    node_count::Int
-    simplex_iters::Int
+    total_node_count::Int
+    total_simplex_iters::Int
     timings::TimerOutputs.TimerOutput
 
-    Result() = new(Inf, -Inf, false, 0, 0, 0.0, TimerOutput)
+    Result() = new(Inf, -Inf, Dict{MOI.VariableIndex,Float64}(), NOT_OPTIMIZED, 0, 0, TimerOutputs.TimerOutput())
 end
 
-function Result(state::CurrentState)
+function Result(state::CurrentState, config::AlgorithmConfig)
     result = Result()
     result.primal_bound = state.primal_bound
     result.dual_bound = state.dual_bound
-    if state.primal_bound == Inf
+    for (k, v) in state.best_solution
+        result.best_solution[k] = v
+    end
+    if state.primal_bound == state.dual_bound == Inf
         result.termination_status = INFEASIBLE
     elseif state.primal_bound == -Inf
         result.termination_status = UNBOUNDED
-    elseif _optimality_gap(state) <= config.optimality_gap_tol
+    elseif _optimality_gap(state) <= config.gap_tol
         result.termination_status = OPTIMAL
     else
         result.termination_status = EARLY_TERMINATION
     end
-    result.node_count = state.enumerated_node_count
-    result.simplex_iters = state.total_simplex_iters
+    result.total_node_count = state.total_node_count
+    result.total_simplex_iters = state.total_simplex_iters
     return result
 end

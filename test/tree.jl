@@ -1,20 +1,3 @@
-# @testset "Basis" begin
-#     basis = Dict(
-#         _VI(1) => MOI.BASIC,
-#         _VI(2) => MOI.NONBASIC,
-#         _VI(3) => MOI.BASIC,
-#         _VI(4) => MOI.NONBASIC_AT_LOWER,
-#         _VI(5) => MOI.BASIC,
-#         _CI(1) => MOI.NONBASIC,
-#         _CI(2) => MOI.BASIC,
-#         _CI(3) => MOI.NONBASIC,
-#         _CI(4) => MOI.BASIC,
-#     )
-#     basis = @inferred Cerberus.Basis(basis, c_basis)
-#     @test basis.v_basis == v_basis
-#     @test basis.c_basis == c_basis
-# end
-
 @testset "Node" begin
     br_zero = [_VI(1), _VI(3), _VI(5)]
     br_one = [_VI(2), _VI(6)]

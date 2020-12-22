@@ -7,7 +7,7 @@ struct ParentInfo
 end
 ParentInfo() = ParentInfo(-Inf, nothing, nothing)
 
-struct Node
+mutable struct Node
     vars_branched_to_zero::Vector{MOI.VariableIndex}
     vars_branched_to_one::Vector{MOI.VariableIndex}
     parent_info::ParentInfo
@@ -25,6 +25,7 @@ mutable struct Tree
 end
 
 Base.isempty(tree::Tree) = Base.isempty(tree.open_nodes)
+Base.length(tree::Tree) = Base.length(tree.open_nodes)
 push_node!(tree::Tree, node::Node) = push!(tree.open_nodes, node)
 pop_node!(tree::Tree) = pop!(tree.open_nodes)
 num_open_nodes(tree::Tree) = length(tree.open_nodes)
