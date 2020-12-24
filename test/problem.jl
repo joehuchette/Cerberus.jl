@@ -34,9 +34,8 @@ function _test_polyhedron(p::Cerberus.Polyhedron)
     @test p.aff_constrs[2].f.constant == 0.0
     @test p.aff_constrs[2].s == MOI.LessThan(4.0)
 
-    @test p.bounds[1] == MOI.Interval{Float64}(0.5, 1.0)
-    @test p.bounds[2] == MOI.Interval{Float64}(-1.3, 2.3)
-    @test p.bounds[3] == MOI.Interval{Float64}(0.0, 1.0)
+    @test p.l == [0.5, -1.3, 0.0]
+    @test p.u == [1.0, 2.3, 1.0]
 
     return nothing
 end
@@ -44,7 +43,6 @@ end
 @testset "Polyhedron" begin
     p = @inferred _build_polyhedron()
     _test_polyhedron(p)
-    @test Cerberus.ambient_dim(p) == 3
 
     # TODO: Test throws on malformed Polyhedron
     @test_throws AssertionError Cerberus.Polyhedron(
@@ -54,8 +52,24 @@ end
                 MOI.EqualTo(1.0),
             )
         ],
-        [MOI.Interval(0.0, 1.0)],
+        [0.0],
+        [1.0],
     )
+    @testset "ambient_dim" begin
+        @test Cerberus.ambient_dim(p) == 3
+    end
+    @testset "num_constraints" begin
+        @test Cerberus.num_constraints(p) == 2
+    end
+    @testset "add_variable" begin
+        Cerberus.add_variable(p)
+        @test Cerberus.ambient_dim(p) == 4
+    end
+    @testset "empty constructor" begin
+        p = @inferred Cerberus.Polyhedron()
+        @test Cerberus.ambient_dim(p) == 0
+        @test Cerberus.num_constraints(p) == 0
+    end
 end
 
 @testset "LPRelaxation" begin
@@ -70,6 +84,17 @@ end
             MOI.ScalarAffineTerm{Float64}(-1.0, _VI(2)),
         ]
     @test lp.obj.constant == 0.0
+
+    @test Cerberus.num_variables(lp) == 3
+
+    @testset "empty constructor" begin
+        lp = @inferred Cerberus.LPRelaxation()
+        @test Cerberus.num_variables(lp) == 0
+        @test Cerberus.ambient_dim(lp.feasible_region) == 0
+        @test Cerberus.num_constraints(lp.feasible_region) == 0
+        @test isempty(lp.obj.terms)
+        @test lp.obj.constant == 0.0
+    end
 
     # TODO: Test throws on malformed LPRelaxation
 end
@@ -86,6 +111,17 @@ end
     @test fm.base_form.obj.constant == 0.0
     @test isempty(fm.disjunction_formulaters)
     @test fm.integrality == [_VI(1), _VI(3)]
+
+    @testset "empty constructor" begin
+        fm = @inferred Cerberus.DMIPFormulation()
+        @test Cerberus.num_variables(fm) == 0
+        @test Cerberus.ambient_dim(fm.base_form.feasible_region) == 0
+        @test Cerberus.num_constraints(fm.base_form.feasible_region) == 0
+        @test isempty(fm.base_form.obj.terms)
+        @test fm.base_form.obj.constant == 0.0
+        @test isempty(fm.disjunction_formulaters)
+        @test isempty(fm.integrality)
+    end
 
     # TODO: Test throws on malformed DMIPFormulation
 end

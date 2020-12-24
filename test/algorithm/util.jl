@@ -1,9 +1,3 @@
-function _silent_gurobi_factory(state::Cerberus.CurrentState)
-    model = Gurobi.Optimizer(state.gurobi_env)
-    MOI.set(model, MOI.Silent(), true)
-    return model
-end
-
 function _is_root_node(node::Cerberus.Node)
     isempty(node.vars_branched_to_zero) || return false
     isempty(node.vars_branched_to_one) || return false

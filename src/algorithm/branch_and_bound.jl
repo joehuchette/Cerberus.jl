@@ -13,6 +13,7 @@ function optimize!(form::DMIPFormulation, config::AlgorithmConfig, primal_bound:
             update_state!(state, form, node, config)
             # TODO: Don't do this every iteration
             update_dual_bound!(state)
+            state.node_result
             if state.total_node_count >= config.node_limit
                 break
             end
@@ -33,11 +34,11 @@ function process_node!(state::CurrentState, form::DMIPFormulation, node::Node, c
 
     # 3. Grab solution data and bundle it into a NodeResult
     simplex_iters = MOI.get(model, MOI.SimplexIterations())
+    state.node_result.simplex_iters = simplex_iters
     term_status = MOI.get(model, MOI.TerminationStatus())
     empty!(state.node_result)
     if term_status == MOI.OPTIMAL
         state.node_result.cost = MOI.get(model, MOI.ObjectiveValue())
-        state.node_result.simplex_iters = simplex_iters
         _fill_solution!(state.node_result.x, model)
         if config.warm_start
             _fill_basis!(state.node_result.basis, model)
@@ -47,7 +48,8 @@ function process_node!(state::CurrentState, form::DMIPFormulation, node::Node, c
         end
     elseif term_status == MOI.INFEASIBLE
         state.node_result.cost = Inf
-        state.node_result.simplex_iters = simplex_iters
+    elseif term_status == MOI.DUAL_INFEASIBLE
+        state.node_result.cost = -Inf
     else
         error("Unexpected termination status $term_status at node LP.")
     end
@@ -89,16 +91,23 @@ function update_state!(state::CurrentState, form::DMIPFormulation, node::Node, c
     # 2. Prune by bound
     elseif result.cost > state.primal_bound
         # Do nothing
-    # 3. Prune by integrality
-    elseif result.cost < Inf && _ip_feasible(form, result.x, config)
+    # 3. LP is unbounded.
+    #  Implies MIP is infeasible or unbounded. Should only happen at root.
+    elseif result.cost == -Inf
+        # Assert that we're at the root node
+        @assert isempty(node.vars_branched_to_zero)
+        @assert isempty(node.vars_branched_to_one)
+        state.primal_bound = result.cost
+    # 4. Prune by integrality
+    elseif _ip_feasible(form, result.x, config)
         # Have <= to handle case where we seed the optimal cost but
         # not the optimal solution
         if result.cost <= state.primal_bound
-            # TODO: Add a tolerance here (maybe?), plus way to handle MAX
             state.primal_bound = result.cost
-            state.best_solution = result.x
+            # TODO: Make this more efficient, keys should not change.
+            copy!(state.best_solution, result.x)
         end
-    # 4. Branch!
+    # 5. Branch!
     else
         favorite_child, other_child = branch(form, config.branching_rule, node, result, config)
         _attach_parent_info!(favorite_child, other_child, result)

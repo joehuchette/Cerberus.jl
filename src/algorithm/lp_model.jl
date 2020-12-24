@@ -1,11 +1,21 @@
 # TODO: When adding hot starting, can dispatch on previous_model stored in
 # node to elide reconstruction.
 function build_base_model(form::DMIPFormulation, state::CurrentState, node::Node, config::AlgorithmConfig)
-    model = config.lp_solver_factory(state)::Gurobi.Optimizer
-    MOI.add_constrained_variables(model, form.base_form.feasible_region.bounds)
+    model = config.lp_solver_factory(state, config)::Gurobi.Optimizer
+    for i in 1:num_variables(form)
+        l = form.base_form.feasible_region.l[i]
+        u = form.base_form.feasible_region.u[i]
+        # TODO: Make this update more efficient, and unit test it.
+        if MOI.VariableIndex(i) in form.integrality
+            l = max(0, l)
+            u = min(1, u)
+        end
+        MOI.add_constrained_variable(model, MOI.Interval{Float64}(l, u))
+    end
     for aff_constr in form.base_form.feasible_region.aff_constrs
         MOI.add_constraint(model, aff_constr.f, aff_constr.s)
     end
+    # TODO: Test this once it does something...
     for formulater in form.disjunction_formulaters
         apply!(model, formulator, node)
     end
