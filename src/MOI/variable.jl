@@ -42,7 +42,7 @@ function _get_scalar_set(p::Polyhedron, i::Int)
     end
 end
 
-function MOI.is_valid(opt::Optimizer, c::CI{SV,S}) where {S <: _V_SETS}
+function MOI.is_valid(opt::Optimizer, c::CI{SV,S}) where {S<:_V_SETS}
     MOI.is_valid(opt, VI(c.value)) || return false
     p = opt.form.base_form.feasible_region
     return S == _get_scalar_set(p, c.value)
@@ -97,7 +97,10 @@ function MOI.get(opt::Optimizer, ::MOI.ListOfVariableIndices)
     return [VI(i) for i in 1:num_variables(opt.form)]
 end
 
-function MOI.get(opt::Optimizer, ::MOI.NumberOfConstraints{SV,S}) where {S <: _V_SETS}
+function MOI.get(
+    opt::Optimizer,
+    ::MOI.NumberOfConstraints{SV,S},
+) where {S<:_V_SETS}
     cnt = 0
     for i in 1:num_variables(opt.form)
         p = opt.form.base_form.feasible_region
@@ -108,7 +111,10 @@ function MOI.get(opt::Optimizer, ::MOI.NumberOfConstraints{SV,S}) where {S <: _V
     return cnt
 end
 
-function MOI.get(opt::Optimizer, ::MOI.ListOfConstraintIndices{SV,S}) where {S <: _V_SETS}
+function MOI.get(
+    opt::Optimizer,
+    ::MOI.ListOfConstraintIndices{SV,S},
+) where {S<:_V_SETS}
     indices = CI{SV,S}[]
     for i in 1:num_variables(opt.form)
         p = opt.form.base_form.feasible_region
@@ -120,7 +126,11 @@ function MOI.get(opt::Optimizer, ::MOI.ListOfConstraintIndices{SV,S}) where {S <
 end
 
 MOI.supports(::Optimizer, ::MOI.ConstraintPrimal, ::CI{SV,<:_V_SETS}) = true
-function MOI.get(opt::Optimizer, ::MOI.ConstraintPrimal, ci::CI{SV,S}) where {S <: _V_SETS}
+function MOI.get(
+    opt::Optimizer,
+    ::MOI.ConstraintPrimal,
+    ci::CI{SV,S},
+) where {S<:_V_SETS}
     vi = VI(ci.value)
     MOI.throw_if_not_valid(opt, vi)
     return MOI.get(opt, MOI.VariablePrimal(), vi)

@@ -13,13 +13,16 @@ const OPTIMIZER = MOIU.CachingOptimizer(
     MOIU.UniversalFallback(MOIU.Model{Float64}()),
     begin
         model = Cerberus.Optimizer()
-        model.config.lp_solver_factory = (state, config) -> (begin
-            model = Gurobi.Optimizer(GRB_ENV)
-            MOI.set(model, MOI.Silent(), true)
-            MOI.set(model, MOI.RawParameter("DualReductions"), 0)
-            MOI.set(model, MOI.RawParameter("InfUnbdInfo"), 1)
-            return model
-        end)
+        model.config.lp_solver_factory =
+            (state, config) -> (
+                begin
+                    model = Gurobi.Optimizer(GRB_ENV)
+                    MOI.set(model, MOI.Silent(), true)
+                    MOI.set(model, MOI.RawParameter("DualReductions"), 0)
+                    MOI.set(model, MOI.RawParameter("InfUnbdInfo"), 1)
+                    return model
+                end
+            )
         model
     end,
 )
@@ -44,21 +47,21 @@ const OPTIMIZER = MOIU.CachingOptimizer(
 # MOIB.add_bridge(OPTIMIZER, )
 
 const CONFIG = MOIT.TestConfig(
-    modify_lhs=false,
-    duals=false,
-    dual_objective_value=false,
-    infeas_certificates=false,
+    modify_lhs = false,
+    duals = false,
+    dual_objective_value = false,
+    infeas_certificates = false,
 )
 
 @testset "basic_constraint_tests" begin
     MOIT.basic_constraint_tests(
         OPTIMIZER,
         CONFIG,
-        delete=false,
+        delete = false,
         # TODO: Add support for getting F/S
-        get_constraint_function=false,
-        get_constraint_set=false,
-        include=[
+        get_constraint_function = false,
+        get_constraint_set = false,
+        include = [
             (MOI.SingleVariable, MOI.LessThan{Float64}),
             (MOI.SingleVariable, MOI.GreaterThan{Float64}),
             (MOI.SingleVariable, MOI.EqualTo{Float64}),
@@ -67,7 +70,7 @@ const CONFIG = MOIT.TestConfig(
             (MOI.ScalarAffineFunction{Float64}, MOI.LessThan{Float64}),
             (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
             (MOI.ScalarAffineFunction{Float64}, MOI.EqualTo{Float64}),
-        ]
+        ],
     )
 end
 
@@ -105,7 +108,8 @@ end
             "solve_qp_edge_cases",
             "solve_qcp_edge_cases",
             "solve_affine_deletion_edge_cases",
-        ])
+        ],
+    )
 end
 
 @testset "default_objective" begin

@@ -14,7 +14,10 @@ mutable struct Node
     # TODO: Check that branching sets do not overlap
 end
 Node() = Node([], [], ParentInfo())
-function Node(zero_set::Vector{MOI.VariableIndex}, one_set::Vector{MOI.VariableIndex})
+function Node(
+    zero_set::Vector{MOI.VariableIndex},
+    one_set::Vector{MOI.VariableIndex},
+)
     return Node(zero_set, one_set, ParentInfo())
 end
 
@@ -29,4 +32,3 @@ Base.length(tree::Tree) = Base.length(tree.open_nodes)
 push_node!(tree::Tree, node::Node) = push!(tree.open_nodes, node)
 pop_node!(tree::Tree) = pop!(tree.open_nodes)
 num_open_nodes(tree::Tree) = length(tree.open_nodes)
-

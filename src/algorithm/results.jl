@@ -9,7 +9,17 @@ mutable struct Result
     total_simplex_iters::Int
     timings::TimerOutputs.TimerOutput
 
-    Result() = new(Inf, -Inf, Dict{MOI.VariableIndex,Float64}(), NOT_OPTIMIZED, 0, 0, TimerOutputs.TimerOutput())
+    function Result()
+        return new(
+            Inf,
+            -Inf,
+            Dict{MOI.VariableIndex,Float64}(),
+            NOT_OPTIMIZED,
+            0,
+            0,
+            TimerOutputs.TimerOutput(),
+        )
+    end
 end
 
 function Result(state::CurrentState, config::AlgorithmConfig)
@@ -23,7 +33,8 @@ function Result(state::CurrentState, config::AlgorithmConfig)
         result.termination_status = INFEASIBLE
     elseif state.primal_bound == -Inf
         result.termination_status = INF_OR_UNBOUNDED
-    elseif _optimality_gap(state.primal_bound, state.dual_bound) <= config.gap_tol
+    elseif _optimality_gap(state.primal_bound, state.dual_bound) <=
+           config.gap_tol
         result.termination_status = OPTIMAL
     else
         result.termination_status = EARLY_TERMINATION

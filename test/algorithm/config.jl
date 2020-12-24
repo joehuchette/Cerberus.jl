@@ -10,7 +10,7 @@
         @test config.hot_start == Cerberus.DEFAULT_HOT_START
     end
 
-    let sl = true, config = Cerberus.AlgorithmConfig(silent=sl)
+    let sl = true, config = Cerberus.AlgorithmConfig(silent = sl)
         @test config.lp_solver_factory == Cerberus.DEFAULT_LP_SOLVER_FACTORY
         @test config.silent == sl
         @test config.branching_rule == Cerberus.DEFAULT_BRANCHING_RULE
@@ -21,7 +21,9 @@
         @test config.hot_start == Cerberus.DEFAULT_HOT_START
     end
 
-    let br = Cerberus.PseudocostBranching(), config = Cerberus.AlgorithmConfig(branching_rule=br)
+    let br = Cerberus.PseudocostBranching(),
+        config = Cerberus.AlgorithmConfig(branching_rule = br)
+
         @test config.lp_solver_factory == Cerberus.DEFAULT_LP_SOLVER_FACTORY
         @test config.silent == Cerberus.DEFAULT_SILENT
         @test config.branching_rule == br
@@ -32,7 +34,7 @@
         @test config.hot_start == Cerberus.DEFAULT_HOT_START
     end
 
-    let nl = 10.0, config = Cerberus.AlgorithmConfig(node_limit=nl)
+    let nl = 10.0, config = Cerberus.AlgorithmConfig(node_limit = nl)
         @test config.lp_solver_factory == Cerberus.DEFAULT_LP_SOLVER_FACTORY
         @test config.silent == Cerberus.DEFAULT_SILENT
         @test config.branching_rule == Cerberus.DEFAULT_BRANCHING_RULE
@@ -43,7 +45,7 @@
         @test config.hot_start == Cerberus.DEFAULT_HOT_START
     end
 
-    let gt = 10, config = Cerberus.AlgorithmConfig(gap_tol=gt)
+    let gt = 10, config = Cerberus.AlgorithmConfig(gap_tol = gt)
         @test config.lp_solver_factory == Cerberus.DEFAULT_LP_SOLVER_FACTORY
         @test config.silent == Cerberus.DEFAULT_SILENT
         @test config.branching_rule == Cerberus.DEFAULT_BRANCHING_RULE
@@ -54,7 +56,7 @@
         @test config.hot_start == Cerberus.DEFAULT_HOT_START
     end
 
-    let it = 1e-6, config = Cerberus.AlgorithmConfig(int_tol=it)
+    let it = 1e-6, config = Cerberus.AlgorithmConfig(int_tol = it)
         @test config.lp_solver_factory == Cerberus.DEFAULT_LP_SOLVER_FACTORY
         @test config.silent == Cerberus.DEFAULT_SILENT
         @test config.branching_rule == Cerberus.DEFAULT_BRANCHING_RULE
@@ -65,7 +67,7 @@
         @test config.hot_start == Cerberus.DEFAULT_HOT_START
     end
 
-    let ws = false, config = Cerberus.AlgorithmConfig(warm_start=ws)
+    let ws = false, config = Cerberus.AlgorithmConfig(warm_start = ws)
         @test config.lp_solver_factory == Cerberus.DEFAULT_LP_SOLVER_FACTORY
         @test config.silent == Cerberus.DEFAULT_SILENT
         @test config.branching_rule == Cerberus.DEFAULT_BRANCHING_RULE
@@ -76,7 +78,7 @@
         @test config.hot_start == Cerberus.DEFAULT_HOT_START
     end
 
-    let hs = true, config = Cerberus.AlgorithmConfig(hot_start=hs)
+    let hs = true, config = Cerberus.AlgorithmConfig(hot_start = hs)
         @test config.lp_solver_factory == Cerberus.DEFAULT_LP_SOLVER_FACTORY
         @test config.silent == Cerberus.DEFAULT_SILENT
         @test config.branching_rule == Cerberus.DEFAULT_BRANCHING_RULE
@@ -91,8 +93,8 @@
     nl_bad_2 = 1.2
     gt_bad = -1.0
     it_bad = -1.3
-    @test_throws AssertionError Cerberus.AlgorithmConfig(node_limit=nl_bad)
-    @test_throws AssertionError Cerberus.AlgorithmConfig(node_limit=nl_bad)
-    @test_throws AssertionError Cerberus.AlgorithmConfig(gap_tol=gt_bad)
-    @test_throws AssertionError Cerberus.AlgorithmConfig(int_tol=it_bad)
+    @test_throws AssertionError Cerberus.AlgorithmConfig(node_limit = nl_bad)
+    @test_throws AssertionError Cerberus.AlgorithmConfig(node_limit = nl_bad)
+    @test_throws AssertionError Cerberus.AlgorithmConfig(gap_tol = gt_bad)
+    @test_throws AssertionError Cerberus.AlgorithmConfig(int_tol = it_bad)
 end

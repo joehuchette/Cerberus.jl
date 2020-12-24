@@ -5,7 +5,7 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     config::AlgorithmConfig
     result::Union{Nothing,Result}
 
-    function Optimizer(;config::AlgorithmConfig=AlgorithmConfig())
+    function Optimizer(; config::AlgorithmConfig = AlgorithmConfig())
         return new(
             DMIPFormulation(),
             MOI.FEASIBILITY_SENSE,
@@ -28,9 +28,9 @@ MOI.get(opt::Optimizer, ::MOI.RawSolver) = opt.form
 # TODO: Figure out what to say here
 function MOI.is_empty(opt::Optimizer)
     return isempty(opt.form) &&
-        opt.obj_sense == MOI.FEASIBILITY_SENSE &&
-        isnan(opt.primal_bound) &&
-        opt.result === nothing
+           opt.obj_sense == MOI.FEASIBILITY_SENSE &&
+           isnan(opt.primal_bound) &&
+           opt.result === nothing
 end
 
 # TODO: Add empty! method called here...

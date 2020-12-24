@@ -15,13 +15,16 @@ function _branch(node::Node, branch_vi::MOI.VariableIndex, branch_down::Bool)
     else
         push!(vars_branched_to_one, branch_vi)
     end
-    return Node(
-        vars_branched_to_zero,
-        vars_branched_to_one,
-    )
+    return Node(vars_branched_to_zero, vars_branched_to_one)
 end
 
-function branch(form::DMIPFormulation, ::MostInfeasible, parent_node::Node, parent_result::NodeResult, config::AlgorithmConfig)::Tuple{Node,Node}
+function branch(
+    form::DMIPFormulation,
+    ::MostInfeasible,
+    parent_node::Node,
+    parent_result::NodeResult,
+    config::AlgorithmConfig,
+)::Tuple{Node,Node}
     most_frac_vi = MOI.VariableIndex(0)
     most_frac_val = 1.0
     for vi in form.integrality

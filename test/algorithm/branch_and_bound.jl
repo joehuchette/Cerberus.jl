@@ -1,6 +1,6 @@
 @testset "optimize!" begin
     fm = _build_dmip_formulation()
-    config = Cerberus.AlgorithmConfig(silent=true)
+    config = Cerberus.AlgorithmConfig(silent = true)
     result = @inferred Cerberus.optimize!(fm, config)
     @test result.primal_bound ≈ 0.1 / 2.1
     @test result.dual_bound ≈ 0.1 / 2.1
@@ -19,7 +19,7 @@ end
         fm = _build_dmip_formulation()
         state = Cerberus.CurrentState()
         node = Cerberus.Node()
-        config = Cerberus.AlgorithmConfig(silent=true)
+        config = Cerberus.AlgorithmConfig(silent = true)
         @inferred Cerberus.process_node!(state, fm, node, config)
         result = state.node_result
         @test result.cost ≈ 0.5 - 2.5 / 2.1
@@ -29,11 +29,20 @@ end
         @test result.x[_VI(2)] ≈ 2.5 / 2.1
         @test result.x[_VI(3)] ≈ 0.0
         @test result.basis == Cerberus.Basis(
-            MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(1) => MOI.NONBASIC_AT_LOWER,
-            MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(2) => MOI.BASIC,
-            MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(3) => MOI.NONBASIC_AT_LOWER,
-            MOI.ConstraintIndex{MOI.ScalarAffineFunction{Float64},MOI.EqualTo{Float64}}(2) => MOI.NONBASIC,
-            MOI.ConstraintIndex{MOI.ScalarAffineFunction{Float64},MOI.LessThan{Float64}}(3) => MOI.BASIC,
+            MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(1) =>
+                MOI.NONBASIC_AT_LOWER,
+            MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(2) =>
+                MOI.BASIC,
+            MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(3) =>
+                MOI.NONBASIC_AT_LOWER,
+            MOI.ConstraintIndex{
+                MOI.ScalarAffineFunction{Float64},
+                MOI.EqualTo{Float64},
+            }(2) => MOI.NONBASIC,
+            MOI.ConstraintIndex{
+                MOI.ScalarAffineFunction{Float64},
+                MOI.LessThan{Float64},
+            }(3) => MOI.BASIC,
         )
         @test result.model === nothing
     end
@@ -44,7 +53,7 @@ end
         state = Cerberus.CurrentState()
         # A bit hacky, but force infeasibility by branching both up and down.
         node = Cerberus.Node([_VI(1)], [_VI(1)])
-        config = Cerberus.AlgorithmConfig(silent=true)
+        config = Cerberus.AlgorithmConfig(silent = true)
         @inferred Cerberus.process_node!(state, fm, node, config)
         result = state.node_result
         @test result.cost == Inf
@@ -146,7 +155,10 @@ end
     frac_soln_2 = [0.0, 2.9, 0.6]
     frac_soln_dict = _vec_to_dict(frac_soln_2)
     db = 10.1
-    basis = Cerberus.Basis(MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(1) => MOI.BASIC)
+    basis = Cerberus.Basis(
+        MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(1) =>
+            MOI.BASIC,
+    )
     model = Gurobi.Optimizer()
     empty!(cs.node_result)
     cs.node_result.cost = 10.1

@@ -34,11 +34,7 @@ mutable struct Polyhedron
 end
 
 function Polyhedron()
-    return Polyhedron(
-        AffineConstraint[],
-        Float64[],
-        Float64[],
-    )
+    return Polyhedron(AffineConstraint[], Float64[], Float64[])
 end
 
 ambient_dim(p::Polyhedron) = length(p.l)
@@ -53,9 +49,9 @@ num_constraints(p::Polyhedron) = length(p.aff_constrs)
 # TODO: Unit test
 function Base.isempty(p::Polyhedron)
     return ambient_dim(p) == 0 &&
-        num_constraints(p) == 0 &&
-        Base.isempty(p.l) &&
-        Base.isempty(p.u)
+           num_constraints(p) == 0 &&
+           Base.isempty(p.l) &&
+           Base.isempty(p.u)
 end
 
 # Assumption: objective sense == MINIMIZE
@@ -63,7 +59,10 @@ mutable struct LPRelaxation
     feasible_region::Polyhedron
     obj::MOI.ScalarAffineFunction{Float64}
 
-    function LPRelaxation(feasible_region::Polyhedron, obj::MOI.ScalarAffineFunction{Float64})
+    function LPRelaxation(
+        feasible_region::Polyhedron,
+        obj::MOI.ScalarAffineFunction{Float64},
+    )
         n = ambient_dim(feasible_region)
         for aff_constr in feasible_region.aff_constrs
             @assert _max_var_index(aff_constr) <= n
@@ -90,8 +89,8 @@ num_variables(r::LPRelaxation) = ambient_dim(r.feasible_region)
 # TODO: Unit test
 function Base.isempty(r::LPRelaxation)
     return Base.isempty(r.feasible_region) &&
-        Base.isempty(r.obj.terms) &&
-        r.obj.constant == 0
+           Base.isempty(r.obj.terms) &&
+           r.obj.constant == 0
 end
 
 struct Disjunction
@@ -105,7 +104,11 @@ mutable struct DMIPFormulation
     disjunction_formulaters::Vector{AbstractFormulater}
     integrality::Vector{MOI.VariableIndex}
 
-    function DMIPFormulation(base_form::LPRelaxation, disjunction_formulaters::Vector{AbstractFormulater}, integrality::Vector{MOI.VariableIndex})
+    function DMIPFormulation(
+        base_form::LPRelaxation,
+        disjunction_formulaters::Vector{AbstractFormulater},
+        integrality::Vector{MOI.VariableIndex},
+    )
         n = ambient_dim(base_form.feasible_region)
         for vi in integrality
             @assert vi.value <= n
@@ -127,6 +130,6 @@ num_variables(fm::DMIPFormulation) = num_variables(fm.base_form)
 # TODO: Unit test
 function Base.isempty(form::DMIPFormulation)
     return Base.isempty(form.base_form) &&
-        Base.isempty(form.disjunction_formulaters) &&
-        Base.isempty(form.integrality)
+           Base.isempty(form.disjunction_formulaters) &&
+           Base.isempty(form.integrality)
 end
