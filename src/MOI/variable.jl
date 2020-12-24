@@ -1,8 +1,6 @@
 function MOI.add_variable(opt::Optimizer)
     add_variable(opt.form.base_form.feasible_region)
-    n = num_variables(opt.form.base_form)
-    # push!(opt.v_names, "x_$n")
-    return MOI.VariableIndex(n)
+    return MOI.VariableIndex(num_variables(opt.form.base_form))
 end
 
 function MOI.add_variables(opt::Optimizer, N::Int)

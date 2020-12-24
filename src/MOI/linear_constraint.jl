@@ -18,10 +18,7 @@ function MOI.add_constraint(opt::Optimizer, f::SAF, s::_C_SETS)
     end
     aff_constrs = opt.form.base_form.feasible_region.aff_constrs
     push!(aff_constrs, AffineConstraint(f, s))
-    n = length(aff_constrs)
-    ci = CI{SAF,typeof(s)}(n)
-    # opt.c_names[ci] = "c_$n"
-    return ci
+    return CI{SAF,typeof(s)}(length(aff_constrs))
 end
 
 function MOI.get(opt::Optimizer, ::MOI.NumberOfConstraints{SAF,S}) where {S <: _C_SETS}

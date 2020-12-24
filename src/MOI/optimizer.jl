@@ -60,3 +60,8 @@ function MOI.set(opt::Optimizer, ::MOI.Silent, value::Bool)
     return nothing
 end
 MOI.get(opt::Optimizer, ::MOI.Silent) = opt.config.silent
+
+MOIU.supports_default_copy_to(opt::Optimizer, copy_names::Bool) = !copy_names
+function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike; kws...)
+    return MOI.Utilities.automatic_copy_to(dest, src; kws...)
+end

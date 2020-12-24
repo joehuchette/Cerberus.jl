@@ -79,14 +79,22 @@ end
             # Should add support for:
             "time_limit_sec",
             "solve_result_index",
+
             # Can test with support for general integers:
             "solve_integer_edge_cases",
             "solve_objbound_edge_cases",
-            # Can test with support for MOI.UNBOUNDED status
+
+            # Can test with support for MOI.UNBOUNDED status:
             "solve_unbounded_model",
+
+            # Can test with support for vectorized constraints:
+            "solve_duplicate_terms_vector_affine",
+
+            # Can test with bridge to SAF-in-Interval:
+            "solve_affine_interval",
+
             # Will likely not support:
             "number_threads",
-            "solve_duplicate_terms_vector_affine",
             "delete_variables",
             "delete_nonnegative_variables",
             "delete_soc_variables",
@@ -94,7 +102,6 @@ end
             "solve_farkas_interval_lower",
             "solve_farkas_interval_upper",
             "update_dimension_nonnegative_variables",
-            "solve_affine_interval",
             "solve_qp_edge_cases",
             "solve_qcp_edge_cases",
             "solve_affine_deletion_edge_cases",
@@ -102,9 +109,7 @@ end
 end
 
 @testset "default_objective" begin
-    MOIT.default_objective_test(
-        OPTIMIZER,
-    )
+    MOIT.default_objective_test(OPTIMIZER)
 end
 
 @testset "default_status" begin
@@ -114,9 +119,7 @@ end
 end
 
 @testset "valid" begin
-    MOIT.validtest(
-        OPTIMIZER,
-    )
+    MOIT.validtest(OPTIMIZER)
 end
 
 @testset "contlinear" begin
@@ -124,17 +127,9 @@ end
         OPTIMIZER,
         CONFIG,
         [
-            # Needs MOI.copy_to
-            "linear1",
-            "linear4",
-            "linear5",
-            "linear6",
-            "linear11",
-            "linear14",
-            "linear15",
-
             # Needs vector constraints
             "linear7",
+            "linear15",
 
             # Needs SAF-in-Interval constraints
             "linear10",
