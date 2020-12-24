@@ -5,7 +5,8 @@
     simplex_iters = 3
     basis = Cerberus.Basis()
     model = nothing
-    nr1 = @inferred Cerberus.NodeResult(cost, simplex_iters, x_dict, basis, model)
+    nr1 =
+        @inferred Cerberus.NodeResult(cost, simplex_iters, x_dict, basis, model)
     @test nr1.x == x_dict
     @test nr1.cost == cost
     @test nr1.simplex_iters == simplex_iters
@@ -19,7 +20,8 @@
         _CI(2) => MOI.NONBASIC,
         _CI(3) => MOI.NONBASIC,
     )
-    nr2 = @inferred Cerberus.NodeResult(cost, simplex_iters, x_dict, basis, model)
+    nr2 =
+        @inferred Cerberus.NodeResult(cost, simplex_iters, x_dict, basis, model)
     @test nr2.x == x_dict
     @test nr2.cost == cost
     @test nr2.simplex_iters == simplex_iters
@@ -30,7 +32,9 @@
         cost = 5.6
         si = 12
         x = Dict(_VI(1) => 15.7)
-        basis = Dict{Any,MOI.BasisStatusCode}(MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(1) => MOI.BASIC)
+        basis = Dict{Any,MOI.BasisStatusCode}(
+            MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(1) => MOI.BASIC,
+        )
         model = Gurobi.Optimizer()
         nr = Cerberus.NodeResult(cost, si, x, basis, model)
         @test nr.cost == cost

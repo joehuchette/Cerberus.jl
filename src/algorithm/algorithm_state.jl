@@ -42,7 +42,7 @@ mutable struct CurrentState
     total_node_count::Int
     total_simplex_iters::Int
 
-    function CurrentState(primal_bound::Real=Inf)
+    function CurrentState(primal_bound::Real = Inf)
         state = new(
             Gurobi.Env(),
             Tree(),
@@ -63,7 +63,9 @@ function update_dual_bound!(state::CurrentState)
         # Tree is exhausted, so have proven optimality of best found solution.
         state.dual_bound = state.primal_bound
     else
-        state.dual_bound = minimum(node.parent_info.dual_bound for node in state.tree.open_nodes)
+        state.dual_bound = minimum(
+            node.parent_info.dual_bound for node in state.tree.open_nodes
+        )
     end
     return nothing
 end

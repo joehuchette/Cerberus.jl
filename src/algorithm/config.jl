@@ -2,11 +2,12 @@ abstract type BranchingRule end
 struct MostInfeasible <: BranchingRule end
 struct PseudocostBranching <: BranchingRule end
 
-const DEFAULT_LP_SOLVER_FACTORY = (state, config) -> begin
-    model = Gurobi.Optimizer(state.gurobi_env)
-    MOI.set(model, MOI.Silent(), config.silent)
-    model
-end
+const DEFAULT_LP_SOLVER_FACTORY =
+    (state, config) -> begin
+        model = Gurobi.Optimizer(state.gurobi_env)
+        MOI.set(model, MOI.Silent(), config.silent)
+        model
+    end
 # TODO: Change to true after initial dev work
 const DEFAULT_SILENT = false
 const DEFAULT_BRANCHING_RULE = MostInfeasible()
@@ -27,14 +28,14 @@ mutable struct AlgorithmConfig
     hot_start::Bool
 
     function AlgorithmConfig(;
-        lp_solver_factory::Function=DEFAULT_LP_SOLVER_FACTORY,
-        silent::Bool=DEFAULT_SILENT,
-        branching_rule::BranchingRule=DEFAULT_BRANCHING_RULE,
-        node_limit::Real=DEFAULT_NODE_LIMIT,
-        gap_tol::Real=DEFAULT_GAP_TOL,
-        int_tol::Real=DEFAULT_INTEGRALITY_TOL,
-        warm_start::Bool=DEFAULT_WARM_START,
-        hot_start::Bool=DEFAULT_HOT_START,
+        lp_solver_factory::Function = DEFAULT_LP_SOLVER_FACTORY,
+        silent::Bool = DEFAULT_SILENT,
+        branching_rule::BranchingRule = DEFAULT_BRANCHING_RULE,
+        node_limit::Real = DEFAULT_NODE_LIMIT,
+        gap_tol::Real = DEFAULT_GAP_TOL,
+        int_tol::Real = DEFAULT_INTEGRALITY_TOL,
+        warm_start::Bool = DEFAULT_WARM_START,
+        hot_start::Bool = DEFAULT_HOT_START,
     )
         @assert node_limit >= 0
         @assert isinteger(node_limit)
@@ -52,4 +53,3 @@ mutable struct AlgorithmConfig
         )
     end
 end
-

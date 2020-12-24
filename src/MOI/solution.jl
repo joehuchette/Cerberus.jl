@@ -43,7 +43,11 @@ function MOI.get(opt::Optimizer, ::MOI.PrimalStatus)
 end
 
 function MOI.get(opt::Optimizer, ::MOI.ObjectiveValue)
-    return _is_max_sense(opt) ? -opt.result.primal_bound : opt.result.primal_bound
+    return if _is_max_sense(opt)
+        -opt.result.primal_bound
+    else
+        opt.result.primal_bound
+    end
 end
 
 function MOI.get(opt::Optimizer, ::Union{MOI.ObjectiveBound})

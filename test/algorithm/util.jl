@@ -7,7 +7,13 @@ function _is_root_node(node::Cerberus.Node)
     return true
 end
 
-function _NodeResult(cost::Real, simplex_iters::Real, x::Vector{Float64}, basis::Union{Nothing,Cerberus.Basis}=nothing, model::Union{Nothing,Gurobi.Optimizer}=nothing)
+function _NodeResult(
+    cost::Real,
+    simplex_iters::Real,
+    x::Vector{Float64},
+    basis::Union{Nothing,Cerberus.Basis} = nothing,
+    model::Union{Nothing,Gurobi.Optimizer} = nothing,
+)
     return NodeResult(
         cost,
         simplex_iters,

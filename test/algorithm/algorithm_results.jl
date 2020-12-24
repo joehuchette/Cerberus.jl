@@ -17,5 +17,4 @@
         @test result.total_node_count == 0
         @test result.total_simplex_iters == 0
     end
-
 end
