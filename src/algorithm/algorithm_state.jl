@@ -36,10 +36,10 @@ mutable struct CurrentState
     gurobi_env::Gurobi.Env
     tree::Tree
     node_result::NodeResult
-    total_node_count::Int
     primal_bound::Float64
     dual_bound::Float64
     best_solution::Dict{MOI.VariableIndex,Float64}
+    total_node_count::Int
     total_simplex_iters::Int
 
     function CurrentState(primal_bound::Real=Inf)
@@ -47,10 +47,10 @@ mutable struct CurrentState
             Gurobi.Env(),
             Tree(),
             NodeResult(),
-            0,
             primal_bound,
             -Inf,
             Dict{MOI.VariableIndex,Float64}(),
+            0,
             0,
         )
         push_node!(state.tree, Node())

@@ -1,6 +1,6 @@
 @testset "optimize!" begin
     fm = _build_dmip_formulation()
-    config = Cerberus.AlgorithmConfig(lp_solver_factory=_silent_gurobi_factory)
+    config = Cerberus.AlgorithmConfig(silent=true)
     result = @inferred Cerberus.optimize!(fm, config)
     @test result.primal_bound ≈ 0.1 / 2.1
     @test result.dual_bound ≈ 0.1 / 2.1
@@ -19,7 +19,7 @@ end
         fm = _build_dmip_formulation()
         state = Cerberus.CurrentState()
         node = Cerberus.Node()
-        config = Cerberus.AlgorithmConfig(lp_solver_factory=_silent_gurobi_factory)
+        config = Cerberus.AlgorithmConfig(silent=true)
         @inferred Cerberus.process_node!(state, fm, node, config)
         result = state.node_result
         @test result.cost ≈ 0.5 - 2.5 / 2.1
@@ -44,7 +44,7 @@ end
         state = Cerberus.CurrentState()
         # A bit hacky, but force infeasibility by branching both up and down.
         node = Cerberus.Node([_VI(1)], [_VI(1)])
-        config = Cerberus.AlgorithmConfig(lp_solver_factory=_silent_gurobi_factory)
+        config = Cerberus.AlgorithmConfig(silent=true)
         @inferred Cerberus.process_node!(state, fm, node, config)
         result = state.node_result
         @test result.cost == Inf
@@ -133,7 +133,7 @@ end
     empty!(cs.node_result)
     cs.node_result.cost = new_pb
     cs.node_result.simplex_iters = simplex_iters_per
-    cs.node_result.x = int_soln_dict
+    cs.node_result.x = copy(int_soln_dict)
     @inferred Cerberus.update_state!(cs, fm, node, config)
     @test isempty(cs.tree)
     @test cs.total_node_count == 3

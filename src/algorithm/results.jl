@@ -1,4 +1,4 @@
-@enum TerminationStatus OPTIMAL INFEASIBLE UNBOUNDED EARLY_TERMINATION NOT_OPTIMIZED
+@enum TerminationStatus OPTIMAL INFEASIBLE INF_OR_UNBOUNDED EARLY_TERMINATION NOT_OPTIMIZED
 
 mutable struct Result
     primal_bound::Float64
@@ -22,8 +22,8 @@ function Result(state::CurrentState, config::AlgorithmConfig)
     if state.primal_bound == state.dual_bound == Inf
         result.termination_status = INFEASIBLE
     elseif state.primal_bound == -Inf
-        result.termination_status = UNBOUNDED
-    elseif _optimality_gap(state) <= config.gap_tol
+        result.termination_status = INF_OR_UNBOUNDED
+    elseif _optimality_gap(state.primal_bound, state.dual_bound) <= config.gap_tol
         result.termination_status = OPTIMAL
     else
         result.termination_status = EARLY_TERMINATION

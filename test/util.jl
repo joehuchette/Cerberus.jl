@@ -16,11 +16,8 @@ function _build_polyhedron()
                 MOI.LessThan(4.0)
             ),
         ],
-        [
-            MOI.Interval(0.5, 1.0),
-            MOI.Interval(-1.3, 2.3),
-            MOI.Interval(0.0, 1.0),
-        ]
+        [0.5, -1.3, 0.0],
+        [1.0, 2.3, 1.0],
     )
 end
 
