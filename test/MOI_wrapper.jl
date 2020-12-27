@@ -27,25 +27,6 @@ const OPTIMIZER = MOIU.CachingOptimizer(
     end,
 )
 
-# const MOIB = MOI.Bridges
-
-# model = Cerberus.Optimizer()
-# model.config.lp_solver_factory = (state, config) -> (begin
-#     model = Gurobi.Optimizer(GRB_ENV)
-#     MOI.set(model, MOI.Silent(), true)
-#     MOI.set(model, MOI.RawParameter("DualReductions"), 0)
-#     MOI.set(model, MOI.RawParameter("InfUnbdInfo"), 1)
-#     model
-# end)
-
-# const OPTIMIZER = MOIU.CachingOptimizer(
-#     MOIU.UniversalFallback(MOIU.Model{Float64}()),
-#     MOIB.LazyBridgeOptimizer(model),
-# )
-
-# MOIB.add_bridge(OPTIMIZER, MOIB.VectorizeBridge)
-# MOIB.add_bridge(OPTIMIZER, )
-
 const CONFIG = MOIT.TestConfig(
     modify_lhs = false,
     duals = false,
@@ -142,10 +123,15 @@ end
     )
 end
 
+const MOIB = MOI.Bridges
+
+const BRIDGED_OPTIMIZER = MOIB.LazyBridgeOptimizer(OPTIMIZER)
+MOIB.add_bridge(BRIDGED_OPTIMIZER, MOIB.Constraint.SemiToBinaryBridge{Float64})
+
 # TODO: Add bridges to support below sets
 @testset "intlinear" begin
     MOIT.intlineartest(
-        OPTIMIZER,
+        BRIDGED_OPTIMIZER,
         CONFIG,
         [
             # Needs SOS1/SOS2
@@ -159,12 +145,6 @@ end
             "indicator2",
             "indicator3",
             "indicator4",
-
-            # Needs MOI.Semicontinuous
-            "semiconttest",
-
-            # Needs MOI.semiinteger
-            "semiinttest",
         ],
     )
 end
