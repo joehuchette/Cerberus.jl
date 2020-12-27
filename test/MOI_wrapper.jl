@@ -67,6 +67,7 @@ const CONFIG = MOIT.TestConfig(
             (_SV, _ET),
             (_SV, _IN),
             (_SV, _ZO),
+            (_SV, _GI),
             (_SAF, _LT),
             (_SAF, _GT),
             (_SAF, _ET),
