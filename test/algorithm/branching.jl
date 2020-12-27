@@ -44,11 +44,11 @@ end
             config,
         )
         @test n1.branchings ==
-            [Cerberus.BranchingDecision(_VI(1), 1, Cerberus.UP_BRANCH)]
+              [Cerberus.BranchingDecision(_VI(1), 1, Cerberus.UP_BRANCH)]
         @test n1.parent_info == Cerberus.ParentInfo(-Inf, nothing, nothing)
 
         @test n2.branchings ==
-            [Cerberus.BranchingDecision(_VI(1), 0, Cerberus.DOWN_BRANCH)]
+              [Cerberus.BranchingDecision(_VI(1), 0, Cerberus.DOWN_BRANCH)]
         @test n2.parent_info == Cerberus.ParentInfo(-Inf, nothing, nothing)
 
         x2 = Dict(_VI(1) => 1.0, _VI(2) => 0.7, _VI(3) => 0.1)
@@ -71,7 +71,6 @@ end
             Cerberus.BranchingDecision(_VI(3), 1, Cerberus.UP_BRANCH),
         ]
         @test n4.parent_info == Cerberus.ParentInfo(-Inf, nothing, nothing)
-
 
         # Nothing to branch on, should throw. Really, should have pruned by integrality before.
         x3 = Dict(_VI(1) => 1.0, _VI(2) => 0.7, _VI(3) => 0.0)
@@ -105,12 +104,10 @@ end
             result,
             config,
         )
-        @test fc.branchings == [
-            Cerberus.BranchingDecision(_VI(2), 0, Cerberus.DOWN_BRANCH),
-        ]
-        @test oc.branchings == [
-            Cerberus.BranchingDecision(_VI(2), 1, Cerberus.UP_BRANCH),
-        ]
+        @test fc.branchings ==
+              [Cerberus.BranchingDecision(_VI(2), 0, Cerberus.DOWN_BRANCH)]
+        @test oc.branchings ==
+              [Cerberus.BranchingDecision(_VI(2), 1, Cerberus.UP_BRANCH)]
 
         x2 = [0.6, 0.4, 2.55]
         result.x = _vec_to_dict(x2)

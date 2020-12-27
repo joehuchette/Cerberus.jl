@@ -1,6 +1,6 @@
 @testset "optimize!" begin
     fm = _build_dmip_formulation()
-    config = Cerberus.AlgorithmConfig(silent=true)
+    config = Cerberus.AlgorithmConfig(silent = true)
     result = @inferred Cerberus.optimize!(fm, config)
     @test result.primal_bound ≈ 0.1 / 2.1
     @test result.dual_bound ≈ 0.1 / 2.1
@@ -19,7 +19,7 @@ end
         fm = _build_dmip_formulation()
         state = Cerberus.CurrentState()
         node = Cerberus.Node()
-        config = Cerberus.AlgorithmConfig(silent=true)
+        config = Cerberus.AlgorithmConfig(silent = true)
         @inferred Cerberus.process_node!(state, fm, node, config)
         result = state.node_result
         @test result.cost ≈ 0.5 - 2.5 / 2.1
@@ -47,7 +47,7 @@ end
             Cerberus.BranchingDecision(_VI(1), 0, Cerberus.DOWN_BRANCH),
             Cerberus.BranchingDecision(_VI(1), 1, Cerberus.UP_BRANCH),
         ])
-        config = Cerberus.AlgorithmConfig(silent=true)
+        config = Cerberus.AlgorithmConfig(silent = true)
         @inferred Cerberus.process_node!(state, fm, node, config)
         result = state.node_result
         @test result.cost == Inf
