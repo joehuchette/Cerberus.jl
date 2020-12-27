@@ -12,10 +12,10 @@
         _VI(3) => MOI.BASIC,
         _VI(4) => MOI.NONBASIC_AT_LOWER,
         _VI(5) => MOI.BASIC,
-        _CI(1) => MOI.NONBASIC,
-        _CI(2) => MOI.BASIC,
-        _CI(3) => MOI.NONBASIC,
-        _CI(4) => MOI.BASIC,
+        _CI{_SAF,_LT}(1) => MOI.NONBASIC,
+        _CI{_SAF,_GT}(2) => MOI.BASIC,
+        _CI{_SAF,_GT}(3) => MOI.NONBASIC,
+        _CI{_SAF,_GT}(4) => MOI.BASIC,
     )
     dual_bound = 3.2
     parent_info = Cerberus.ParentInfo(dual_bound, basis, nothing)

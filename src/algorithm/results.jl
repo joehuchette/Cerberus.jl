@@ -3,7 +3,7 @@
 mutable struct Result
     primal_bound::Float64
     dual_bound::Float64
-    best_solution::Dict{MOI.VariableIndex,Float64}
+    best_solution::Dict{VI,Float64}
     termination_status::TerminationStatus
     total_node_count::Int
     total_simplex_iters::Int
@@ -13,7 +13,7 @@ mutable struct Result
         return new(
             Inf,
             -Inf,
-            Dict{MOI.VariableIndex,Float64}(),
+            Dict{VI,Float64}(),
             NOT_OPTIMIZED,
             0,
             0,

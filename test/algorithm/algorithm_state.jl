@@ -16,9 +16,9 @@
     basis = Cerberus.Basis(
         _VI(1) => MOI.BASIC,
         _VI(2) => MOI.BASIC,
-        _CI(1) => MOI.NONBASIC,
-        _CI(2) => MOI.NONBASIC,
-        _CI(3) => MOI.NONBASIC,
+        _CI{_SAF,_GT}(1) => MOI.NONBASIC,
+        _CI{_SAF,_LT}(2) => MOI.NONBASIC,
+        _CI{_SAF,_LT}(3) => MOI.NONBASIC,
     )
     nr2 =
         @inferred Cerberus.NodeResult(cost, simplex_iters, x_dict, basis, model)
@@ -33,7 +33,7 @@
         si = 12
         x = Dict(_VI(1) => 15.7)
         basis = Dict{Any,MOI.BasisStatusCode}(
-            MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(1) => MOI.BASIC,
+            _CI{_SV,_IN}(1) => MOI.BASIC,
         )
         model = Gurobi.Optimizer()
         nr = Cerberus.NodeResult(cost, si, x, basis, model)

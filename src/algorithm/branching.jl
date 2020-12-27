@@ -1,12 +1,12 @@
-function down_branch(node::Node, branch_vi::MOI.VariableIndex, val::Float64)
+function down_branch(node::Node, branch_vi::VI, val::Float64)
     return _branch(node, branch_vi, floor(Int, val), DOWN_BRANCH)
 end
 
-function up_branch(node::Node, branch_vi::MOI.VariableIndex, val::Float64)
+function up_branch(node::Node, branch_vi::VI, val::Float64)
     return _branch(node, branch_vi, ceil(Int, val), UP_BRANCH)
 end
 
-function _branch(node::Node, branch_vi::MOI.VariableIndex, rounded_val::Int, direction::BranchingDirection)
+function _branch(node::Node, branch_vi::VI, rounded_val::Int, direction::BranchingDirection)
     # TODO: Can likely reuse this memory instead of copying
     branchings = copy(node.branchings)
     push!(branchings, BranchingDecision(branch_vi, rounded_val, direction))
@@ -28,12 +28,10 @@ function branch(
         if var_set === nothing
             continue
         end
-        vi = MOI.VariableIndex(i)
+        vi = VI(i)
         xi = parent_result.x[vi]
-        # TODO: Add a small tolerance on this check, as
-        # done in MathOptPresolve.
-        xi_f = floor(xi)
-        xi_c = ceil(xi)
+        xi_f = _approx_floor(xi, config.int_tol)
+        xi_c = _approx_ceil(xi, config.int_tol)
         frac_val = min(xi - xi_f, xi_c - xi)
         # We're integral up to tolerance, don't branch.
         if frac_val <= config.int_tol
@@ -45,7 +43,7 @@ function branch(
         end
     end
     @assert t > 0
-    vt = MOI.VariableIndex(t)
+    vt = VI(t)
     xt = parent_result.x[vt]
     down_node = down_branch(parent_node, vt, xt)
     up_node = up_branch(parent_node, vt, xt)

@@ -16,7 +16,7 @@ function _NodeResult(
     return NodeResult(
         cost,
         simplex_iters,
-        Dict(MOI.VariableIndex(i) => x[i] for i in 1:length(x)),
+        Dict(_VI(i) => x[i] for i in 1:length(x)),
         basis,
         model,
     )

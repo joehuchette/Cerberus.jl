@@ -11,11 +11,11 @@ function build_base_model(
         bound = form.base_form.feasible_region.bounds[i]
         l, u = bound.lower, bound.upper
         # TODO: Make this update more efficient, and unit test it.
-        if form.integrality[i] isa MOI.ZeroOne
+        if form.integrality[i] isa ZO
             l = max(0, l)
             u = min(1, u)
         end
-        MOI.add_constrained_variable(model, MOI.Interval{Float64}(l, u))
+        MOI.add_constrained_variable(model, IN(l, u))
     end
     for aff_constr in form.base_form.feasible_region.aff_constrs
         MOI.add_constraint(model, aff_constr.f, aff_constr.s)
@@ -26,7 +26,7 @@ function build_base_model(
     end
     MOI.set(
         model,
-        MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(),
+        MOI.ObjectiveFunction{SAF}(),
         form.base_form.obj,
     )
     MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
@@ -35,12 +35,12 @@ end
 
 function update_node_bounds!(model::MOI.AbstractOptimizer, node::Node)
     for bd in node.branchings
-        ci = MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(bd.vi.value)
+        ci = CI{SV,IN}(bd.vi.value)
         interval = MOI.get(model, MOI.ConstraintSet(), ci)
         new_interval = (if bd.direction == DOWN_BRANCH
-            MOI.Interval{Float64}(interval.lower, bd.value)
+            IN(interval.lower, bd.value)
         else
-            MOI.Interval{Float64}(bd.value, interval.upper)
+            IN(bd.value, interval.upper)
         end)
         MOI.set(model, MOI.ConstraintSet(), ci, new_interval)
     end
@@ -48,7 +48,7 @@ function update_node_bounds!(model::MOI.AbstractOptimizer, node::Node)
 end
 
 function _fill_solution!(
-    x::Dict{MOI.VariableIndex,Float64},
+    x::Dict{VI,Float64},
     model::MOI.AbstractOptimizer,
 )
     for v in MOI.get(model, MOI.ListOfVariableIndices())

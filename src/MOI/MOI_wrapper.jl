@@ -1,6 +1,0 @@
-include("optimizer.jl")
-include("variable.jl")
-include("objective.jl")
-include("linear_constraint.jl")
-include("disjunctive_constraint.jl")
-include("solution.jl")

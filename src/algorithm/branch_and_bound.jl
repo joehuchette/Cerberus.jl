@@ -67,7 +67,7 @@ end
 
 function _ip_feasible(
     form::DMIPFormulation,
-    x::Dict{MOI.VariableIndex,Float64},
+    x::Dict{VI,Float64},
     config::AlgorithmConfig,
 )::Bool
     for i in 1:num_variables(form)
@@ -75,12 +75,12 @@ function _ip_feasible(
         if v_set === nothing
             continue
         end
-        vi = MOI.VariableIndex(i)
+        vi = VI(i)
         xi = x[vi]
         ϵ = config.int_tol
         xi_f = _approx_floor(xi, ϵ)
         xi_c = _approx_ceil(xi, ϵ)
-        if v_set == MOI.ZeroOne()
+        if v_set == ZO()
             # Should have explicitly imposed 0/1 bounds in the formulation...
             # but assert just to be safe.
             @assert -ϵ <= xi <= 1 + ϵ

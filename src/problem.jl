@@ -1,10 +1,10 @@
 struct AffineConstraint
-    f::MOI.ScalarAffineFunction{Float64}
-    s::_SUPPORTED_SETS
+    f::SAF
+    s::_C_SETS
 end
 
 # TODO: Unit test
-function _max_var_index(saf::MOI.ScalarAffineFunction{Float64})
+function _max_var_index(saf::SAF)
     Base.isempty(saf.terms) && return 0
     return maximum(vi.variable_index.value for vi in saf.terms)
 end
@@ -12,12 +12,12 @@ _max_var_index(ac::AffineConstraint) = _max_var_index(ac.f)
 
 mutable struct Polyhedron
     aff_constrs::Vector{AffineConstraint}
-    bounds::Vector{MOI.Interval{Float64}}
+    bounds::Vector{IN}
     # TODO: Enforce that length(bound) is no less than max variable index
     #       appearing in aff_constrs.
     function Polyhedron(
         aff_constrs::Vector{AffineConstraint},
-        bounds::Vector{MOI.Interval{Float64}}
+        bounds::Vector{IN}
     )
         n = length(bounds)
         for aff_constr in aff_constrs
@@ -28,12 +28,12 @@ mutable struct Polyhedron
 end
 
 function Polyhedron()
-    return Polyhedron(AffineConstraint[], MOI.Interval{Float64}[])
+    return Polyhedron(AffineConstraint[], IN[])
 end
 
 ambient_dim(p::Polyhedron) = length(p.bounds)
 function add_variable(p::Polyhedron)
-    push!(p.bounds, MOI.Interval{Float64}(-Inf, Inf))
+    push!(p.bounds, IN(-Inf, Inf))
     return nothing
 end
 
@@ -49,11 +49,11 @@ end
 # Assumption: objective sense == MINIMIZE
 mutable struct LPRelaxation
     feasible_region::Polyhedron
-    obj::MOI.ScalarAffineFunction{Float64}
+    obj::SAF
 
     function LPRelaxation(
         feasible_region::Polyhedron,
-        obj::MOI.ScalarAffineFunction{Float64},
+        obj::SAF,
     )
         n = ambient_dim(feasible_region)
         for aff_constr in feasible_region.aff_constrs
@@ -68,7 +68,7 @@ end
 function LPRelaxation()
     return LPRelaxation(
         Polyhedron(),
-        convert(MOI.ScalarAffineFunction{Float64}, 0.0),
+        convert(SAF, 0.0),
     )
 end
 
@@ -90,7 +90,7 @@ abstract type AbstractFormulater end
 mutable struct DMIPFormulation
     base_form::LPRelaxation
     disjunction_formulaters::Vector{AbstractFormulater}
-    integrality::Vector{_INT_SETS}
+    integrality::Vector{_V_INT_SETS}
 
     function DMIPFormulation(
         base_form::LPRelaxation,
@@ -107,7 +107,7 @@ function DMIPFormulation()
     return DMIPFormulation(
         LPRelaxation(),
         AbstractFormulater[],
-        _INT_SETS[],
+        _V_INT_SETS[],
     )
 end
 

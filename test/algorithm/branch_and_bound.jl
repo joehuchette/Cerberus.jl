@@ -29,14 +29,14 @@ end
         @test result.x[_VI(2)] ≈ 2.5 / 2.1
         @test result.x[_VI(3)] ≈ 0.0
         @test result.basis == Cerberus.Basis(
-            MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(1) =>
+            _CI{_SV,_IN}(1) =>
                 MOI.NONBASIC_AT_LOWER,
-            MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(2) =>
+            _CI{_SV,_IN}(2) =>
                 MOI.BASIC,
-            MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(3) =>
+            _CI{_SV,_IN}(3) =>
                 MOI.NONBASIC_AT_LOWER,
-            MOI.ConstraintIndex{MOI.ScalarAffineFunction{Float64},MOI.EqualTo{Float64},}(2) => MOI.NONBASIC,
-            MOI.ConstraintIndex{MOI.ScalarAffineFunction{Float64},MOI.LessThan{Float64},}(3) => MOI.BASIC,
+            _CI{_SAF,_ET}(2) => MOI.NONBASIC,
+            _CI{_SAF,_LT}(3) => MOI.BASIC,
         )
         @test result.model === nothing
     end
@@ -157,7 +157,7 @@ end
     frac_soln_dict = _vec_to_dict(frac_soln_2)
     db = 10.1
     basis = Cerberus.Basis(
-        MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(1) =>
+        _CI{_SV,_IN}(1) =>
             MOI.BASIC,
     )
     model = Gurobi.Optimizer()

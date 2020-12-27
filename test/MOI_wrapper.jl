@@ -62,14 +62,14 @@ const CONFIG = MOIT.TestConfig(
         get_constraint_function=false,
         get_constraint_set=false,
         include=[
-            (MOI.SingleVariable, MOI.LessThan{Float64}),
-            (MOI.SingleVariable, MOI.GreaterThan{Float64}),
-            (MOI.SingleVariable, MOI.EqualTo{Float64}),
-            (MOI.SingleVariable, MOI.Interval{Float64}),
-            (MOI.SingleVariable, MOI.ZeroOne),
-            (MOI.ScalarAffineFunction{Float64}, MOI.LessThan{Float64}),
-            (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
-            (MOI.ScalarAffineFunction{Float64}, MOI.EqualTo{Float64}),
+            (_SV, _LT),
+            (_SV, _GT),
+            (_SV, _ET),
+            (_SV, _IN),
+            (_SV, _ZO),
+            (_SAF, _LT),
+            (_SAF, _GT),
+            (_SAF, _ET),
         ],
     )
 end

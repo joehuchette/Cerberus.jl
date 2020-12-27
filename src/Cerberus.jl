@@ -10,14 +10,15 @@ const SAF = MOI.ScalarAffineFunction{Float64}
 const ET = MOI.EqualTo{Float64}
 const GT = MOI.GreaterThan{Float64}
 const LT = MOI.LessThan{Float64}
-const INT = MOI.Interval{Float64}
+const IN = MOI.Interval{Float64}
 const CI = MOI.ConstraintIndex
+const ZO = MOI.ZeroOne
+const GI = MOI.Integer
 
-const _SUPPORTED_SETS = Union{MOI.LessThan,MOI.GreaterThan,MOI.EqualTo}
-const _INT_SETS = Union{Nothing,MOI.ZeroOne,MOI.Integer}
 const _C_SETS = Union{ET,GT,LT}
 const _O_FUNCS = Union{SV,SAF}
-const _V_SETS = Union{ET,GT,LT,INT}
+const _V_BOUND_SETS = Union{ET,GT,LT,IN}
+const _V_INT_SETS = Union{Nothing,ZO,GI}
 
 include("problem.jl")
 include("tree.jl")
@@ -30,6 +31,12 @@ include("algorithm/util.jl")
 include("algorithm/branch_and_bound.jl")
 include("algorithm/branching.jl")
 
-include("MOI/MOI_wrapper.jl")
+include("MOI/optimizer.jl")
+include("MOI/variable.jl")
+include("MOI/objective.jl")
+include("MOI/linear_constraint.jl")
+include("MOI/disjunctive_constraint.jl")
+include("MOI/solution.jl")
+
 
 end # module

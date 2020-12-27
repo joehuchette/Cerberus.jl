@@ -10,7 +10,7 @@ ParentInfo() = ParentInfo(-Inf, nothing, nothing)
 @enum BranchingDirection DOWN_BRANCH UP_BRANCH
 
 struct BranchingDecision
-    vi::MOI.VariableIndex
+    vi::VI
     value::Int
     direction::BranchingDirection
 end
