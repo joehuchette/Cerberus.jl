@@ -40,8 +40,16 @@ end
 @testset "Tree" begin
     # BFS, branching first on 1 and then on 2
     n1 = Cerberus.Node()
-    n2 = Cerberus.Node([Cerberus.BranchingDecision(_VI(1), 0, Cerberus.DOWN_BRANCH)])
-    n3 = Cerberus.Node([Cerberus.BranchingDecision(_VI(1), 1, Cerberus.UP_BRANCH)])
+    n2 = Cerberus.Node([Cerberus.BranchingDecision(
+        _VI(1),
+        0,
+        Cerberus.DOWN_BRANCH,
+    )])
+    n3 = Cerberus.Node([Cerberus.BranchingDecision(
+        _VI(1),
+        1,
+        Cerberus.UP_BRANCH,
+    )])
     n4 = Cerberus.Node([
         Cerberus.BranchingDecision(_VI(1), 1, Cerberus.UP_BRANCH),
         Cerberus.BranchingDecision(_VI(2), 0, Cerberus.DOWN_BRANCH),

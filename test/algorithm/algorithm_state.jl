@@ -32,9 +32,7 @@
         cost = 5.6
         si = 12
         x = Dict(_VI(1) => 15.7)
-        basis = Dict{Any,MOI.BasisStatusCode}(
-            _CI{_SV,_IN}(1) => MOI.BASIC,
-        )
+        basis = Dict{Any,MOI.BasisStatusCode}(_CI{_SV,_IN}(1) => MOI.BASIC)
         model = Gurobi.Optimizer()
         nr = Cerberus.NodeResult(cost, si, x, basis, model)
         @test nr.cost == cost

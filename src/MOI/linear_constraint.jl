@@ -1,7 +1,7 @@
 
 MOI.supports_constraint(::Optimizer, ::Type{SAF}, ::Type{<:_C_SETS}) = true
 
-function MOI.is_valid(opt::Optimizer, c::CI{SAF,T}) where {T <: _C_SETS}
+function MOI.is_valid(opt::Optimizer, c::CI{SAF,T}) where {T<:_C_SETS}
     1 <= c.value <= num_constraints(opt.form.base_form.feasible_region) ||
         return false
     constr = opt.form.base_form.feasible_region.aff_constrs[c.value]
@@ -20,7 +20,7 @@ end
 function MOI.get(
     opt::Optimizer,
     ::MOI.NumberOfConstraints{SAF,S},
-) where {S <: _C_SETS}
+) where {S<:_C_SETS}
     cnt = 0
     for aff in opt.form.base_form.feasible_region.aff_constrs
         if S == typeof(aff.s)
@@ -33,7 +33,7 @@ end
 function MOI.get(
     opt::Optimizer,
     ::MOI.ListOfConstraintIndices{SAF,S},
-) where {S <: _C_SETS}
+) where {S<:_C_SETS}
     indices = CI{SAF,S}[]
     for (i, aff) in enumerate(opt.form.base_form.feasible_region.aff_constrs)
         if S == typeof(aff.s)
@@ -52,7 +52,7 @@ function MOI.get(
     opt::Optimizer,
     ::MOI.ConstraintPrimal,
     ci::CI{SAF,S},
-) where {S <: _C_SETS}
+) where {S<:_C_SETS}
     MOI.throw_if_not_valid(opt, ci)
     idx = ci.value
     aff = opt.form.base_form.feasible_region.aff_constrs[idx]

@@ -24,11 +24,7 @@ function build_base_model(
     for formulater in form.disjunction_formulaters
         apply!(model, formulator, node)
     end
-    MOI.set(
-        model,
-        MOI.ObjectiveFunction{SAF}(),
-        form.base_form.obj,
-    )
+    MOI.set(model, MOI.ObjectiveFunction{SAF}(), form.base_form.obj)
     MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
     return model
 end
@@ -37,20 +33,19 @@ function update_node_bounds!(model::MOI.AbstractOptimizer, node::Node)
     for bd in node.branchings
         ci = CI{SV,IN}(bd.vi.value)
         interval = MOI.get(model, MOI.ConstraintSet(), ci)
-        new_interval = (if bd.direction == DOWN_BRANCH
-            IN(interval.lower, bd.value)
-        else
-            IN(bd.value, interval.upper)
-        end)
+        new_interval = (
+            if bd.direction == DOWN_BRANCH
+                IN(interval.lower, bd.value)
+            else
+                IN(bd.value, interval.upper)
+            end
+        )
         MOI.set(model, MOI.ConstraintSet(), ci, new_interval)
     end
     return nothing
 end
 
-function _fill_solution!(
-    x::Dict{VI,Float64},
-    model::MOI.AbstractOptimizer,
-)
+function _fill_solution!(x::Dict{VI,Float64}, model::MOI.AbstractOptimizer)
     for v in MOI.get(model, MOI.ListOfVariableIndices())
         x[v] = MOI.get(model, MOI.VariablePrimal(), v)
     end

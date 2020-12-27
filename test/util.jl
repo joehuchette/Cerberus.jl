@@ -13,20 +13,10 @@ function _build_polyhedron()
     v = [_SV(_VI(i)) for i in 1:3]
     return Cerberus.Polyhedron(
         [
-            Cerberus.AffineConstraint(
-                v[1] + 2.1 * v[2] + 3.0 * v[3],
-                _ET(3.0),
-            ),
-            Cerberus.AffineConstraint(
-                -3.5 * v[1] + 1.2 * v[2],
-                _LT(4.0),
-            ),
+            Cerberus.AffineConstraint(v[1] + 2.1 * v[2] + 3.0 * v[3], _ET(3.0)),
+            Cerberus.AffineConstraint(-3.5 * v[1] + 1.2 * v[2], _LT(4.0)),
         ],
-        [
-            _IN(0.5, 1.0),
-            _IN(-1.3, 2.3),
-            _IN(0.0, 1.0),
-        ],
+        [_IN(0.5, 1.0), _IN(-1.3, 2.3), _IN(0.0, 1.0)],
     )
 end
 

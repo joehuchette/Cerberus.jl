@@ -6,7 +6,12 @@ function up_branch(node::Node, branch_vi::VI, val::Float64)
     return _branch(node, branch_vi, ceil(Int, val), UP_BRANCH)
 end
 
-function _branch(node::Node, branch_vi::VI, rounded_val::Int, direction::BranchingDirection)
+function _branch(
+    node::Node,
+    branch_vi::VI,
+    rounded_val::Int,
+    direction::BranchingDirection,
+)
     # TODO: Can likely reuse this memory instead of copying
     branchings = copy(node.branchings)
     push!(branchings, BranchingDecision(branch_vi, rounded_val, direction))

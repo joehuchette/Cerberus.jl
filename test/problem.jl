@@ -1,9 +1,6 @@
 @testset "AffineConstraint" begin
     v = [_SV(_VI(i)) for i in 1:3]
-    ac = Cerberus.AffineConstraint(
-        v[1] + 2.0 * v[2] + 3.0 * v[3],
-        _ET(3.0),
-    )
+    ac = Cerberus.AffineConstraint(v[1] + 2.0 * v[2] + 3.0 * v[3], _ET(3.0))
     @test typeof(ac.f) == _SAF
     @test ac.f.terms == [
         MOI.ScalarAffineTerm{Float64}(2.0, _VI(2)),
@@ -31,11 +28,7 @@ function _test_polyhedron(p::Cerberus.Polyhedron)
     @test p.aff_constrs[2].f.constant == 0.0
     @test p.aff_constrs[2].s == _LT(4.0)
 
-    @test p.bounds == [
-        _IN(0.5, 1.0),
-        _IN(-1.3, 2.3),
-        _IN(0.0, 1.0),
-    ]
+    @test p.bounds == [_IN(0.5, 1.0), _IN(-1.3, 2.3), _IN(0.0, 1.0)]
 
     return nothing
 end
@@ -50,9 +43,7 @@ end
             1.0 * _SV(_VI(1)) + 2.0 * _SV(_VI(2)),
             _ET(1.0),
         )],
-        [
-            _IN(0.0, 1.0),
-        ],
+        [_IN(0.0, 1.0)],
     )
     @testset "ambient_dim" begin
         @test Cerberus.ambient_dim(p) == 3

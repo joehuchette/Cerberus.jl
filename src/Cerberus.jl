@@ -38,5 +38,4 @@ include("MOI/linear_constraint.jl")
 include("MOI/disjunctive_constraint.jl")
 include("MOI/solution.jl")
 
-
 end # module

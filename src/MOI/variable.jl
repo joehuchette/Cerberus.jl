@@ -16,7 +16,11 @@ function MOI.get(opt::Optimizer, ::MOI.VariablePrimal, vi::VI)
     return opt.result.best_solution[vi]
 end
 
-function MOI.supports_constraint(::Optimizer, ::Type{SV}, ::Type{<:_V_BOUND_SETS})
+function MOI.supports_constraint(
+    ::Optimizer,
+    ::Type{SV},
+    ::Type{<:_V_BOUND_SETS},
+)
     return true
 end
 
@@ -40,13 +44,17 @@ function _get_scalar_set(p::Polyhedron, i::Int)
     end
 end
 
-function MOI.is_valid(opt::Optimizer, c::CI{SV,S}) where {S <: _V_BOUND_SETS}
+function MOI.is_valid(opt::Optimizer, c::CI{SV,S}) where {S<:_V_BOUND_SETS}
     MOI.is_valid(opt, VI(c.value)) || return false
     p = opt.form.base_form.feasible_region
     return S == _get_scalar_set(p, c.value)
 end
 
-function MOI.get(opt::Optimizer, ::MOI.ConstraintFunction, c::CI{SV,<:_V_BOUND_SETS})
+function MOI.get(
+    opt::Optimizer,
+    ::MOI.ConstraintFunction,
+    c::CI{SV,<:_V_BOUND_SETS},
+)
     MOI.throw_if_not_valid(opt, c)
     return SV(VI(c.value))
 end
@@ -80,7 +88,11 @@ function MOI.add_constraint(opt::Optimizer, f::SV, s::IN)
 end
 
 MOI.supports_constraint(::Optimizer, ::Type{SV}, ::Type{<:_V_INT_SETS}) = true
-function MOI.add_constraint(opt::Optimizer, f::SV, set::S) where {S <: _V_INT_SETS}
+function MOI.add_constraint(
+    opt::Optimizer,
+    f::SV,
+    set::S,
+) where {S<:_V_INT_SETS}
     vi = f.variable
     MOI.throw_if_not_valid(opt, vi)
     if opt.form.integrality[vi.value] !== nothing
@@ -101,7 +113,7 @@ end
 function MOI.get(
     opt::Optimizer,
     ::MOI.NumberOfConstraints{SV,S},
-) where {S <: _V_BOUND_SETS}
+) where {S<:_V_BOUND_SETS}
     cnt = 0
     for i in 1:num_variables(opt.form)
         p = opt.form.base_form.feasible_region
@@ -115,7 +127,7 @@ end
 function MOI.get(
     opt::Optimizer,
     ::MOI.ListOfConstraintIndices{SV,S},
-) where {S <: _V_BOUND_SETS}
+) where {S<:_V_BOUND_SETS}
     indices = CI{SV,S}[]
     for i in 1:num_variables(opt.form)
         p = opt.form.base_form.feasible_region
@@ -126,12 +138,18 @@ function MOI.get(
     return indices
 end
 
-MOI.supports(::Optimizer, ::MOI.ConstraintPrimal, ::CI{SV,<:_V_BOUND_SETS}) = true
+function MOI.supports(
+    ::Optimizer,
+    ::MOI.ConstraintPrimal,
+    ::CI{SV,<:_V_BOUND_SETS},
+)
+    return true
+end
 function MOI.get(
     opt::Optimizer,
     ::MOI.ConstraintPrimal,
     ci::CI{SV,S},
-) where {S <: _V_BOUND_SETS}
+) where {S<:_V_BOUND_SETS}
     vi = VI(ci.value)
     MOI.throw_if_not_valid(opt, vi)
     return MOI.get(opt, MOI.VariablePrimal(), vi)

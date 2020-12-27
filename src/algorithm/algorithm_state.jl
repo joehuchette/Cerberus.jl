@@ -42,7 +42,7 @@ mutable struct CurrentState
     total_node_count::Int
     total_simplex_iters::Int
 
-    function CurrentState(primal_bound::Real=Inf)
+    function CurrentState(primal_bound::Real = Inf)
         state = new(
             Gurobi.Env(),
             Tree(),

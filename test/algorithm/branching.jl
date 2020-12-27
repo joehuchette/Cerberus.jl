@@ -2,11 +2,13 @@
     fm = _build_dmip_formulation()
     node = Cerberus.Node()
     let db = @inferred Cerberus.down_branch(node, _VI(1), 0.5)
-        @test db.branchings == [Cerberus.BranchingDecision(_VI(1), 0, Cerberus.DOWN_BRANCH)]
+        @test db.branchings ==
+              [Cerberus.BranchingDecision(_VI(1), 0, Cerberus.DOWN_BRANCH)]
     end
 
     let ub = @inferred Cerberus.up_branch(node, _VI(2), 0.5)
-        @test ub.branchings == [Cerberus.BranchingDecision(_VI(2), 1, Cerberus.UP_BRANCH)]
+        @test ub.branchings ==
+              [Cerberus.BranchingDecision(_VI(2), 1, Cerberus.UP_BRANCH)]
     end
 end
 
@@ -30,10 +32,12 @@ end
         result,
         config,
     )
-    @test n1.branchings == [Cerberus.BranchingDecision(_VI(1), 1, Cerberus.UP_BRANCH)]
+    @test n1.branchings ==
+          [Cerberus.BranchingDecision(_VI(1), 1, Cerberus.UP_BRANCH)]
     @test n1.parent_info == Cerberus.ParentInfo(-Inf, nothing, nothing)
 
-    @test n2.branchings == [Cerberus.BranchingDecision(_VI(1), 0, Cerberus.DOWN_BRANCH)]
+    @test n2.branchings ==
+          [Cerberus.BranchingDecision(_VI(1), 0, Cerberus.DOWN_BRANCH)]
     @test n2.parent_info == Cerberus.ParentInfo(-Inf, nothing, nothing)
 
     x2 = Dict(_VI(1) => 1.0, _VI(2) => 0.7, _VI(3) => 0.1)

@@ -17,7 +17,7 @@ mutable struct Polyhedron
     #       appearing in aff_constrs.
     function Polyhedron(
         aff_constrs::Vector{AffineConstraint},
-        bounds::Vector{IN}
+        bounds::Vector{IN},
     )
         n = length(bounds)
         for aff_constr in aff_constrs
@@ -51,10 +51,7 @@ mutable struct LPRelaxation
     feasible_region::Polyhedron
     obj::SAF
 
-    function LPRelaxation(
-        feasible_region::Polyhedron,
-        obj::SAF,
-    )
+    function LPRelaxation(feasible_region::Polyhedron, obj::SAF)
         n = ambient_dim(feasible_region)
         for aff_constr in feasible_region.aff_constrs
             @assert _max_var_index(aff_constr) <= n
@@ -66,10 +63,7 @@ mutable struct LPRelaxation
 end
 
 function LPRelaxation()
-    return LPRelaxation(
-        Polyhedron(),
-        convert(SAF, 0.0),
-    )
+    return LPRelaxation(Polyhedron(), convert(SAF, 0.0))
 end
 
 num_variables(r::LPRelaxation) = ambient_dim(r.feasible_region)
@@ -104,11 +98,7 @@ mutable struct DMIPFormulation
 end
 
 function DMIPFormulation()
-    return DMIPFormulation(
-        LPRelaxation(),
-        AbstractFormulater[],
-        _V_INT_SETS[],
-    )
+    return DMIPFormulation(LPRelaxation(), AbstractFormulater[], _V_INT_SETS[])
 end
 
 num_variables(fm::DMIPFormulation) = num_variables(fm.base_form)

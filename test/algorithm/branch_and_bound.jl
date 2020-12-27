@@ -1,6 +1,6 @@
 @testset "optimize!" begin
     fm = _build_dmip_formulation()
-    config = Cerberus.AlgorithmConfig(silent=true)
+    config = Cerberus.AlgorithmConfig(silent = true)
     result = @inferred Cerberus.optimize!(fm, config)
     @test result.primal_bound ≈ 0.1 / 2.1
     @test result.dual_bound ≈ 0.1 / 2.1
@@ -19,7 +19,7 @@ end
         fm = _build_dmip_formulation()
         state = Cerberus.CurrentState()
         node = Cerberus.Node()
-        config = Cerberus.AlgorithmConfig(silent=true)
+        config = Cerberus.AlgorithmConfig(silent = true)
         @inferred Cerberus.process_node!(state, fm, node, config)
         result = state.node_result
         @test result.cost ≈ 0.5 - 2.5 / 2.1
@@ -29,12 +29,9 @@ end
         @test result.x[_VI(2)] ≈ 2.5 / 2.1
         @test result.x[_VI(3)] ≈ 0.0
         @test result.basis == Cerberus.Basis(
-            _CI{_SV,_IN}(1) =>
-                MOI.NONBASIC_AT_LOWER,
-            _CI{_SV,_IN}(2) =>
-                MOI.BASIC,
-            _CI{_SV,_IN}(3) =>
-                MOI.NONBASIC_AT_LOWER,
+            _CI{_SV,_IN}(1) => MOI.NONBASIC_AT_LOWER,
+            _CI{_SV,_IN}(2) => MOI.BASIC,
+            _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
             _CI{_SAF,_ET}(2) => MOI.NONBASIC,
             _CI{_SAF,_LT}(3) => MOI.BASIC,
         )
@@ -50,7 +47,7 @@ end
             Cerberus.BranchingDecision(_VI(1), 0, Cerberus.DOWN_BRANCH),
             Cerberus.BranchingDecision(_VI(1), 1, Cerberus.UP_BRANCH),
         ])
-        config = Cerberus.AlgorithmConfig(silent=true)
+        config = Cerberus.AlgorithmConfig(silent = true)
         @inferred Cerberus.process_node!(state, fm, node, config)
         result = state.node_result
         @test result.cost == Inf
@@ -82,10 +79,10 @@ end
 
 @testset "_attach_parent_info!" begin
     fc = Cerberus.Node([
-            Cerberus.BranchingDecision(_VI(1), 1, Cerberus.UP_BRANCH),
+        Cerberus.BranchingDecision(_VI(1), 1, Cerberus.UP_BRANCH),
     ])
     oc = Cerberus.Node([
-            Cerberus.BranchingDecision(_VI(1), 0, Cerberus.DOWN_BRANCH),
+        Cerberus.BranchingDecision(_VI(1), 0, Cerberus.DOWN_BRANCH),
     ])
     basis = Cerberus.Basis(_VI(1) => MOI.BASIC)
     model = Gurobi.Optimizer()
@@ -156,10 +153,7 @@ end
     frac_soln_2 = [0.0, 2.9, 0.6]
     frac_soln_dict = _vec_to_dict(frac_soln_2)
     db = 10.1
-    basis = Cerberus.Basis(
-        _CI{_SV,_IN}(1) =>
-            MOI.BASIC,
-    )
+    basis = Cerberus.Basis(_CI{_SV,_IN}(1) => MOI.BASIC)
     model = Gurobi.Optimizer()
     empty!(cs.node_result)
     cs.node_result.cost = 10.1
@@ -177,12 +171,14 @@ end
     @inferred Cerberus.update_dual_bound!(cs)
     @test cs.dual_bound == db
     fc = Cerberus.pop_node!(cs.tree)
-    @test fc.branchings == [Cerberus.BranchingDecision(_VI(3), 1, Cerberus.UP_BRANCH)]
+    @test fc.branchings ==
+          [Cerberus.BranchingDecision(_VI(3), 1, Cerberus.UP_BRANCH)]
     @test fc.parent_info.dual_bound == db
     @test fc.parent_info.basis == basis
     @test fc.parent_info.hot_start_model === model
     oc = Cerberus.pop_node!(cs.tree)
-    @test oc.branchings == [Cerberus.BranchingDecision(_VI(3), 0, Cerberus.DOWN_BRANCH)]
+    @test oc.branchings ==
+          [Cerberus.BranchingDecision(_VI(3), 0, Cerberus.DOWN_BRANCH)]
     @test oc.parent_info.dual_bound == db
     @test oc.parent_info.basis == basis
     @test oc.parent_info.hot_start_model === nothing

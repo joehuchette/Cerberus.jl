@@ -47,21 +47,21 @@ const OPTIMIZER = MOIU.CachingOptimizer(
 # MOIB.add_bridge(OPTIMIZER, )
 
 const CONFIG = MOIT.TestConfig(
-    modify_lhs=false,
-    duals=false,
-    dual_objective_value=false,
-    infeas_certificates=false,
+    modify_lhs = false,
+    duals = false,
+    dual_objective_value = false,
+    infeas_certificates = false,
 )
 
 @testset "basic_constraint_tests" begin
     MOIT.basic_constraint_tests(
         OPTIMIZER,
         CONFIG,
-        delete=false,
+        delete = false,
         # TODO: Add support for getting F/S
-        get_constraint_function=false,
-        get_constraint_set=false,
-        include=[
+        get_constraint_function = false,
+        get_constraint_set = false,
+        include = [
             (_SV, _LT),
             (_SV, _GT),
             (_SV, _ET),
