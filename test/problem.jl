@@ -113,3 +113,27 @@ end
 
     # TODO: Test throws on malformed DMIPFormulation
 end
+
+function _test_gi_polyhedron(p::Cerberus.Polyhedron)
+    @test length(p.aff_constrs) == 1
+    @test typeof(p.aff_constrs[1].f) == _SAF
+    @test p.aff_constrs[1].f.terms == [
+        MOI.ScalarAffineTerm{Float64}(1.3, _VI(1)),
+        MOI.ScalarAffineTerm{Float64}(3.7, _VI(2)),
+        MOI.ScalarAffineTerm{Float64}(2.4, _VI(3)),
+    ]
+    @test p.aff_constrs[1].f.constant == 0.0
+    @test p.aff_constrs[1].s == _LT(5.5)
+
+    @test p.bounds == [_IN(0.0, 4.5), _IN(0.0, 1.0), _IN(0.0, 3.0)]
+end
+
+@testset "General integer polyhedron/formulation" begin
+    p = @inferred _build_gi_polyhedron()
+    _test_gi_polyhedron(p)
+
+    fm = @inferred _build_gi_dmip_formulation()
+    _test_gi_polyhedron(fm.base_form.feasible_region)
+    @test isempty(fm.disjunction_formulaters)
+    @test fm.integrality == [nothing, _ZO(), _GI()]
+end

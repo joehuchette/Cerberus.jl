@@ -33,3 +33,21 @@ function _build_dmip_formulation()
         [_ZO(), nothing, _ZO()],
     )
 end
+
+function _build_gi_polyhedron()
+    v = [_SV(_VI(i)) for i in 1:3]
+    return Cerberus.Polyhedron(
+        [
+            Cerberus.AffineConstraint(1.3 * v[1] + 3.7 * v[2] + 2.4 * v[3], _LT(5.5)),
+        ],
+        [_IN(0.0, 4.5), _IN(0.0, 1.0), _IN(0.0, 3.0)],
+    )
+end
+
+function _build_gi_dmip_formulation()
+    return Cerberus.DMIPFormulation(
+        Cerberus.LPRelaxation(_build_gi_polyhedron(), convert(_SAF, 0.0)),
+        Cerberus.AbstractFormulater[],
+        [nothing, _ZO(), _GI()],
+    )
+end

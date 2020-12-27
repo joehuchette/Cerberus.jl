@@ -1,7 +1,7 @@
 function optimize!(
     form::DMIPFormulation,
     config::AlgorithmConfig,
-    primal_bound::Float64 = Inf,
+    primal_bound::Float64=Inf,
 )::Result
     result = Result()
     to = result.timings
@@ -65,6 +65,7 @@ function process_node!(
     return nothing
 end
 
+# Only checks feasibility w.r.t. integrality constraints!
 function _ip_feasible(
     form::DMIPFormulation,
     x::Dict{VI,Float64},

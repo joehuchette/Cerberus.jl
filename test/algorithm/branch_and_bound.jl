@@ -1,6 +1,6 @@
 @testset "optimize!" begin
     fm = _build_dmip_formulation()
-    config = Cerberus.AlgorithmConfig(silent = true)
+    config = Cerberus.AlgorithmConfig(silent=true)
     result = @inferred Cerberus.optimize!(fm, config)
     @test result.primal_bound ≈ 0.1 / 2.1
     @test result.dual_bound ≈ 0.1 / 2.1
@@ -19,7 +19,7 @@ end
         fm = _build_dmip_formulation()
         state = Cerberus.CurrentState()
         node = Cerberus.Node()
-        config = Cerberus.AlgorithmConfig(silent = true)
+        config = Cerberus.AlgorithmConfig(silent=true)
         @inferred Cerberus.process_node!(state, fm, node, config)
         result = state.node_result
         @test result.cost ≈ 0.5 - 2.5 / 2.1
@@ -47,7 +47,7 @@ end
             Cerberus.BranchingDecision(_VI(1), 0, Cerberus.DOWN_BRANCH),
             Cerberus.BranchingDecision(_VI(1), 1, Cerberus.UP_BRANCH),
         ])
-        config = Cerberus.AlgorithmConfig(silent = true)
+        config = Cerberus.AlgorithmConfig(silent=true)
         @inferred Cerberus.process_node!(state, fm, node, config)
         result = state.node_result
         @test result.cost == Inf
@@ -59,22 +59,36 @@ end
 end
 
 @testset "_ip_feasible" begin
-    fm = _build_dmip_formulation()
     config = Cerberus.AlgorithmConfig()
-    x_int = Dict(_VI(1) => 1.0, _VI(2) => 3.2, _VI(3) => 0.0)
-    @test Cerberus._ip_feasible(fm, x_int, config)
-    x_int_2 = Dict(
-        _VI(1) => 1.0 - 0.9config.int_tol,
-        _VI(2) => 3.2,
-        _VI(3) => 0.0 + 0.9config.int_tol,
-    )
-    @test Cerberus._ip_feasible(fm, x_int_2, config)
-    x_int_3 = Dict(
-        _VI(1) => 1.0 - 2config.int_tol,
-        _VI(2) => 3.2,
-        _VI(3) => 0.0 + config.int_tol,
-    )
-    @test !Cerberus._ip_feasible(fm, x_int_3, config)
+    let fm = _build_dmip_formulation()
+        x_int = Dict(_VI(1) => 1.0, _VI(2) => 3.2, _VI(3) => 0.0)
+        @test Cerberus._ip_feasible(fm, x_int, config)
+        x_int_2 = Dict(
+            _VI(1) => 1.0 - 0.9config.int_tol,
+            _VI(2) => 3.2,
+            _VI(3) => 0.0 + 0.9config.int_tol,
+        )
+        @test Cerberus._ip_feasible(fm, x_int_2, config)
+        x_int_3 = Dict(
+            _VI(1) => 1.0 - 2config.int_tol,
+            _VI(2) => 3.2,
+            _VI(3) => 0.0 + config.int_tol,
+        )
+        @test !Cerberus._ip_feasible(fm, x_int_3, config)
+    end
+
+    let fm = _build_gi_dmip_formulation()
+        x_int = Dict(_VI(1) => 0.6, _VI(2) => 0.0, _VI(3) => 2.0)
+        @test Cerberus._ip_feasible(fm, x_int, config)
+        x_int[_VI(2)] = 0.9
+        @test !Cerberus._ip_feasible(fm, x_int, config)
+        x_int[_VI(2)] = 1.0
+        x_int[_VI(3)] = 3.0
+        @test Cerberus._ip_feasible(fm, x_int, config)
+        x_int[_VI(2)] = 1.0
+        x_int[_VI(3)] = 2.9
+        @test !Cerberus._ip_feasible(fm, x_int, config)
+    end
 end
 
 @testset "_attach_parent_info!" begin
