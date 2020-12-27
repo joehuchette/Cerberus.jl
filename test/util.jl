@@ -2,10 +2,7 @@ _VI = MOI.VariableIndex
 _SV = MOI.SingleVariable
 
 function _CI(i::Int)
-    return MOI.ConstraintIndex{
-        MOI.ScalarAffineFunction{Float64},
-        MOI.GreaterThan{Float64},
-    }
+    return MOI.ConstraintIndex{MOI.ScalarAffineFunction{Float64},MOI.GreaterThan{Float64},}
 end
 
 function _build_polyhedron()
@@ -21,8 +18,11 @@ function _build_polyhedron()
                 MOI.LessThan(4.0),
             ),
         ],
-        [0.5, -1.3, 0.0],
-        [1.0, 2.3, 1.0],
+        [
+            MOI.Interval{Float64}(0.5, 1.0),
+            MOI.Interval{Float64}(-1.3, 2.3),
+            MOI.Interval{Float64}(0.0, 1.0),
+        ],
     )
 end
 
@@ -36,6 +36,6 @@ function _build_dmip_formulation()
     return Cerberus.DMIPFormulation(
         _build_relaxation(),
         Cerberus.AbstractFormulater[],
-        [MOI.VariableIndex(1), MOI.VariableIndex(3)],
+        [MOI.ZeroOne(), nothing, MOI.ZeroOne()],
     )
 end

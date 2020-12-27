@@ -31,8 +31,11 @@ function _test_polyhedron(p::Cerberus.Polyhedron)
     @test p.aff_constrs[2].f.constant == 0.0
     @test p.aff_constrs[2].s == MOI.LessThan(4.0)
 
-    @test p.l == [0.5, -1.3, 0.0]
-    @test p.u == [1.0, 2.3, 1.0]
+    @test p.bounds == [
+        MOI.Interval{Float64}(0.5, 1.0),
+        MOI.Interval{Float64}(-1.3, 2.3),
+        MOI.Interval{Float64}(0.0, 1.0),
+    ]
 
     return nothing
 end
@@ -47,8 +50,9 @@ end
             1.0 * _SV(_VI(1)) + 2.0 * _SV(_VI(2)),
             MOI.EqualTo(1.0),
         )],
-        [0.0],
-        [1.0],
+        [
+            MOI.Interval{Float64}(0.0, 1.0),
+        ],
     )
     @testset "ambient_dim" begin
         @test Cerberus.ambient_dim(p) == 3
@@ -103,7 +107,7 @@ end
     ]
     @test fm.base_form.obj.constant == 0.0
     @test isempty(fm.disjunction_formulaters)
-    @test fm.integrality == [_VI(1), _VI(3)]
+    @test fm.integrality == [MOI.ZeroOne(), nothing, MOI.ZeroOne()]
 
     @testset "empty constructor" begin
         fm = @inferred Cerberus.DMIPFormulation()

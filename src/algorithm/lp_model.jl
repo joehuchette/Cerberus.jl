@@ -8,10 +8,10 @@ function build_base_model(
 )
     model = config.lp_solver_factory(state, config)::Gurobi.Optimizer
     for i in 1:num_variables(form)
-        l = form.base_form.feasible_region.l[i]
-        u = form.base_form.feasible_region.u[i]
+        bound = form.base_form.feasible_region.bounds[i]
+        l, u = bound.lower, bound.upper
         # TODO: Make this update more efficient, and unit test it.
-        if MOI.VariableIndex(i) in form.integrality
+        if form.integrality[i] isa MOI.ZeroOne
             l = max(0, l)
             u = min(1, u)
         end
@@ -34,29 +34,15 @@ function build_base_model(
 end
 
 function update_node_bounds!(model::MOI.AbstractOptimizer, node::Node)
-    for index in node.vars_branched_to_zero
-        ci =
-            MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(index.value)
+    for bd in node.branchings
+        ci = MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(bd.vi.value)
         interval = MOI.get(model, MOI.ConstraintSet(), ci)
-        @assert interval.lower >= 0.0
-        MOI.set(
-            model,
-            MOI.ConstraintSet(),
-            ci,
-            MOI.Interval(interval.lower, 0.0),
-        )
-    end
-    for index in node.vars_branched_to_one
-        ci =
-            MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(index.value)
-        interval = MOI.get(model, MOI.ConstraintSet(), ci)
-        @assert interval.upper <= 1.0
-        MOI.set(
-            model,
-            MOI.ConstraintSet(),
-            ci,
-            MOI.Interval(1.0, interval.upper),
-        )
+        new_interval = (if bd.direction == DOWN_BRANCH
+            MOI.Interval{Float64}(interval.lower, bd.value)
+        else
+            MOI.Interval{Float64}(bd.value, interval.upper)
+        end)
+        MOI.set(model, MOI.ConstraintSet(), ci, new_interval)
     end
     return nothing
 end

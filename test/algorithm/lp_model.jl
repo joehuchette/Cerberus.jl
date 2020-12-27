@@ -8,17 +8,11 @@
     @test MOI.get(model, MOI.NumberOfVariables()) == 3
     @test MOI.get(
         model,
-        MOI.NumberOfConstraints{
-            MOI.ScalarAffineFunction{Float64},
-            MOI.EqualTo{Float64},
-        }(),
+        MOI.NumberOfConstraints{MOI.ScalarAffineFunction{Float64},MOI.EqualTo{Float64},}(),
     ) == 1
     c1 = MOI.get(
         model,
-        MOI.ListOfConstraintIndices{
-            MOI.ScalarAffineFunction{Float64},
-            MOI.EqualTo{Float64},
-        }(),
+        MOI.ListOfConstraintIndices{MOI.ScalarAffineFunction{Float64},MOI.EqualTo{Float64},}(),
     )[1]
     f1 = MOI.get(model, MOI.ConstraintFunction(), c1)
     @test f1.terms == [
@@ -32,17 +26,11 @@
 
     @test MOI.get(
         model,
-        MOI.NumberOfConstraints{
-            MOI.ScalarAffineFunction{Float64},
-            MOI.LessThan{Float64},
-        }(),
+        MOI.NumberOfConstraints{MOI.ScalarAffineFunction{Float64},MOI.LessThan{Float64},}(),
     ) == 1
     c2 = MOI.get(
         model,
-        MOI.ListOfConstraintIndices{
-            MOI.ScalarAffineFunction{Float64},
-            MOI.LessThan{Float64},
-        }(),
+        MOI.ListOfConstraintIndices{MOI.ScalarAffineFunction{Float64},MOI.LessThan{Float64},}(),
     )[1]
     f2 = MOI.get(model, MOI.ConstraintFunction(), c2)
     @test f2.terms == [
@@ -54,10 +42,7 @@
     @test s2 == MOI.LessThan(4.0)
     @test MOI.get(
         model,
-        MOI.NumberOfConstraints{
-            MOI.ScalarAffineFunction{Float64},
-            MOI.GreaterThan{Float64},
-        }(),
+        MOI.NumberOfConstraints{MOI.ScalarAffineFunction{Float64},MOI.GreaterThan{Float64},}(),
     ) == 0
 
     @test MOI.get(
@@ -101,7 +86,10 @@ end
     @test MOI.Utilities.get_bounds(model, Float64, MOI.VariableIndex(3)) ==
           (0.0, 1.0)
 
-    node = Cerberus.Node([_VI(1)], [_VI(3)])
+    node = Cerberus.Node([
+        Cerberus.BranchingDecision(_VI(1), 0, Cerberus.DOWN_BRANCH),
+        Cerberus.BranchingDecision(_VI(3), 1, Cerberus.UP_BRANCH),
+    ])
     @inferred Cerberus.update_node_bounds!(model, node)
     @test MOI.get(
         model,
@@ -119,7 +107,7 @@ end
     form = _build_dmip_formulation()
     state = Cerberus.CurrentState()
     node = Cerberus.Node()
-    config = Cerberus.AlgorithmConfig(silent = true)
+    config = Cerberus.AlgorithmConfig(silent=true)
     model = Cerberus.build_base_model(form, state, node, config)
     MOI.optimize!(model)
     @test MOI.get(model, MOI.TerminationStatus()) == MOI.OPTIMAL
@@ -133,7 +121,7 @@ end
     form = _build_dmip_formulation()
     state = Cerberus.CurrentState()
     node = Cerberus.Node()
-    config = Cerberus.AlgorithmConfig(silent = true)
+    config = Cerberus.AlgorithmConfig(silent=true)
     model = Cerberus.build_base_model(form, state, node, config)
     MOI.optimize!(model)
     @assert MOI.get(model, MOI.PrimalStatus()) == MOI.FEASIBLE_POINT
@@ -149,7 +137,7 @@ end
     form = _build_dmip_formulation()
     state = Cerberus.CurrentState()
     node = Cerberus.Node()
-    config = Cerberus.AlgorithmConfig(silent = true)
+    config = Cerberus.AlgorithmConfig(silent=true)
     model = Cerberus.build_base_model(form, state, node, config)
     MOI.optimize!(model)
     @assert MOI.get(model, MOI.PrimalStatus()) == MOI.FEASIBLE_POINT
@@ -162,14 +150,8 @@ end
             MOI.BASIC,
         MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(3) =>
             MOI.NONBASIC_AT_LOWER,
-        MOI.ConstraintIndex{
-            MOI.ScalarAffineFunction{Float64},
-            MOI.EqualTo{Float64},
-        }(2) => MOI.NONBASIC,
-        MOI.ConstraintIndex{
-            MOI.ScalarAffineFunction{Float64},
-            MOI.LessThan{Float64},
-        }(3) => MOI.BASIC,
+        MOI.ConstraintIndex{MOI.ScalarAffineFunction{Float64},MOI.EqualTo{Float64},}(2) => MOI.NONBASIC,
+        MOI.ConstraintIndex{MOI.ScalarAffineFunction{Float64},MOI.LessThan{Float64},}(3) => MOI.BASIC,
     )
 end
 
@@ -177,7 +159,7 @@ end
     form = _build_dmip_formulation()
     state = Cerberus.CurrentState()
     node = Cerberus.Node()
-    config = Cerberus.AlgorithmConfig(silent = true)
+    config = Cerberus.AlgorithmConfig(silent=true)
     model = Cerberus.build_base_model(form, state, node, config)
     MOI.optimize!(model)
     @assert MOI.get(model, MOI.PrimalStatus()) == MOI.FEASIBLE_POINT
@@ -189,14 +171,8 @@ end
             MOI.BASIC,
         MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(3) =>
             MOI.NONBASIC_AT_LOWER,
-        MOI.ConstraintIndex{
-            MOI.ScalarAffineFunction{Float64},
-            MOI.EqualTo{Float64},
-        }(2) => MOI.NONBASIC,
-        MOI.ConstraintIndex{
-            MOI.ScalarAffineFunction{Float64},
-            MOI.LessThan{Float64},
-        }(3) => MOI.BASIC,
+        MOI.ConstraintIndex{MOI.ScalarAffineFunction{Float64},MOI.EqualTo{Float64},}(2) => MOI.NONBASIC,
+        MOI.ConstraintIndex{MOI.ScalarAffineFunction{Float64},MOI.LessThan{Float64},}(3) => MOI.BASIC,
     )
 end
 
@@ -204,8 +180,8 @@ function _set_basis_model(basis::Cerberus.Basis)
     form = _build_dmip_formulation()
     state = Cerberus.CurrentState()
     parent_info = Cerberus.ParentInfo(-Inf, basis, nothing)
-    node = Cerberus.Node([], [], parent_info)
-    config = Cerberus.AlgorithmConfig(silent = true)
+    node = Cerberus.Node([], parent_info)
+    config = Cerberus.AlgorithmConfig(silent=true)
     model = Cerberus.build_base_model(form, state, node, config)
     Cerberus.set_basis_if_available!(model, node.parent_info.basis)
     return model
@@ -218,14 +194,8 @@ end
             MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(1) => MOI.BASIC,
             MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(2) => MOI.NONBASIC_AT_LOWER,
             MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(3) => MOI.NONBASIC_AT_LOWER,
-            MOI.ConstraintIndex{
-                MOI.ScalarAffineFunction{Float64},
-                MOI.EqualTo{Float64},
-            }(2) => MOI.NONBASIC,
-            MOI.ConstraintIndex{
-                MOI.ScalarAffineFunction{Float64},
-                MOI.LessThan{Float64},
-            }(3) => MOI.BASIC,
+            MOI.ConstraintIndex{MOI.ScalarAffineFunction{Float64},MOI.EqualTo{Float64},}(2) => MOI.NONBASIC,
+            MOI.ConstraintIndex{MOI.ScalarAffineFunction{Float64},MOI.LessThan{Float64},}(3) => MOI.BASIC,
         )
         model = _set_basis_model(subopt_basis)
         MOI.optimize!(model)
@@ -238,14 +208,8 @@ end
             MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(1) => MOI.NONBASIC_AT_LOWER,
             MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(2) => MOI.BASIC,
             MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(3) => MOI.NONBASIC_AT_LOWER,
-            MOI.ConstraintIndex{
-                MOI.ScalarAffineFunction{Float64},
-                MOI.EqualTo{Float64},
-            }(2) => MOI.NONBASIC,
-            MOI.ConstraintIndex{
-                MOI.ScalarAffineFunction{Float64},
-                MOI.LessThan{Float64},
-            }(3) => MOI.BASIC,
+            MOI.ConstraintIndex{MOI.ScalarAffineFunction{Float64},MOI.EqualTo{Float64},}(2) => MOI.NONBASIC,
+            MOI.ConstraintIndex{MOI.ScalarAffineFunction{Float64},MOI.LessThan{Float64},}(3) => MOI.BASIC,
         )
         model = _set_basis_model(opt_basis)
         MOI.optimize!(model)

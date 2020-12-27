@@ -47,21 +47,21 @@ const OPTIMIZER = MOIU.CachingOptimizer(
 # MOIB.add_bridge(OPTIMIZER, )
 
 const CONFIG = MOIT.TestConfig(
-    modify_lhs = false,
-    duals = false,
-    dual_objective_value = false,
-    infeas_certificates = false,
+    modify_lhs=false,
+    duals=false,
+    dual_objective_value=false,
+    infeas_certificates=false,
 )
 
 @testset "basic_constraint_tests" begin
     MOIT.basic_constraint_tests(
         OPTIMIZER,
         CONFIG,
-        delete = false,
+        delete=false,
         # TODO: Add support for getting F/S
-        get_constraint_function = false,
-        get_constraint_set = false,
-        include = [
+        get_constraint_function=false,
+        get_constraint_set=false,
+        include=[
             (MOI.SingleVariable, MOI.LessThan{Float64}),
             (MOI.SingleVariable, MOI.GreaterThan{Float64}),
             (MOI.SingleVariable, MOI.EqualTo{Float64}),
@@ -82,10 +82,6 @@ end
             # Should add support for:
             "time_limit_sec",
             "solve_result_index",
-
-            # Can test with support for general integers:
-            "solve_integer_edge_cases",
-            "solve_objbound_edge_cases",
 
             # Can test with support for MOI.UNBOUNDED status:
             "solve_unbounded_model",
@@ -151,12 +147,11 @@ end
         OPTIMIZER,
         CONFIG,
         [
-            # Needs general integer variables
-            "int1",
-            "int3",
-
             # Needs SOS1/SOS2
             "int2",
+
+            # Needs SAF-in-Interval
+            "int3",
 
             # Needs MOI.ACTIVATE_ON_ONE
             "indicator1",

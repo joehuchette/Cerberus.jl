@@ -1,5 +1,3 @@
-const _SUPPORTED_SETS = Union{MOI.LessThan,MOI.GreaterThan,MOI.EqualTo}
-
 struct AffineConstraint
     f::MOI.ScalarAffineFunction{Float64}
     s::_SUPPORTED_SETS
@@ -14,33 +12,28 @@ _max_var_index(ac::AffineConstraint) = _max_var_index(ac.f)
 
 mutable struct Polyhedron
     aff_constrs::Vector{AffineConstraint}
-    l::Vector{Float64}
-    u::Vector{Float64}
-    # TODO: Enforce that all bounds are finite.
+    bounds::Vector{MOI.Interval{Float64}}
     # TODO: Enforce that length(bound) is no less than max variable index
     #       appearing in aff_constrs.
     function Polyhedron(
         aff_constrs::Vector{AffineConstraint},
-        l::Vector{Float64},
-        u::Vector{Float64},
+        bounds::Vector{MOI.Interval{Float64}}
     )
-        n = length(l)
-        @assert n == length(u)
+        n = length(bounds)
         for aff_constr in aff_constrs
             @assert _max_var_index(aff_constr) <= n
         end
-        return new(aff_constrs, l, u)
+        return new(aff_constrs, bounds)
     end
 end
 
 function Polyhedron()
-    return Polyhedron(AffineConstraint[], Float64[], Float64[])
+    return Polyhedron(AffineConstraint[], MOI.Interval{Float64}[])
 end
 
-ambient_dim(p::Polyhedron) = length(p.l)
+ambient_dim(p::Polyhedron) = length(p.bounds)
 function add_variable(p::Polyhedron)
-    push!(p.l, -Inf)
-    push!(p.u, Inf)
+    push!(p.bounds, MOI.Interval{Float64}(-Inf, Inf))
     return nothing
 end
 
@@ -50,8 +43,7 @@ num_constraints(p::Polyhedron) = length(p.aff_constrs)
 function Base.isempty(p::Polyhedron)
     return ambient_dim(p) == 0 &&
            num_constraints(p) == 0 &&
-           Base.isempty(p.l) &&
-           Base.isempty(p.u)
+           Base.isempty(p.bounds)
 end
 
 # Assumption: objective sense == MINIMIZE
@@ -77,10 +69,6 @@ function LPRelaxation()
     return LPRelaxation(
         Polyhedron(),
         convert(MOI.ScalarAffineFunction{Float64}, 0.0),
-        # MOI.ScalarAffineFunction{Float64}(
-        #     MOI.ScalarAffineTerm{Float64}[],
-        #     0.0
-        # ),
     )
 end
 
@@ -102,17 +90,15 @@ abstract type AbstractFormulater end
 mutable struct DMIPFormulation
     base_form::LPRelaxation
     disjunction_formulaters::Vector{AbstractFormulater}
-    integrality::Vector{MOI.VariableIndex}
+    integrality::Vector{_INT_SETS}
 
     function DMIPFormulation(
         base_form::LPRelaxation,
         disjunction_formulaters::Vector{AbstractFormulater},
-        integrality::Vector{MOI.VariableIndex},
+        integrality::Vector,
     )
         n = ambient_dim(base_form.feasible_region)
-        for vi in integrality
-            @assert vi.value <= n
-        end
+        @assert length(integrality) == n
         return new(base_form, disjunction_formulaters, integrality)
     end
 end
@@ -121,11 +107,17 @@ function DMIPFormulation()
     return DMIPFormulation(
         LPRelaxation(),
         AbstractFormulater[],
-        MOI.VariableIndex[],
+        _INT_SETS[],
     )
 end
 
 num_variables(fm::DMIPFormulation) = num_variables(fm.base_form)
+
+function add_variable(fm::DMIPFormulation)
+    add_variable(fm.base_form.feasible_region)
+    push!(fm.integrality, nothing)
+    return nothing
+end
 
 # TODO: Unit test
 function Base.isempty(form::DMIPFormulation)
