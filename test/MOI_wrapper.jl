@@ -104,29 +104,20 @@ end
     MOIT.validtest(OPTIMIZER)
 end
 
-@testset "contlinear" begin
-    MOIT.contlineartest(
-        OPTIMIZER,
-        CONFIG,
-        [
-            # Needs vector constraints
-            "linear7",
-            "linear15",
-
-            # Needs SAF-in-Interval constraints
-            "linear10",
-            "linear10b",
-
-            # Needs setting of VariablePrimalStart
-            "partial_start",
-        ],
-    )
-end
-
 const MOIB = MOI.Bridges
 
 const BRIDGED_OPTIMIZER = MOIB.LazyBridgeOptimizer(OPTIMIZER)
+MOIB.add_bridge(BRIDGED_OPTIMIZER, MOIB.Constraint.ScalarizeBridge{Float64})
 MOIB.add_bridge(BRIDGED_OPTIMIZER, MOIB.Constraint.SemiToBinaryBridge{Float64})
+MOIB.add_bridge(BRIDGED_OPTIMIZER, MOIB.Constraint.SplitIntervalBridge{Float64})
+MOIB.add_bridge(BRIDGED_OPTIMIZER, MOIB.Variable.ZerosBridge{Float64})
+
+@testset "contlinear" begin
+    MOIT.contlineartest(BRIDGED_OPTIMIZER, CONFIG, [
+        # Needs setting of VariablePrimalStart
+        "partial_start",
+    ])
+end
 
 # TODO: Add bridges to support below sets
 @testset "intlinear" begin
@@ -136,9 +127,6 @@ MOIB.add_bridge(BRIDGED_OPTIMIZER, MOIB.Constraint.SemiToBinaryBridge{Float64})
         [
             # Needs SOS1/SOS2
             "int2",
-
-            # Needs SAF-in-Interval
-            "int3",
 
             # Needs MOI.ACTIVATE_ON_ONE
             "indicator1",
