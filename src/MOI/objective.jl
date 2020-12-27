@@ -9,8 +9,6 @@ function MOI.set(
 end
 MOI.get(opt::Optimizer, ::MOI.ObjectiveSense) = opt.obj_sense
 
-const _O_FUNCS = Union{SV,SAF}
-
 MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{F}) where {F<:_O_FUNCS} = true
 function MOI.set(
     opt::Optimizer,

@@ -65,13 +65,30 @@ function process_node!(
     return nothing
 end
 
+# Only checks feasibility w.r.t. integrality constraints!
 function _ip_feasible(
     form::DMIPFormulation,
-    x::Dict{MOI.VariableIndex,Float64},
+    x::Dict{VI,Float64},
     config::AlgorithmConfig,
 )::Bool
-    for vi in form.integrality
-        if !(abs(x[vi]) <= config.int_tol || abs(1 - x[vi]) <= config.int_tol)
+    for i in 1:num_variables(form)
+        v_set = form.integrality[i]
+        if v_set === nothing
+            continue
+        end
+        vi = VI(i)
+        xi = x[vi]
+        ϵ = config.int_tol
+        xi_f = _approx_floor(xi, ϵ)
+        xi_c = _approx_ceil(xi, ϵ)
+        if v_set == ZO()
+            # Should have explicitly imposed 0/1 bounds in the formulation...
+            # but assert just to be safe.
+            @assert -ϵ <= xi <= 1 + ϵ
+        end
+        if min(abs(xi - xi_f), abs(xi_c - xi)) > ϵ
+            # The variable value is more than ϵ away from both its floor and
+            # ceiling, so it's fractional up to our tolerance.
             return false
         end
     end
@@ -109,8 +126,7 @@ function update_state!(
         #  Implies MIP is infeasible or unbounded. Should only happen at root.
     elseif result.cost == -Inf
         # Assert that we're at the root node
-        @assert isempty(node.vars_branched_to_zero)
-        @assert isempty(node.vars_branched_to_one)
+        @assert isempty(node.branchings)
         state.primal_bound = result.cost
         # 4. Prune by integrality
     elseif _ip_feasible(form, result.x, config)

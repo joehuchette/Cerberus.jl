@@ -1,7 +1,7 @@
 mutable struct NodeResult
     cost::Float64
     simplex_iters::Int
-    x::Dict{MOI.VariableIndex,Float64}
+    x::Dict{VI,Float64}
     basis::Basis
     model::Union{Nothing,Gurobi.Optimizer}
     # Wall time should be tracked by CurrentState
@@ -11,7 +11,7 @@ function NodeResult()
     return NodeResult(
         NaN,
         0,
-        Dict{MOI.VariableIndex,Float64}(),
+        Dict{VI,Float64}(),
         Dict{Any,MOI.BasisStatusCode}(),
         nothing,
     )
@@ -38,7 +38,7 @@ mutable struct CurrentState
     node_result::NodeResult
     primal_bound::Float64
     dual_bound::Float64
-    best_solution::Dict{MOI.VariableIndex,Float64}
+    best_solution::Dict{VI,Float64}
     total_node_count::Int
     total_simplex_iters::Int
 
@@ -49,7 +49,7 @@ mutable struct CurrentState
             NodeResult(),
             primal_bound,
             -Inf,
-            Dict{MOI.VariableIndex,Float64}(),
+            Dict{VI,Float64}(),
             0,
             0,
         )

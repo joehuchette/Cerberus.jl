@@ -29,20 +29,11 @@ end
         @test result.x[_VI(2)] ≈ 2.5 / 2.1
         @test result.x[_VI(3)] ≈ 0.0
         @test result.basis == Cerberus.Basis(
-            MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(1) =>
-                MOI.NONBASIC_AT_LOWER,
-            MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(2) =>
-                MOI.BASIC,
-            MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(3) =>
-                MOI.NONBASIC_AT_LOWER,
-            MOI.ConstraintIndex{
-                MOI.ScalarAffineFunction{Float64},
-                MOI.EqualTo{Float64},
-            }(2) => MOI.NONBASIC,
-            MOI.ConstraintIndex{
-                MOI.ScalarAffineFunction{Float64},
-                MOI.LessThan{Float64},
-            }(3) => MOI.BASIC,
+            _CI{_SV,_IN}(1) => MOI.NONBASIC_AT_LOWER,
+            _CI{_SV,_IN}(2) => MOI.BASIC,
+            _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
+            _CI{_SAF,_ET}(2) => MOI.NONBASIC,
+            _CI{_SAF,_LT}(3) => MOI.BASIC,
         )
         @test result.model === nothing
     end
@@ -52,7 +43,10 @@ end
         fm = _build_dmip_formulation()
         state = Cerberus.CurrentState()
         # A bit hacky, but force infeasibility by branching both up and down.
-        node = Cerberus.Node([_VI(1)], [_VI(1)])
+        node = Cerberus.Node([
+            Cerberus.BranchingDecision(_VI(1), 0, Cerberus.DOWN_BRANCH),
+            Cerberus.BranchingDecision(_VI(1), 1, Cerberus.UP_BRANCH),
+        ])
         config = Cerberus.AlgorithmConfig(silent = true)
         @inferred Cerberus.process_node!(state, fm, node, config)
         result = state.node_result
@@ -65,27 +59,45 @@ end
 end
 
 @testset "_ip_feasible" begin
-    fm = _build_dmip_formulation()
     config = Cerberus.AlgorithmConfig()
-    x_int = Dict(_VI(1) => 1.0, _VI(2) => 3.2, _VI(3) => 0.0)
-    @test Cerberus._ip_feasible(fm, x_int, config)
-    x_int_2 = Dict(
-        _VI(1) => 1.0 - 0.9config.int_tol,
-        _VI(2) => 3.2,
-        _VI(3) => 0.0 + 0.9config.int_tol,
-    )
-    @test Cerberus._ip_feasible(fm, x_int_2, config)
-    x_int_3 = Dict(
-        _VI(1) => 1.0 - 2config.int_tol,
-        _VI(2) => 3.2,
-        _VI(3) => 0.0 + config.int_tol,
-    )
-    @test !Cerberus._ip_feasible(fm, x_int_3, config)
+    let fm = _build_dmip_formulation()
+        x_int = Dict(_VI(1) => 1.0, _VI(2) => 3.2, _VI(3) => 0.0)
+        @test Cerberus._ip_feasible(fm, x_int, config)
+        x_int_2 = Dict(
+            _VI(1) => 1.0 - 0.9config.int_tol,
+            _VI(2) => 3.2,
+            _VI(3) => 0.0 + 0.9config.int_tol,
+        )
+        @test Cerberus._ip_feasible(fm, x_int_2, config)
+        x_int_3 = Dict(
+            _VI(1) => 1.0 - 2config.int_tol,
+            _VI(2) => 3.2,
+            _VI(3) => 0.0 + config.int_tol,
+        )
+        @test !Cerberus._ip_feasible(fm, x_int_3, config)
+    end
+
+    let fm = _build_gi_dmip_formulation()
+        x_int = Dict(_VI(1) => 0.6, _VI(2) => 0.0, _VI(3) => 2.0)
+        @test Cerberus._ip_feasible(fm, x_int, config)
+        x_int[_VI(2)] = 0.9
+        @test !Cerberus._ip_feasible(fm, x_int, config)
+        x_int[_VI(2)] = 1.0
+        x_int[_VI(3)] = 3.0
+        @test Cerberus._ip_feasible(fm, x_int, config)
+        x_int[_VI(2)] = 1.0
+        x_int[_VI(3)] = 2.9
+        @test !Cerberus._ip_feasible(fm, x_int, config)
+    end
 end
 
 @testset "_attach_parent_info!" begin
-    fc = Cerberus.Node(_VI[], [_VI(1)])
-    oc = Cerberus.Node([_VI(1)], _VI[])
+    fc = Cerberus.Node([
+        Cerberus.BranchingDecision(_VI(1), 1, Cerberus.UP_BRANCH),
+    ])
+    oc = Cerberus.Node([
+        Cerberus.BranchingDecision(_VI(1), 0, Cerberus.DOWN_BRANCH),
+    ])
     basis = Cerberus.Basis(_VI(1) => MOI.BASIC)
     model = Gurobi.Optimizer()
     result = Cerberus.NodeResult(
@@ -155,10 +167,7 @@ end
     frac_soln_2 = [0.0, 2.9, 0.6]
     frac_soln_dict = _vec_to_dict(frac_soln_2)
     db = 10.1
-    basis = Cerberus.Basis(
-        MOI.ConstraintIndex{MOI.SingleVariable,MOI.Interval{Float64}}(1) =>
-            MOI.BASIC,
-    )
+    basis = Cerberus.Basis(_CI{_SV,_IN}(1) => MOI.BASIC)
     model = Gurobi.Optimizer()
     empty!(cs.node_result)
     cs.node_result.cost = 10.1
@@ -176,14 +185,14 @@ end
     @inferred Cerberus.update_dual_bound!(cs)
     @test cs.dual_bound == db
     fc = Cerberus.pop_node!(cs.tree)
-    @test isempty(fc.vars_branched_to_zero)
-    @test fc.vars_branched_to_one == [_VI(3)]
+    @test fc.branchings ==
+          [Cerberus.BranchingDecision(_VI(3), 1, Cerberus.UP_BRANCH)]
     @test fc.parent_info.dual_bound == db
     @test fc.parent_info.basis == basis
     @test fc.parent_info.hot_start_model === model
     oc = Cerberus.pop_node!(cs.tree)
-    @test oc.vars_branched_to_zero == [_VI(3)]
-    @test isempty(oc.vars_branched_to_one)
+    @test oc.branchings ==
+          [Cerberus.BranchingDecision(_VI(3), 0, Cerberus.DOWN_BRANCH)]
     @test oc.parent_info.dual_bound == db
     @test oc.parent_info.basis == basis
     @test oc.parent_info.hot_start_model === nothing

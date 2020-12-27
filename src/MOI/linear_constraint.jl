@@ -1,4 +1,3 @@
-const _C_SETS = Union{ET,GT,LT}
 
 MOI.supports_constraint(::Optimizer, ::Type{SAF}, ::Type{<:_C_SETS}) = true
 

@@ -27,25 +27,6 @@ const OPTIMIZER = MOIU.CachingOptimizer(
     end,
 )
 
-# const MOIB = MOI.Bridges
-
-# model = Cerberus.Optimizer()
-# model.config.lp_solver_factory = (state, config) -> (begin
-#     model = Gurobi.Optimizer(GRB_ENV)
-#     MOI.set(model, MOI.Silent(), true)
-#     MOI.set(model, MOI.RawParameter("DualReductions"), 0)
-#     MOI.set(model, MOI.RawParameter("InfUnbdInfo"), 1)
-#     model
-# end)
-
-# const OPTIMIZER = MOIU.CachingOptimizer(
-#     MOIU.UniversalFallback(MOIU.Model{Float64}()),
-#     MOIB.LazyBridgeOptimizer(model),
-# )
-
-# MOIB.add_bridge(OPTIMIZER, MOIB.VectorizeBridge)
-# MOIB.add_bridge(OPTIMIZER, )
-
 const CONFIG = MOIT.TestConfig(
     modify_lhs = false,
     duals = false,
@@ -62,14 +43,15 @@ const CONFIG = MOIT.TestConfig(
         get_constraint_function = false,
         get_constraint_set = false,
         include = [
-            (MOI.SingleVariable, MOI.LessThan{Float64}),
-            (MOI.SingleVariable, MOI.GreaterThan{Float64}),
-            (MOI.SingleVariable, MOI.EqualTo{Float64}),
-            (MOI.SingleVariable, MOI.Interval{Float64}),
-            (MOI.SingleVariable, MOI.ZeroOne),
-            (MOI.ScalarAffineFunction{Float64}, MOI.LessThan{Float64}),
-            (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
-            (MOI.ScalarAffineFunction{Float64}, MOI.EqualTo{Float64}),
+            (_SV, _LT),
+            (_SV, _GT),
+            (_SV, _ET),
+            (_SV, _IN),
+            (_SV, _ZO),
+            (_SV, _GI),
+            (_SAF, _LT),
+            (_SAF, _GT),
+            (_SAF, _ET),
         ],
     )
 end
@@ -82,10 +64,6 @@ end
             # Should add support for:
             "time_limit_sec",
             "solve_result_index",
-
-            # Can test with support for general integers:
-            "solve_integer_edge_cases",
-            "solve_objbound_edge_cases",
 
             # Can test with support for MOI.UNBOUNDED status:
             "solve_unbounded_model",
@@ -145,30 +123,28 @@ end
     )
 end
 
+const MOIB = MOI.Bridges
+
+const BRIDGED_OPTIMIZER = MOIB.LazyBridgeOptimizer(OPTIMIZER)
+MOIB.add_bridge(BRIDGED_OPTIMIZER, MOIB.Constraint.SemiToBinaryBridge{Float64})
+
 # TODO: Add bridges to support below sets
 @testset "intlinear" begin
     MOIT.intlineartest(
-        OPTIMIZER,
+        BRIDGED_OPTIMIZER,
         CONFIG,
         [
-            # Needs general integer variables
-            "int1",
-            "int3",
-
             # Needs SOS1/SOS2
             "int2",
+
+            # Needs SAF-in-Interval
+            "int3",
 
             # Needs MOI.ACTIVATE_ON_ONE
             "indicator1",
             "indicator2",
             "indicator3",
             "indicator4",
-
-            # Needs MOI.Semicontinuous
-            "semiconttest",
-
-            # Needs MOI.semiinteger
-            "semiinttest",
         ],
     )
 end

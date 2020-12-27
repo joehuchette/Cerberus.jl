@@ -7,19 +7,20 @@ struct ParentInfo
 end
 ParentInfo() = ParentInfo(-Inf, nothing, nothing)
 
+@enum BranchingDirection DOWN_BRANCH UP_BRANCH
+
+struct BranchingDecision
+    vi::VI
+    value::Int
+    direction::BranchingDirection
+end
+
 mutable struct Node
-    vars_branched_to_zero::Vector{MOI.VariableIndex}
-    vars_branched_to_one::Vector{MOI.VariableIndex}
+    branchings::Vector{BranchingDecision}
     parent_info::ParentInfo
-    # TODO: Check that branching sets do not overlap
 end
-Node() = Node([], [], ParentInfo())
-function Node(
-    zero_set::Vector{MOI.VariableIndex},
-    one_set::Vector{MOI.VariableIndex},
-)
-    return Node(zero_set, one_set, ParentInfo())
-end
+Node() = Node([], ParentInfo())
+Node(branchings::Vector{BranchingDecision}) = Node(branchings, ParentInfo())
 
 mutable struct Tree
     open_nodes::DataStructures.Stack{Node}

@@ -1,21 +1,21 @@
-function down_branch(node::Node, branch_vi::MOI.VariableIndex)
-    return _branch(node, branch_vi, true)
+function down_branch(node::Node, branch_vi::VI, val::Float64)
+    return _branch(node, branch_vi, floor(Int, val), DOWN_BRANCH)
 end
 
-function up_branch(node::Node, branch_vi::MOI.VariableIndex)
-    return _branch(node, branch_vi, false)
+function up_branch(node::Node, branch_vi::VI, val::Float64)
+    return _branch(node, branch_vi, ceil(Int, val), UP_BRANCH)
 end
 
-function _branch(node::Node, branch_vi::MOI.VariableIndex, branch_down::Bool)
+function _branch(
+    node::Node,
+    branch_vi::VI,
+    rounded_val::Int,
+    direction::BranchingDirection,
+)
     # TODO: Can likely reuse this memory instead of copying
-    vars_branched_to_zero = copy(node.vars_branched_to_zero)
-    vars_branched_to_one = copy(node.vars_branched_to_one)
-    if branch_down
-        push!(vars_branched_to_zero, branch_vi)
-    else
-        push!(vars_branched_to_one, branch_vi)
-    end
-    return Node(vars_branched_to_zero, vars_branched_to_one)
+    branchings = copy(node.branchings)
+    push!(branchings, BranchingDecision(branch_vi, rounded_val, direction))
+    return Node(branchings)
 end
 
 function branch(
@@ -25,27 +25,35 @@ function branch(
     parent_result::NodeResult,
     config::AlgorithmConfig,
 )::Tuple{Node,Node}
-    most_frac_vi = MOI.VariableIndex(0)
-    most_frac_val = 1.0
-    for vi in form.integrality
+    t = 0
+    most_frac_val = 0.0
+    for i in 1:num_variables(form)
+        var_set = form.integrality[i]
+        # continuous variable, don't branch on it
+        if var_set === nothing
+            continue
+        end
+        vi = VI(i)
         xi = parent_result.x[vi]
-        @assert 0 <= xi <= 1
-        if abs(xi - 0) <= config.int_tol || abs(xi - 1) <= config.int_tol
+        xi_f = _approx_floor(xi, config.int_tol)
+        xi_c = _approx_ceil(xi, config.int_tol)
+        frac_val = min(xi - xi_f, xi_c - xi)
+        # We're integral up to tolerance, don't branch.
+        if frac_val <= config.int_tol
             continue
         end
-        frac_val = abs(xi - 0.5)
-        if frac_val >= 0.5 - config.int_tol
-            continue
-        end
-        if frac_val < most_frac_val
-            most_frac_vi = vi
+        if frac_val > most_frac_val
+            t = i
             most_frac_val = frac_val
         end
     end
-    @assert most_frac_vi.value > 0
-    down_node = down_branch(parent_node, most_frac_vi)
-    up_node = up_branch(parent_node, most_frac_vi)
-    if parent_result.x[most_frac_vi] > 0.5
+    @assert t > 0
+    vt = VI(t)
+    xt = parent_result.x[vt]
+    down_node = down_branch(parent_node, vt, xt)
+    up_node = up_branch(parent_node, vt, xt)
+    # TODO: This dives on child that is closest to integrality. Is this right?
+    if xt - floor(xt) > ceil(xt) - xt
         return (up_node, down_node)
     else
         return (down_node, up_node)

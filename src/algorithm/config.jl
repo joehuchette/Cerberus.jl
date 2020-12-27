@@ -13,10 +13,11 @@ const DEFAULT_SILENT = false
 const DEFAULT_BRANCHING_RULE = MostInfeasible()
 const DEFAULT_NODE_LIMIT = 1_000_000
 const DEFAULT_GAP_TOL = 1e-4
-const DEFAULT_INTEGRALITY_TOL = 1e-8
+const DEFAULT_INTEGRALITY_TOL = 1e-5
 const DEFAULT_WARM_START = true
 const DEFAULT_HOT_START = false
 
+# TODO: Use Base.@kwdef
 mutable struct AlgorithmConfig
     lp_solver_factory::Function
     silent::Bool
