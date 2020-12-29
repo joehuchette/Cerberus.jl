@@ -1,26 +1,26 @@
 function optimize!(
     form::DMIPFormulation,
     config::AlgorithmConfig,
-    primal_bound::Float64 = Inf,
+    primal_bound::Float64=Inf,
 )::Result
     result = Result()
-    to = result.timings
     # TODO: Model presolve. Must happen before initial state is built.
     # Initialize search tree with LP relaxation
     state = CurrentState(primal_bound)
-    TimerOutputs.@timeit to "Tree search" begin
-        while !isempty(state.tree)
-            node = pop_node!(state.tree)
-            TimerOutputs.@timeit to "Node processing" begin
-                process_node!(state, form, node, config)
-            end
-            update_state!(state, form, node, config)
-            # TODO: Don't do this every iteration
-            update_dual_bound!(state)
-            state.node_result
-            if state.total_node_count >= config.node_limit
-                break
-            end
+    if config.log_output
+        _log_preamble(form, primal_bound)
+    end
+    while !isempty(state.tree)
+        node = pop_node!(state.tree)
+        process_node!(state, form, node, config)
+        update_state!(state, form, node, config)
+        # TODO: Don't do this every iteration
+        update_dual_bound!(state)
+        if config.log_output
+            _log_node_update(state)
+        end
+        if state.total_node_count >= config.node_limit
+            break
         end
     end
     return Result(state, config)
@@ -42,13 +42,15 @@ function process_node!(
     MOI.optimize!(model)
 
     # 3. Grab solution data and bundle it into a NodeResult
+    empty!(state.node_result)
     simplex_iters = MOI.get(model, MOI.SimplexIterations())
     state.node_result.simplex_iters = simplex_iters
+    state.node_result.depth = length(node.branchings)
     term_status = MOI.get(model, MOI.TerminationStatus())
-    empty!(state.node_result)
     if term_status == MOI.OPTIMAL
         state.node_result.cost = MOI.get(model, MOI.ObjectiveValue())
         _fill_solution!(state.node_result.x, model)
+        state.node_result.int_infeas = _num_int_infeasible(form, state.node_result.x, config)
         if config.warm_start
             _fill_basis!(state.node_result.basis, model)
         end
@@ -66,11 +68,12 @@ function process_node!(
 end
 
 # Only checks feasibility w.r.t. integrality constraints!
-function _ip_feasible(
+function _num_int_infeasible(
     form::DMIPFormulation,
     x::Dict{VI,Float64},
     config::AlgorithmConfig,
-)::Bool
+)::Int
+    cnt = 0
     for i in 1:num_variables(form)
         v_set = form.integrality[i]
         if v_set === nothing
@@ -81,7 +84,7 @@ function _ip_feasible(
         ϵ = config.int_tol
         xi_f = _approx_floor(xi, ϵ)
         xi_c = _approx_ceil(xi, ϵ)
-        if v_set == ZO()
+        if v_set isa ZO
             # Should have explicitly imposed 0/1 bounds in the formulation...
             # but assert just to be safe.
             @assert -ϵ <= xi <= 1 + ϵ
@@ -89,10 +92,10 @@ function _ip_feasible(
         if min(abs(xi - xi_f), abs(xi_c - xi)) > ϵ
             # The variable value is more than ϵ away from both its floor and
             # ceiling, so it's fractional up to our tolerance.
-            return false
+            cnt += 1
         end
     end
-    return true
+    return cnt
 end
 
 function _attach_parent_info!(
@@ -119,17 +122,16 @@ function update_state!(
     # 1. Prune by infeasibility
     if result.cost == Inf
         # Do nothing
-        # 2. Prune by bound
     elseif result.cost > state.primal_bound
+        # 2. Prune by bound
         # Do nothing
+    elseif result.cost == -Inf
         # 3. LP is unbounded.
         #  Implies MIP is infeasible or unbounded. Should only happen at root.
-    elseif result.cost == -Inf
-        # Assert that we're at the root node
         @assert isempty(node.branchings)
         state.primal_bound = result.cost
+    elseif result.int_infeas == 0
         # 4. Prune by integrality
-    elseif _ip_feasible(form, result.x, config)
         # Have <= to handle case where we seed the optimal cost but
         # not the optimal solution
         if result.cost <= state.primal_bound
@@ -137,13 +139,14 @@ function update_state!(
             # TODO: Make this more efficient, keys should not change.
             copy!(state.best_solution, result.x)
         end
-        # 5. Branch!
     else
+        # 5. Branch!
         favorite_child, other_child =
             branch(form, config.branching_rule, node, result, config)
         _attach_parent_info!(favorite_child, other_child, result)
         push_node!(state.tree, other_child)
         push_node!(state.tree, favorite_child)
     end
+    state.total_elapsed_time_sec = time() - state.starting_time
     return nothing
 end

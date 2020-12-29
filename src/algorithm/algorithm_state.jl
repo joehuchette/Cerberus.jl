@@ -1,30 +1,35 @@
 mutable struct NodeResult
     cost::Float64
-    simplex_iters::Int
     x::Dict{VI,Float64}
+    simplex_iters::Int
+    depth::Int
+    int_infeas::Int
     basis::Basis
     model::Union{Nothing,Gurobi.Optimizer}
-    # Wall time should be tracked by CurrentState
 end
 
 function NodeResult()
     return NodeResult(
         NaN,
-        0,
         Dict{VI,Float64}(),
-        Dict{Any,MOI.BasisStatusCode}(),
+        0,
+        0,
+        0,
+        Basis(),
         nothing,
     )
 end
 
 function Base.empty!(result::NodeResult)
     result.cost = NaN
-    result.simplex_iters = 0
     # Save sizes of x and basis; keys should not change throughout tree anyway
     x_sz = length(result.x)
     # TODO: Potentially more efficient, but messier, is to fill all entries with NaNs.
     empty!(result.x)
     x_sz > 0 && sizehint!(result.x, x_sz)
+    result.simplex_iters = 0
+    result.depth = 0
+    result.int_infeas = 0
     basis_sz = length(result.basis)
     empty!(result.basis)
     basis_sz > 0 && sizehint!(result.basis, basis_sz)
@@ -39,10 +44,12 @@ mutable struct CurrentState
     primal_bound::Float64
     dual_bound::Float64
     best_solution::Dict{VI,Float64}
+    starting_time::Float64
+    total_elapsed_time_sec::Float64
     total_node_count::Int
     total_simplex_iters::Int
 
-    function CurrentState(primal_bound::Real = Inf)
+    function CurrentState(primal_bound::Real=Inf)
         state = new(
             Gurobi.Env(),
             Tree(),
@@ -50,6 +57,8 @@ mutable struct CurrentState
             primal_bound,
             -Inf,
             Dict{VI,Float64}(),
+            time(),
+            0.0,
             0,
             0,
         )

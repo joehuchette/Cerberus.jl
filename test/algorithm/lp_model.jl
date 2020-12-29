@@ -2,8 +2,7 @@
     form = _build_dmip_formulation()
     state = Cerberus.CurrentState()
     node = Cerberus.Node()
-    config = Cerberus.AlgorithmConfig()
-    model = @inferred Cerberus.build_base_model(form, state, node, config)
+    model = @inferred Cerberus.build_base_model(form, state, node, CONFIG)
 
     @test MOI.get(model, MOI.NumberOfVariables()) == 3
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_ET}()) == 1
@@ -47,10 +46,9 @@ end
 
 @testset "update_node_bounds!" begin
     form = _build_dmip_formulation()
-    state = Cerberus.CurrentState()
+    state = _CurrentState()
     node = Cerberus.Node()
-    config = Cerberus.AlgorithmConfig()
-    model = @inferred Cerberus.build_base_model(form, state, node, config)
+    model = @inferred Cerberus.build_base_model(form, state, node, CONFIG)
     @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
     @test MOI.Utilities.get_bounds(model, Float64, _VI(1)) == (0.5, 1.0)
     @test MOI.Utilities.get_bounds(model, Float64, _VI(2)) == (-1.3, 2.3)
@@ -69,10 +67,9 @@ end
 
 @testset "MOI.optimize!" begin
     form = _build_dmip_formulation()
-    state = Cerberus.CurrentState()
+    state = _CurrentState()
     node = Cerberus.Node()
-    config = Cerberus.AlgorithmConfig(silent = true)
-    model = Cerberus.build_base_model(form, state, node, config)
+    model = Cerberus.build_base_model(form, state, node, CONFIG)
     MOI.optimize!(model)
     @test MOI.get(model, MOI.TerminationStatus()) == MOI.OPTIMAL
     @test MOI.get(model, MOI.PrimalStatus()) == MOI.FEASIBLE_POINT
@@ -83,10 +80,9 @@ end
 
 @testset "_fill_solution!" begin
     form = _build_dmip_formulation()
-    state = Cerberus.CurrentState()
+    state = _CurrentState()
     node = Cerberus.Node()
-    config = Cerberus.AlgorithmConfig(silent = true)
-    model = Cerberus.build_base_model(form, state, node, config)
+    model = Cerberus.build_base_model(form, state, node, CONFIG)
     MOI.optimize!(model)
     @assert MOI.get(model, MOI.PrimalStatus()) == MOI.FEASIBLE_POINT
     x = Dict{_VI,Float64}()
@@ -99,10 +95,9 @@ end
 
 @testset "_fill_basis!" begin
     form = _build_dmip_formulation()
-    state = Cerberus.CurrentState()
+    state = _CurrentState()
     node = Cerberus.Node()
-    config = Cerberus.AlgorithmConfig(silent = true)
-    model = Cerberus.build_base_model(form, state, node, config)
+    model = Cerberus.build_base_model(form, state, node, CONFIG)
     MOI.optimize!(model)
     @assert MOI.get(model, MOI.PrimalStatus()) == MOI.FEASIBLE_POINT
     basis = Cerberus.Basis()
@@ -118,10 +113,9 @@ end
 
 @testset "get_basis" begin
     form = _build_dmip_formulation()
-    state = Cerberus.CurrentState()
+    state = _CurrentState()
     node = Cerberus.Node()
-    config = Cerberus.AlgorithmConfig(silent = true)
-    model = Cerberus.build_base_model(form, state, node, config)
+    model = Cerberus.build_base_model(form, state, node, CONFIG)
     MOI.optimize!(model)
     @assert MOI.get(model, MOI.PrimalStatus()) == MOI.FEASIBLE_POINT
     basis = Cerberus.get_basis(model)
@@ -136,11 +130,10 @@ end
 
 function _set_basis_model(basis::Cerberus.Basis)
     form = _build_dmip_formulation()
-    state = Cerberus.CurrentState()
+    state = _CurrentState()
     parent_info = Cerberus.ParentInfo(-Inf, basis, nothing)
     node = Cerberus.Node([], parent_info)
-    config = Cerberus.AlgorithmConfig(silent = true)
-    model = Cerberus.build_base_model(form, state, node, config)
+    model = Cerberus.build_base_model(form, state, node, CONFIG)
     Cerberus.set_basis_if_available!(model, node.parent_info.basis)
     return model
 end

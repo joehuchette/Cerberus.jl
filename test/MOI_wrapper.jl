@@ -7,12 +7,10 @@ const MOI = MathOptInterface
 const MOIT = MOI.Test
 const MOIU = MOI.Utilities
 
-const GRB_ENV = isdefined(Main, :GRB_ENV) ? Main.GRB_ENV : Gurobi.Env()
-
 const OPTIMIZER = MOIU.CachingOptimizer(
     MOIU.UniversalFallback(MOIU.Model{Float64}()),
     begin
-        model = Cerberus.Optimizer()
+        model = Cerberus.Optimizer(CONFIG)
         model.config.lp_solver_factory =
             (state, config) -> (
                 begin
@@ -27,22 +25,22 @@ const OPTIMIZER = MOIU.CachingOptimizer(
     end,
 )
 
-const CONFIG = MOIT.TestConfig(
-    modify_lhs = false,
-    duals = false,
-    dual_objective_value = false,
-    infeas_certificates = false,
+const MOI_CONFIG = MOIT.TestConfig(
+    modify_lhs=false,
+    duals=false,
+    dual_objective_value=false,
+    infeas_certificates=false,
 )
 
 @testset "basic_constraint_tests" begin
     MOIT.basic_constraint_tests(
         OPTIMIZER,
-        CONFIG,
-        delete = false,
+        MOI_CONFIG,
+        delete=false,
         # TODO: Add support for getting F/S
-        get_constraint_function = false,
-        get_constraint_set = false,
-        include = [
+        get_constraint_function=false,
+        get_constraint_set=false,
+        include=[
             (_SV, _LT),
             (_SV, _GT),
             (_SV, _ET),
@@ -59,7 +57,7 @@ end
 @testset "unittest" begin
     MOIT.unittest(
         OPTIMIZER,
-        CONFIG,
+        MOI_CONFIG,
         [
             # Should add support for:
             "time_limit_sec",
@@ -113,7 +111,7 @@ MOIB.add_bridge(BRIDGED_OPTIMIZER, MOIB.Constraint.SplitIntervalBridge{Float64})
 MOIB.add_bridge(BRIDGED_OPTIMIZER, MOIB.Variable.ZerosBridge{Float64})
 
 @testset "contlinear" begin
-    MOIT.contlineartest(BRIDGED_OPTIMIZER, CONFIG, [
+    MOIT.contlineartest(BRIDGED_OPTIMIZER, MOI_CONFIG, [
         # Needs setting of VariablePrimalStart
         "partial_start",
     ])
@@ -123,7 +121,7 @@ end
 @testset "intlinear" begin
     MOIT.intlineartest(
         BRIDGED_OPTIMIZER,
-        CONFIG,
+        MOI_CONFIG,
         [
             # Needs SOS1/SOS2
             "int2",

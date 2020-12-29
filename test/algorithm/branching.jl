@@ -28,11 +28,12 @@ end
         node = Cerberus.Node()
         x = [0.6, 0.7, 0.1]
         cost = 1.2
-        config = Cerberus.AlgorithmConfig()
         result = Cerberus.NodeResult(
             cost,
-            12,
             _vec_to_dict(x),
+            12,
+            13,
+            14,
             Cerberus.Basis(),
             nothing,
         )
@@ -41,7 +42,7 @@ end
             Cerberus.MostInfeasible(),
             node,
             result,
-            config,
+            CONFIG,
         )
         @test n1.branchings ==
               [Cerberus.BranchingDecision(_VI(1), 1, Cerberus.UP_BRANCH)]
@@ -58,7 +59,7 @@ end
             Cerberus.MostInfeasible(),
             n2,
             result,
-            config,
+            CONFIG,
         )
         @test n3.branchings == [
             Cerberus.BranchingDecision(_VI(1), 0, Cerberus.DOWN_BRANCH),
@@ -80,7 +81,7 @@ end
             Cerberus.MostInfeasible(),
             n4,
             result,
-            config,
+            CONFIG,
         )
     end
 
@@ -89,11 +90,12 @@ end
         node = Cerberus.Node()
         x = [0.6, 0.4, 0.7]
         cost = 1.2
-        config = Cerberus.AlgorithmConfig()
         result = Cerberus.NodeResult(
             cost,
-            12,
             _vec_to_dict(x),
+            12,
+            13,
+            14,
             Cerberus.Basis(),
             nothing,
         )
@@ -102,7 +104,7 @@ end
             Cerberus.MostInfeasible(),
             node,
             result,
-            config,
+            CONFIG,
         )
         @test fc.branchings ==
               [Cerberus.BranchingDecision(_VI(2), 0, Cerberus.DOWN_BRANCH)]
@@ -116,7 +118,7 @@ end
             Cerberus.MostInfeasible(),
             oc,
             result,
-            config,
+            CONFIG,
         )
         @test fc_2.branchings == [
             Cerberus.BranchingDecision(_VI(2), 1, Cerberus.UP_BRANCH),

@@ -55,7 +55,10 @@ function MOI.get(opt::Optimizer, ::Union{MOI.ObjectiveBound})
 end
 
 function MOI.get(opt::Optimizer, ::MOI.SolveTime)
-    return TimerOutputs.time(opt.result.timings)
+    if opt.result === nothing
+        return NaN
+    end
+    return opt.result.total_elapsed_time_sec
 end
 
 function MOI.get(opt::Optimizer, ::MOI.SimplexIterations)

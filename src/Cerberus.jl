@@ -1,6 +1,6 @@
 module Cerberus
 
-import DataStructures, Gurobi, MathOptInterface, SparseArrays, TimerOutputs
+import DataStructures, Gurobi, Logging, MathOptInterface, Printf, SparseArrays
 const MOI = MathOptInterface
 const MOIU = MOI.Utilities
 
@@ -28,6 +28,7 @@ include("algorithm/algorithm_state.jl")
 include("algorithm/results.jl")
 include("algorithm/lp_model.jl")
 include("algorithm/util.jl")
+include("algorithm/logging.jl")
 include("algorithm/branch_and_bound.jl")
 include("algorithm/branching.jl")
 

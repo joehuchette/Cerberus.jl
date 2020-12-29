@@ -7,7 +7,7 @@ mutable struct Result
     termination_status::TerminationStatus
     total_node_count::Int
     total_simplex_iters::Int
-    timings::TimerOutputs.TimerOutput
+    total_elapsed_time_sec::Float64
 
     function Result()
         return new(
@@ -17,7 +17,7 @@ mutable struct Result
             NOT_OPTIMIZED,
             0,
             0,
-            TimerOutputs.TimerOutput(),
+            0,
         )
     end
 end
@@ -41,5 +41,6 @@ function Result(state::CurrentState, config::AlgorithmConfig)
     end
     result.total_node_count = state.total_node_count
     result.total_simplex_iters = state.total_simplex_iters
+    result.total_elapsed_time_sec = state.total_elapsed_time_sec
     return result
 end
