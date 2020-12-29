@@ -141,7 +141,8 @@ end
     cs.node_result.x = _vec_to_dict(frac_soln)
     cs.node_result.simplex_iters = simplex_iters_per
     cs.node_result.depth = depth
-    cs.node_result.int_infeas = Cerberus._num_int_infeasible(fm, cs.node_result.x, CONFIG)
+    cs.node_result.int_infeas =
+        Cerberus._num_int_infeasible(fm, cs.node_result.x, CONFIG)
     @test cs.node_result.int_infeas == 2
     @inferred Cerberus.update_state!(cs, fm, node, CONFIG)
     @test isempty(cs.tree)
@@ -160,7 +161,8 @@ end
     cs.node_result.x = copy(int_soln_dict)
     cs.node_result.simplex_iters = simplex_iters_per
     cs.node_result.depth = depth
-    cs.node_result.int_infeas = Cerberus._num_int_infeasible(fm, cs.node_result.x, CONFIG)
+    cs.node_result.int_infeas =
+        Cerberus._num_int_infeasible(fm, cs.node_result.x, CONFIG)
     @test cs.node_result.int_infeas == 0
     @inferred Cerberus.update_state!(cs, fm, node, CONFIG)
     @test isempty(cs.tree)
@@ -181,7 +183,8 @@ end
     cs.node_result.x = frac_soln_dict
     cs.node_result.simplex_iters = simplex_iters_per
     cs.node_result.depth = depth
-    cs.node_result.int_infeas = Cerberus._num_int_infeasible(fm, cs.node_result.x, CONFIG)
+    cs.node_result.int_infeas =
+        Cerberus._num_int_infeasible(fm, cs.node_result.x, CONFIG)
     @test cs.node_result.int_infeas == 1
     cs.node_result.basis = basis
     cs.node_result.model = model

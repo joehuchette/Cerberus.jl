@@ -7,7 +7,7 @@ const MOI = MathOptInterface
 include("util.jl")
 include("algorithm/util.jl")
 
-const CONFIG = Cerberus.AlgorithmConfig(log_output=false)
+const CONFIG = Cerberus.AlgorithmConfig(log_output = false)
 const GRB_ENV = isdefined(Main, :GRB_ENV) ? Main.GRB_ENV : Gurobi.Env()
 
 for (root, dirs, files) in walkdir(@__DIR__)

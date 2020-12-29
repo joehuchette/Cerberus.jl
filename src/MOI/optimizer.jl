@@ -5,7 +5,10 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     config::AlgorithmConfig
     result::Union{Nothing,Result}
 
-    function Optimizer(config::AlgorithmConfig=AlgorithmConfig(); primal_bound=NaN)
+    function Optimizer(
+        config::AlgorithmConfig = AlgorithmConfig();
+        primal_bound = NaN,
+    )
         return new(
             DMIPFormulation(),
             MOI.FEASIBILITY_SENSE,

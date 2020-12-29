@@ -9,15 +9,7 @@ mutable struct NodeResult
 end
 
 function NodeResult()
-    return NodeResult(
-        NaN,
-        Dict{VI,Float64}(),
-        0,
-        0,
-        0,
-        Basis(),
-        nothing,
-    )
+    return NodeResult(NaN, Dict{VI,Float64}(), 0, 0, 0, Basis(), nothing)
 end
 
 function Base.empty!(result::NodeResult)
@@ -49,7 +41,7 @@ mutable struct CurrentState
     total_node_count::Int
     total_simplex_iters::Int
 
-    function CurrentState(primal_bound::Real=Inf)
+    function CurrentState(primal_bound::Real = Inf)
         state = new(
             Gurobi.Env(),
             Tree(),

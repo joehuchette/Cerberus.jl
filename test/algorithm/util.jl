@@ -10,8 +10,8 @@ function _NodeResult(
     cost::Real,
     simplex_iters::Real,
     x::Vector{Float64},
-    basis::Union{Nothing,Cerberus.Basis}=nothing,
-    model::Union{Nothing,Gurobi.Optimizer}=nothing,
+    basis::Union{Nothing,Cerberus.Basis} = nothing,
+    model::Union{Nothing,Gurobi.Optimizer} = nothing,
 )
     return NodeResult(
         cost,

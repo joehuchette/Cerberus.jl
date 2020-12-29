@@ -1,7 +1,7 @@
 function optimize!(
     form::DMIPFormulation,
     config::AlgorithmConfig,
-    primal_bound::Float64=Inf,
+    primal_bound::Float64 = Inf,
 )::Result
     result = Result()
     # TODO: Model presolve. Must happen before initial state is built.
@@ -50,7 +50,8 @@ function process_node!(
     if term_status == MOI.OPTIMAL
         state.node_result.cost = MOI.get(model, MOI.ObjectiveValue())
         _fill_solution!(state.node_result.x, model)
-        state.node_result.int_infeas = _num_int_infeasible(form, state.node_result.x, config)
+        state.node_result.int_infeas =
+            _num_int_infeasible(form, state.node_result.x, config)
         if config.warm_start
             _fill_basis!(state.node_result.basis, model)
         end

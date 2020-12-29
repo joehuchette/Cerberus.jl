@@ -7,8 +7,15 @@
     int_infeas = 4
     basis = Cerberus.Basis()
     model = nothing
-    nr1 =
-        @inferred Cerberus.NodeResult(cost, x_dict, simplex_iters, depth, int_infeas, basis, model)
+    nr1 = @inferred Cerberus.NodeResult(
+        cost,
+        x_dict,
+        simplex_iters,
+        depth,
+        int_infeas,
+        basis,
+        model,
+    )
     @test nr1.cost == cost
     @test nr1.x == x_dict
     @test nr1.simplex_iters == simplex_iters
@@ -24,8 +31,15 @@
         _CI{_SAF,_LT}(2) => MOI.NONBASIC,
         _CI{_SAF,_LT}(3) => MOI.NONBASIC,
     )
-    nr2 =
-        @inferred Cerberus.NodeResult(cost, x_dict, simplex_iters, depth, int_infeas, basis, model)
+    nr2 = @inferred Cerberus.NodeResult(
+        cost,
+        x_dict,
+        simplex_iters,
+        depth,
+        int_infeas,
+        basis,
+        model,
+    )
     @test nr2.cost == cost
     @test nr2.x == x_dict
     @test nr2.simplex_iters == simplex_iters

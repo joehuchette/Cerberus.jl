@@ -10,15 +10,7 @@ mutable struct Result
     total_elapsed_time_sec::Float64
 
     function Result()
-        return new(
-            Inf,
-            -Inf,
-            Dict{VI,Float64}(),
-            NOT_OPTIMIZED,
-            0,
-            0,
-            0,
-        )
+        return new(Inf, -Inf, Dict{VI,Float64}(), NOT_OPTIMIZED, 0, 0, 0)
     end
 end
 
