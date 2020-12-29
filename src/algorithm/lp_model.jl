@@ -3,14 +3,23 @@ function build_base_model(
     state::CurrentState,
     node::Node,
     config::AlgorithmConfig,
+    hot_start_model::Gurobi.Optimizer,
 )
-    if config.hot_start && state.node_result.model !== nothing
-        # We assume that the model can be reused from the parent with only
-        # changes to the variable bounds.
-        # TODO: Revisit the assumption here when the formulation is
-        # changing in the tree.
-        return state.node_result.model
-    end
+    # We assume that the model can be reused from the parent with only
+    # changes to the variable bounds.
+    # TODO: Revisit the assumption here when the formulation is
+    # changing in the tree.
+    # TODO: Unit test this.
+    return hot_start_model
+end
+
+function build_base_model(
+    form::DMIPFormulation,
+    state::CurrentState,
+    node::Node,
+    config::AlgorithmConfig,
+    hot_start_model::Nothing,
+)
     model = config.lp_solver_factory(state, config)::Gurobi.Optimizer
     for i in 1:num_variables(form)
         bound = form.base_form.feasible_region.bounds[i]

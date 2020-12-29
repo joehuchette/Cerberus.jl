@@ -33,7 +33,13 @@ function process_node!(
     config::AlgorithmConfig,
 )::Nothing
     # 1. Build model
-    model = build_base_model(form, state, node, config)
+    model = build_base_model(
+        form,
+        state,
+        node,
+        config,
+        node.parent_info.hot_start_model,
+    )
     # Update bounds on binary variables at the current node
     update_node_bounds!(model, node)
     set_basis_if_available!(model, node.parent_info.basis)
