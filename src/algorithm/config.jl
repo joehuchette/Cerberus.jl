@@ -8,7 +8,6 @@ const DEFAULT_LP_SOLVER_FACTORY =
         MOI.set(model, MOI.Silent(), config.silent)
         model
     end
-# TODO: Change to true after initial dev work
 const DEFAULT_SILENT = true
 const DEFAULT_BRANCHING_RULE = MostInfeasible()
 const DEFAULT_NODE_LIMIT = 1_000_000
