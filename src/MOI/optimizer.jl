@@ -36,7 +36,6 @@ function MOI.is_empty(opt::Optimizer)
            opt.result === nothing
 end
 
-# TODO: Add empty! method called here...
 function MOI.empty!(opt::Optimizer)
     opt.form = DMIPFormulation()
     opt.obj_sense = MOI.FEASIBILITY_SENSE
@@ -56,7 +55,6 @@ function MOI.optimize!(opt::Optimizer)
     return nothing
 end
 
-# TODO: Make this so by adding silent field, plugging it in.
 MOI.supports(::Optimizer, ::MOI.Silent) = true
 function MOI.set(opt::Optimizer, ::MOI.Silent, value::Bool)
     opt.config.silent = value
@@ -68,3 +66,10 @@ MOIU.supports_default_copy_to(opt::Optimizer, copy_names::Bool) = !copy_names
 function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike; kws...)
     return MOI.Utilities.automatic_copy_to(dest, src; kws...)
 end
+
+MOI.supports(::Optimizer, ::MOI.TimeLimitSec) = true
+function MOI.set(opt::Optimizer, ::MOI.TimeLimitSec, value::Real)
+    opt.config.time_limit_sec = value
+    return nothing
+end
+MOI.get(opt::Optimizer, ::MOI.TimeLimitSec) = opt.config.time_limit_sec
