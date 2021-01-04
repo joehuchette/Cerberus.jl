@@ -29,6 +29,13 @@ function Base.empty!(result::NodeResult)
     return nothing
 end
 
+mutable struct PollingState
+    next_polling_target_time_sec::Float64
+    period_node_count::Int
+    period_simplex_iters::Int
+end
+PollingState() = PollingState(0.0, 0, 0)
+
 mutable struct CurrentState
     gurobi_env::Gurobi.Env
     tree::Tree
@@ -40,6 +47,7 @@ mutable struct CurrentState
     total_elapsed_time_sec::Float64
     total_node_count::Int
     total_simplex_iters::Int
+    polling_state::PollingState
 
     function CurrentState(primal_bound::Real = Inf)
         state = new(
@@ -53,6 +61,7 @@ mutable struct CurrentState
             0.0,
             0,
             0,
+            PollingState(),
         )
         push_node!(state.tree, Node())
         return state

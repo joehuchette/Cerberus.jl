@@ -15,26 +15,53 @@ function _log_preamble(fm::DMIPFormulation, primal_bound::Float64)
         @info "Starting primal bound of $primal_bound"
     end
     @info "    Nodes    |    Current Node    |     Objective Bounds      |    Work"
-    @info " Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | Iters Time"
-    # @info ""
+    @info " Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time"
 end
 
 function _log_node_update(state::CurrentState)
     cost = state.node_result.cost
     gap = _optimality_gap(state.primal_bound, state.dual_bound)
     @info Printf.@sprintf(
-        "%5u %5u   %8.2f %3u %5s  %8.2f %8.2f %8s  %5u %7.2f",
+        "%5u %5u   %8.2f %3u %5s  %8.2f %8.2f %8s  %5.1f %5us",
         state.total_node_count,
         length(state.tree),
         cost,
         state.node_result.depth,
         # If infeasible, don't report int infeasibility as 0.
-        cost == Inf ? "    -" : Printf.@sprintf("%5u", state.node_result.int_infeas),
+        if cost == Inf
+            "    -"
+        else
+            Printf.@sprintf("%5u", state.node_result.int_infeas)
+        end,
         state.primal_bound,
         state.dual_bound,
         # If we don't have a primal bound, just don't report a gap.
         isnan(gap) ? "      - " : Printf.@sprintf("%7.2f%%", gap),
-        state.node_result.simplex_iters,
-        state.total_elapsed_time_sec,
+        state.polling_state.period_simplex_iters /
+        state.polling_state.period_node_count,
+        floor(UInt, state.total_elapsed_time_sec),
     )
+end
+
+const EARLY_POLLING_CUTOFF = 10.0
+const EARLY_POLLING_CADENCE = 0.25
+const NORMAL_POLLING_CADENCE = 5.0
+
+# TODO: Unit test
+function _log_if_necessary(state::CurrentState, config::AlgorithmConfig)
+    elapsed_time_sec = config.log_output && state.total_elapsed_time_sec
+    if elapsed_time_sec > state.polling_state.next_polling_target_time_sec
+        update_dual_bound!(state)
+        _log_node_update(state)
+        if elapsed_time_sec <= EARLY_POLLING_CUTOFF
+            state.polling_state.next_polling_target_time_sec +=
+                EARLY_POLLING_CADENCE
+        else
+            state.polling_state.next_polling_target_time_sec +=
+                NORMAL_POLLING_CADENCE
+        end
+        state.polling_state.period_node_count = 0
+        state.polling_state.period_simplex_iters = 0
+    end
+    return nothing
 end

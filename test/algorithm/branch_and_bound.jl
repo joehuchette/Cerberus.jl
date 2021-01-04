@@ -97,8 +97,9 @@ end
     ])
     basis = Cerberus.Basis(_VI(1) => MOI.BASIC)
     model = Gurobi.Optimizer()
+    cost = 12.3
     result = Cerberus.NodeResult(
-        12.3,
+        cost,
         _vec_to_dict([1.2, 2.3, 3.4]),
         1492,
         12,
@@ -107,8 +108,14 @@ end
         model,
     )
     @inferred Cerberus._attach_parent_info!(fc, oc, result)
-    @test fc.parent_info == Cerberus.ParentInfo(12.3, basis, model)
-    @test oc.parent_info == Cerberus.ParentInfo(12.3, basis, nothing)
+    @test fc.parent_info.dual_bound == cost
+    @test oc.parent_info.dual_bound == cost
+    @test fc.parent_info.basis === basis
+    @test length(oc.parent_info.basis) == 1
+    @test haskey(oc.parent_info.basis, _VI(1))
+    @test oc.parent_info.basis[_VI(1)] == MOI.BASIC
+    @test fc.parent_info.hot_start_model === model
+    @test oc.parent_info.hot_start_model === nothing
 end
 
 @testset "update_state!" begin

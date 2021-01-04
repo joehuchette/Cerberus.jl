@@ -1,3 +1,13 @@
+# TODO: Unit test
+function _is_time_to_terminate(state::CurrentState, config::AlgorithmConfig)
+    if state.total_node_count >= config.node_limit ||
+       state.total_elapsed_time_sec >= config.time_limit_sec
+        return true
+    else
+        return false
+    end
+end
+
 function optimize!(
     form::DMIPFormulation,
     config::AlgorithmConfig,
@@ -14,12 +24,8 @@ function optimize!(
         node = pop_node!(state.tree)
         process_node!(state, form, node, config)
         update_state!(state, form, node, config)
-        # TODO: Don't do this every iteration
-        update_dual_bound!(state)
-        if config.log_output
-            _log_node_update(state)
-        end
-        if state.total_node_count >= config.node_limit
+        _log_if_necessary(state, config)
+        if _is_time_to_terminate(state, config)
             break
         end
     end
@@ -110,10 +116,14 @@ function _attach_parent_info!(
     other_child::Node,
     result::NodeResult,
 )
+    # TODO: If we're setting hot start model, we really don't need to set basis...
+    #       So, can avoid a copy of the dict by giving it only to the second favorite
+    #       child. However, this will require us to pass config as an arg here.
     favorite_child.parent_info =
         ParentInfo(result.cost, result.basis, result.model)
     # TODO: This only maintains hot start model on dives. Is this the right call?
-    other_child.parent_info = ParentInfo(result.cost, result.basis, nothing)
+    other_child.parent_info =
+        ParentInfo(result.cost, copy(result.basis), nothing)
     return nothing
 end
 
@@ -126,6 +136,8 @@ function update_state!(
     result = state.node_result
     state.total_node_count += 1
     state.total_simplex_iters += result.simplex_iters
+    state.polling_state.period_node_count += 1
+    state.polling_state.period_simplex_iters += result.simplex_iters
     # 1. Prune by infeasibility
     if result.cost == Inf
         # Do nothing
@@ -153,6 +165,9 @@ function update_state!(
         _attach_parent_info!(favorite_child, other_child, result)
         push_node!(state.tree, other_child)
         push_node!(state.tree, favorite_child)
+        # TODO: Add a check in this branch to ensure we don't have a "funny" return
+        #       status. This is a little kludgy since we don't necessarily store the
+        #       MOI model in result. Maybe need to add termination status as a field...
     end
     state.total_elapsed_time_sec = time() - state.starting_time
     return nothing

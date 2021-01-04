@@ -91,6 +91,7 @@ function set_basis_if_available!(
     basis::Basis,
 )::Nothing
     # TODO: Check that basis is, in fact, a basis after modification
+    @debug "Basis is being set ($(length(basis)) elements)"
     for (key, val) in basis
         MOI.set(model, MOI.ConstraintBasisStatus(), key, val)
     end

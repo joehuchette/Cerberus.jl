@@ -15,6 +15,7 @@ mutable struct Result
 end
 
 function Result(state::CurrentState, config::AlgorithmConfig)
+    update_dual_bound!(state)
     result = Result()
     result.primal_bound = state.primal_bound
     result.dual_bound = state.dual_bound
