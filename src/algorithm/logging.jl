@@ -22,7 +22,7 @@ function _log_node_update(state::CurrentState)
     cost = state.node_result.cost
     gap = _optimality_gap(state.primal_bound, state.dual_bound)
     @info Printf.@sprintf(
-        "%5u %5u   %8.2f %3u %5s  %8.2f %8.2f %8s  %5.1f %5us",
+        "%5u %5u   %8.5f %4u %4s %10s %8.5f %8s  %5.1f %5us",
         state.total_node_count,
         length(state.tree),
         cost,
@@ -33,10 +33,18 @@ function _log_node_update(state::CurrentState)
         else
             Printf.@sprintf("%5u", state.node_result.int_infeas)
         end,
-        state.primal_bound,
+        if state.primal_bound == Inf
+            "         -"
+        else
+            Printf.@sprintf("%8.5f", state.primal_bound)
+        end,
         state.dual_bound,
         # If we don't have a primal bound, just don't report a gap.
-        isnan(gap) ? "      - " : Printf.@sprintf("%7.2f%%", gap),
+        if isnan(gap)
+            "      - "
+        else
+            (isinf(gap) ? "      ∞ " : Printf.@sprintf("%7.2f%%", gap))
+        end,
         state.polling_state.period_simplex_iters /
         state.polling_state.period_node_count,
         floor(UInt, state.total_elapsed_time_sec),

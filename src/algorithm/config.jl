@@ -6,6 +6,10 @@ const DEFAULT_LP_SOLVER_FACTORY =
     (state, config) -> begin
         model = Gurobi.Optimizer(state.gurobi_env)
         MOI.set(model, MOI.Silent(), config.silent)
+        # TODO: Rather than set this parameter, we could instead handle the
+        # INF_OR_UNBD case directly. However, this might require resolving
+        # some node LPs, which is a bit tricky to do in the current design.
+        MOI.set(model, MOI.RawParameter("DualReductions"), 0)
         model
     end
 const DEFAULT_SILENT = true
