@@ -1,3 +1,4 @@
+# const Basis = Dict{Union{CI{SV,IN},CI{SAF,<:_C_SETS}},MOI.BasisStatusCode}
 const Basis = Dict{Any,MOI.BasisStatusCode}
 
 struct ParentInfo

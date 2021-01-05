@@ -3,24 +3,23 @@
 mutable struct Result
     primal_bound::Float64
     dual_bound::Float64
-    best_solution::Dict{VI,Float64}
+    best_solution::Vector{Float64}
     termination_status::TerminationStatus
     total_node_count::Int
     total_simplex_iters::Int
     total_elapsed_time_sec::Float64
 
     function Result()
-        return new(Inf, -Inf, Dict{VI,Float64}(), NOT_OPTIMIZED, 0, 0, 0)
+        return new(Inf, -Inf, Float64[], NOT_OPTIMIZED, 0, 0, 0)
     end
 end
 
 function Result(state::CurrentState, config::AlgorithmConfig)
+    update_dual_bound!(state)
     result = Result()
     result.primal_bound = state.primal_bound
     result.dual_bound = state.dual_bound
-    for (k, v) in state.best_solution
-        result.best_solution[k] = v
-    end
+    copy!(result.best_solution, state.best_solution)
     if state.primal_bound == state.dual_bound == Inf
         result.termination_status = INFEASIBLE
     elseif state.primal_bound == -Inf

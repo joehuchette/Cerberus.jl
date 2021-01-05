@@ -22,16 +22,12 @@ function _NodeResult(
     )
 end
 
-function _CurrentState()
-    state = Cerberus.CurrentState()
+function _CurrentState(
+    nvars::Int,
+    config::Cerberus.AlgorithmConfig;
+    primal_bound = Inf,
+)
+    state = Cerberus.CurrentState(nvars, config, primal_bound = primal_bound)
     state.gurobi_env = GRB_ENV
     return state
 end
-
-function _CurrentState(primal_bound)
-    state = Cerberus.CurrentState(primal_bound)
-    state.gurobi_env = GRB_ENV
-    return state
-end
-
-_vec_to_dict(x::Vector) = Dict(_VI(i) => x[i] for i in 1:length(x))

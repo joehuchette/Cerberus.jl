@@ -1,5 +1,5 @@
 @testset "Result" begin
-    let state = _CurrentState()
+    let state = _CurrentState(1, CONFIG)
         result = @inferred Cerberus.Result(state, CONFIG)
         @test result.primal_bound == Inf
         @test result.dual_bound == -Inf
@@ -8,7 +8,7 @@
         @test result.total_simplex_iters == 0
     end
 
-    let state = _CurrentState(12.4)
+    let state = _CurrentState(2, CONFIG, primal_bound = 12.4)
         result = @inferred Cerberus.Result(state, CONFIG)
         @test result.primal_bound == 12.4
         @test result.dual_bound == -Inf

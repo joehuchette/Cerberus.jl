@@ -60,7 +60,6 @@ end
         MOI_CONFIG,
         [
             # Should add support for:
-            "time_limit_sec",
             "solve_result_index",
 
             # Can test with support for MOI.UNBOUNDED status:
