@@ -4,17 +4,22 @@ struct PseudocostBranching <: BranchingRule end
 
 @enum Incrementalism NO_INCREMENTALISM WARM_START HOT_START
 
+# NOTE: This is not a true configurable parameter; it shoul really only be
+# changed for debugging.
+const _SILENT_LP_SOLVER = true
+
 function _default_lp_solver_factory(state, config)
     model = Gurobi.Optimizer(state.gurobi_env)
     # TODO: Rather than have factory as a configurable parameter, can probably
     # just get by with making `silence_lp_solver::Bool` a parameter.
-    # MOI.set(model, MOI.Silent(), config.silent)
+    MOI.set(model, MOI.Silent(), _SILENT_LP_SOLVER)
     MOI.set(model, MOI.RawParameter("Method"), 1)
     MOI.set(model, MOI.RawParameter("Presolve"), 0)
     # TODO: Rather than set this parameter, we could instead handle the
     # INF_OR_UNBD case directly. However, this might require resolving
     # some node LPs, which is a bit tricky to do in the current design.
     MOI.set(model, MOI.RawParameter("DualReductions"), 0)
+    MOI.set(model, MOI.RawParameter("InfUnbdInfo"), 1)
     return model
 end
 const DEFAULT_LP_SOLVER_FACTORY = _default_lp_solver_factory

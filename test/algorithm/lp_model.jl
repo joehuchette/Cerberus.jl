@@ -56,10 +56,11 @@ end
     @test MOI.Utilities.get_bounds(model, Float64, _VI(2)) == (-1.3, 2.3)
     @test MOI.Utilities.get_bounds(model, Float64, _VI(3)) == (0.0, 1.0)
 
-    node = Cerberus.Node([
-        Cerberus.BranchingDecision(_VI(1), 0, Cerberus.DOWN_BRANCH),
-        Cerberus.BranchingDecision(_VI(3), 1, Cerberus.UP_BRANCH),
-    ])
+    node = Cerberus.Node(
+        Cerberus.BoundDiff(_VI(3) => 1),
+        Cerberus.BoundDiff(_VI(1) => 0),
+        2,
+    )
     @inferred Cerberus.update_node_bounds!(model, node)
     @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
     @test MOI.Utilities.get_bounds(model, Float64, _VI(1)) == (0.5, 0.0)
@@ -115,7 +116,12 @@ function _set_basis_model(basis::Cerberus.Basis)
     form = _build_dmip_formulation()
     state = _CurrentState(Cerberus.num_variables(form), CONFIG)
     parent_info = Cerberus.ParentInfo(-Inf, basis, nothing)
-    node = Cerberus.Node([], parent_info)
+    node = Cerberus.Node(
+        Cerberus.BoundDiff(),
+        Cerberus.BoundDiff(),
+        0,
+        parent_info,
+    )
     model = Cerberus.build_base_model(form, state, node, CONFIG, nothing)
     Cerberus.set_basis_if_available!(model, node.parent_info.basis)
     return model

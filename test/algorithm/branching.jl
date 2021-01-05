@@ -2,24 +2,28 @@
     fm = _build_dmip_formulation()
     node = Cerberus.Node()
     let db = @inferred Cerberus.down_branch(node, _VI(1), 0.5)
-        @test db.branchings ==
-              [Cerberus.BranchingDecision(_VI(1), 0, Cerberus.DOWN_BRANCH)]
+        @test db.lb_diff == Cerberus.BoundDiff()
+        @test db.ub_diff == Cerberus.BoundDiff(_VI(1) => 0)
+        @test db.depth == 1
     end
 
     let ub = @inferred Cerberus.up_branch(node, _VI(2), 0.5)
-        @test ub.branchings ==
-              [Cerberus.BranchingDecision(_VI(2), 1, Cerberus.UP_BRANCH)]
+        @test ub.lb_diff == Cerberus.BoundDiff(_VI(2) => 1)
+        @test ub.ub_diff == Cerberus.BoundDiff()
+        @test ub.depth == 1
     end
 
     # Now do general integer branchings
     let db = @inferred Cerberus.down_branch(node, _VI(1), 3.7)
-        @test db.branchings ==
-              [Cerberus.BranchingDecision(_VI(1), 3, Cerberus.DOWN_BRANCH)]
+        @test db.lb_diff == Cerberus.BoundDiff()
+        @test db.ub_diff == Cerberus.BoundDiff(_VI(1) => 3)
+        @test db.depth == 1
     end
 
     let ub = @inferred Cerberus.up_branch(node, _VI(2), 3.7)
-        @test ub.branchings ==
-              [Cerberus.BranchingDecision(_VI(2), 4, Cerberus.UP_BRANCH)]
+        @test ub.lb_diff == Cerberus.BoundDiff(_VI(2) => 4)
+        @test ub.ub_diff == Cerberus.BoundDiff()
+        @test ub.depth == 1
     end
 end
 
@@ -43,12 +47,14 @@ end
             result,
             CONFIG,
         )
-        @test n1.branchings ==
-              [Cerberus.BranchingDecision(_VI(1), 1, Cerberus.UP_BRANCH)]
+        @test n1.lb_diff == Cerberus.BoundDiff(_VI(1) => 1)
+        @test n1.ub_diff == Cerberus.BoundDiff()
+        @test n1.depth == 1
         @test n1.parent_info == Cerberus.ParentInfo(-Inf, nothing, nothing)
 
-        @test n2.branchings ==
-              [Cerberus.BranchingDecision(_VI(1), 0, Cerberus.DOWN_BRANCH)]
+        @test n2.lb_diff == Cerberus.BoundDiff()
+        @test n2.ub_diff == Cerberus.BoundDiff(_VI(1) => 0)
+        @test n2.depth == 1
         @test n2.parent_info == Cerberus.ParentInfo(-Inf, nothing, nothing)
 
         x2 = [1.0, 0.7, 0.1]
@@ -60,16 +66,14 @@ end
             result,
             CONFIG,
         )
-        @test n3.branchings == [
-            Cerberus.BranchingDecision(_VI(1), 0, Cerberus.DOWN_BRANCH),
-            Cerberus.BranchingDecision(_VI(3), 0, Cerberus.DOWN_BRANCH),
-        ]
+        @test n3.lb_diff == Cerberus.BoundDiff()
+        @test n3.ub_diff == Cerberus.BoundDiff(_VI(1) => 0, _VI(3) => 0)
+        @test n3.depth == 2
         @test n3.parent_info == Cerberus.ParentInfo(-Inf, nothing, nothing)
 
-        @test n4.branchings == [
-            Cerberus.BranchingDecision(_VI(1), 0, Cerberus.DOWN_BRANCH),
-            Cerberus.BranchingDecision(_VI(3), 1, Cerberus.UP_BRANCH),
-        ]
+        @test n4.lb_diff == Cerberus.BoundDiff(_VI(3) => 1)
+        @test n4.ub_diff == Cerberus.BoundDiff(_VI(1) => 0)
+        @test n4.depth == 2
         @test n4.parent_info == Cerberus.ParentInfo(-Inf, nothing, nothing)
 
         # Nothing to branch on, should throw. Really, should have pruned by integrality before.
@@ -104,10 +108,12 @@ end
             result,
             CONFIG,
         )
-        @test fc.branchings ==
-              [Cerberus.BranchingDecision(_VI(2), 0, Cerberus.DOWN_BRANCH)]
-        @test oc.branchings ==
-              [Cerberus.BranchingDecision(_VI(2), 1, Cerberus.UP_BRANCH)]
+        @test fc.lb_diff == Cerberus.BoundDiff()
+        @test fc.ub_diff == Cerberus.BoundDiff(_VI(2) => 0)
+        @test fc.depth == 1
+        @test oc.lb_diff == Cerberus.BoundDiff(_VI(2) => 1)
+        @test oc.ub_diff == Cerberus.BoundDiff()
+        @test oc.depth == 1
 
         x2 = [0.6, 0.4, 2.55]
         result.x = x2
@@ -118,13 +124,11 @@ end
             result,
             CONFIG,
         )
-        @test fc_2.branchings == [
-            Cerberus.BranchingDecision(_VI(2), 1, Cerberus.UP_BRANCH),
-            Cerberus.BranchingDecision(_VI(3), 3, Cerberus.UP_BRANCH),
-        ]
-        @test oc_2.branchings == [
-            Cerberus.BranchingDecision(_VI(2), 1, Cerberus.UP_BRANCH),
-            Cerberus.BranchingDecision(_VI(3), 2, Cerberus.DOWN_BRANCH),
-        ]
+        @test fc_2.lb_diff == Cerberus.BoundDiff(_VI(2) => 1, _VI(3) => 3)
+        @test fc_2.ub_diff == Cerberus.BoundDiff()
+        @test fc_2.depth == 2
+        @test oc_2.lb_diff == Cerberus.BoundDiff(_VI(2) => 1)
+        @test oc_2.ub_diff == Cerberus.BoundDiff(_VI(3) => 2)
+        @test oc_2.depth == 2
     end
 end

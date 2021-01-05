@@ -13,9 +13,12 @@ function _branch(
     direction::BranchingDirection,
 )
     # TODO: Can likely reuse this memory instead of copying
-    branchings = copy(node.branchings)
-    push!(branchings, BranchingDecision(branch_vi, rounded_val, direction))
-    return Node(branchings)
+    new_node = copy_without_pi(node)
+    apply_branching!(
+        new_node,
+        BranchingDecision(branch_vi, rounded_val, direction),
+    )
+    return new_node
 end
 
 function branch(
@@ -33,7 +36,7 @@ function branch(
         if var_set === nothing
             continue
         end
-        @assert typeof(var_set) <: Union{ZO, GI}
+        @assert typeof(var_set) <: Union{ZO,GI}
         vi = VI(i)
         xi = parent_result.x[i]
         xi_f = _approx_floor(xi, config.int_tol)
@@ -53,6 +56,7 @@ function branch(
     xt = parent_result.x[t]
     down_node = down_branch(parent_node, vt, xt)
     up_node = up_branch(parent_node, vt, xt)
+    @debug "Branching on $vt, whose current LP value is $xt."
     # TODO: This dives on child that is closest to integrality. Is this right?
     if xt - floor(xt) > ceil(xt) - xt
         return (up_node, down_node)
