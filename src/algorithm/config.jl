@@ -23,7 +23,6 @@ const DEFAULT_NODE_LIMIT = 1_000_000
 const DEFAULT_GAP_TOL = 1e-4
 const DEFAULT_INTEGRALITY_TOL = 1e-5
 const DEFAULT_INCREMENTALISM = HOT_START
-const DEFAULT_LOG_OUTPUT = true
 
 Base.@kwdef mutable struct AlgorithmConfig
     lp_solver_factory::Function = DEFAULT_LP_SOLVER_FACTORY
@@ -34,5 +33,4 @@ Base.@kwdef mutable struct AlgorithmConfig
     gap_tol::Float64 = DEFAULT_GAP_TOL
     int_tol::Float64 = DEFAULT_INTEGRALITY_TOL
     incrementalism::Incrementalism = DEFAULT_INCREMENTALISM
-    log_output::Bool = DEFAULT_LOG_OUTPUT
 end

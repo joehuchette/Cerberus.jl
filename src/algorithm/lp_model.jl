@@ -24,11 +24,12 @@ function build_base_model(
     for i in 1:num_variables(form)
         bound = form.base_form.feasible_region.bounds[i]
         l, u = bound.lower, bound.upper
-        # TODO: Make this update more efficient, and unit test it.
         if form.integrality[i] isa ZO
             l = max(0, l)
             u = min(1, u)
         end
+        # Cache the above updates in formulation. Even better,
+        # batch add variables.
         MOI.add_constrained_variable(model, IN(l, u))
     end
     for aff_constr in form.base_form.feasible_region.aff_constrs
@@ -71,6 +72,10 @@ function update_basis!(result::NodeResult, model::MOI.AbstractOptimizer)
 end
 
 function _update_basis!(basis::Basis, model::MOI.AbstractOptimizer)
+    # TODO: Cache ListOfConstraints and ListOfConstraintIndices. This is a
+    # (surprising?) bottleneck, taking >50% of time in this function.
+    # One idea would be to make sure basis keys remain in sync with constraints
+    # in model, and then this function could just loop through keys(basis).
     for (F, S) in MOI.get(model, MOI.ListOfConstraints())
         for ci in MOI.get(model, MOI.ListOfConstraintIndices{F,S}())
             basis[ci] = MOI.get(model, MOI.ConstraintBasisStatus(), ci)

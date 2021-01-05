@@ -8,6 +8,22 @@ function _is_time_to_terminate(state::CurrentState, config::AlgorithmConfig)
     end
 end
 
+# NOTE: Almost all of the time inside this functions is spent in process_node!.
+# Roughly 1/3 is in build_base_model, 1/3 in optimize!(::Gurobi.Optimizer), and
+# 1/5 in _update_basis!. Some ideas of how to improve performance in the future:
+#   1. Use only one model throughout the algorithm, even on backtracks. This
+#      means that either we keep all the cuts we (will eventually) add, or
+#      purge them somehow.
+#   2. Roughly 1/5 of the time in build_base_model is spent individually
+#      setting the variable bounds. We could try to back this or, even better,
+#      pass the bounds upon creating the variable via GRBaddvar. Maybe the
+#      cleverest way to do this would be to add to Gurobi.jl a method
+#      MOI.add_constrained_variable(::Gurobi.Optimizer, set).
+#   3. I think that Gurobi.VariableInfo introduces typestability issues in,
+#      e.g. Gurobi._update_if_necessary. An "easy" fix is to have a fastpath
+#      in that method that skips over updating the entries in the case where
+#      no columns are deleted. But it's likely worth addressing the type
+#      instability directly.
 function optimize!(
     form::DMIPFormulation,
     config::AlgorithmConfig,
@@ -18,9 +34,7 @@ function optimize!(
     # Initialize search tree with LP relaxation
     state =
         CurrentState(num_variables(form), config, primal_bound = primal_bound)
-    if config.log_output
-        _log_preamble(form, primal_bound)
-    end
+    _log_preamble(form, primal_bound, config)
     while !isempty(state.tree)
         node = pop_node!(state.tree)
         process_node!(state, form, node, config)

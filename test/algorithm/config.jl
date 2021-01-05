@@ -8,7 +8,6 @@
         @test config.gap_tol == Cerberus.DEFAULT_GAP_TOL
         @test config.int_tol == Cerberus.DEFAULT_INTEGRALITY_TOL
         @test config.incrementalism == Cerberus.DEFAULT_INCREMENTALISM
-        @test config.log_output == Cerberus.DEFAULT_LOG_OUTPUT
     end
 
     let lp = identity,
@@ -19,7 +18,6 @@
         gt = 10,
         it = 1e-6,
         in = Cerberus.NO_INCREMENTALISM,
-        lo = false
 
         config = Cerberus.AlgorithmConfig(
             lp_solver_factory = lp,
@@ -30,8 +28,8 @@
             gap_tol = gt,
             int_tol = it,
             incrementalism = in,
-            log_output = lo,
         )
+
         @test config.lp_solver_factory == lp
         @test config.silent == sl
         @test config.branching_rule == br
@@ -40,6 +38,5 @@
         @test config.gap_tol == gt
         @test config.int_tol == it
         @test config.incrementalism == in
-        @test config.log_output == lo
     end
 end

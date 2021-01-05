@@ -1,4 +1,9 @@
-function _log_preamble(fm::DMIPFormulation, primal_bound::Float64)
+function _log_preamble(
+    fm::DMIPFormulation,
+    primal_bound::Float64,
+    config::AlgorithmConfig,
+)
+    config.silent && return nothing
     m = num_constraints(fm.base_form.feasible_region)
     n = num_variables(fm)
     d = length(fm.disjunction_formulaters)
@@ -16,6 +21,7 @@ function _log_preamble(fm::DMIPFormulation, primal_bound::Float64)
     end
     @info "    Nodes    |    Current Node    |     Objective Bounds      |    Work"
     @info " Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time"
+    return nothing
 end
 
 function _log_node_update(state::CurrentState)
@@ -57,7 +63,8 @@ const NORMAL_POLLING_CADENCE = 5.0
 
 # TODO: Unit test
 function _log_if_necessary(state::CurrentState, config::AlgorithmConfig)
-    elapsed_time_sec = config.log_output && state.total_elapsed_time_sec
+    config.silent && return nothing
+    elapsed_time_sec = state.total_elapsed_time_sec
     if elapsed_time_sec > state.polling_state.next_polling_target_time_sec
         update_dual_bound!(state)
         _log_node_update(state)
