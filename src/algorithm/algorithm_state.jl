@@ -35,7 +35,7 @@ end
 
 mutable struct NodeResult
     cost::Float64
-    x::Dict{VI,Float64}
+    x::Vector{Float64}
     simplex_iters::Int
     depth::Int
     int_infeas::Int
@@ -45,7 +45,7 @@ end
 function NodeResult(nvars::Int, config::AlgorithmConfig)
     return NodeResult(
         NaN,
-        Dict(VI(i) => NaN for i in 1:nvars),
+        fill(NaN, nvars),
         0,
         0,
         0,
@@ -81,9 +81,7 @@ end
 function reset!(result::NodeResult)
     result.cost = NaN
     # Save sizes of x and basis; keys should not change throughout tree anyway
-    for (k,v) in result.x
-        result.x[k] = NaN
-    end
+    fill!(result.x, NaN)
     result.simplex_iters = 0
     result.depth = 0
     result.int_infeas = 0
@@ -104,7 +102,7 @@ mutable struct CurrentState
     node_result::NodeResult
     primal_bound::Float64
     dual_bound::Float64
-    best_solution::Dict{VI,Float64}
+    best_solution::Vector{Float64}
     starting_time::Float64
     total_elapsed_time_sec::Float64
     total_node_count::Int
@@ -118,7 +116,7 @@ mutable struct CurrentState
             NodeResult(nvars, config),
             primal_bound,
             -Inf,
-            Dict(VI(i) => NaN for i in 1:nvars),
+            fill(NaN, nvars),
             time(),
             0.0,
             0,

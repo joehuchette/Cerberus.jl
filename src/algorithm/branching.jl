@@ -34,7 +34,7 @@ function branch(
             continue
         end
         vi = VI(i)
-        xi = parent_result.x[vi]
+        xi = parent_result.x[i]
         xi_f = _approx_floor(xi, config.int_tol)
         xi_c = _approx_ceil(xi, config.int_tol)
         frac_val = min(xi - xi_f, xi_c - xi)
@@ -49,7 +49,7 @@ function branch(
     end
     @assert t > 0
     vt = VI(t)
-    xt = parent_result.x[vt]
+    xt = parent_result.x[t]
     down_node = down_branch(parent_node, vt, xt)
     up_node = up_branch(parent_node, vt, xt)
     # TODO: This dives on child that is closest to integrality. Is this right?

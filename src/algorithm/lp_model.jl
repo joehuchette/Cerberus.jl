@@ -59,9 +59,9 @@ function update_node_bounds!(model::MOI.AbstractOptimizer, node::Node)
     return nothing
 end
 
-function _fill_solution!(x::Dict{VI,Float64}, model::MOI.AbstractOptimizer)
+function _fill_solution!(x::Vector{Float64}, model::MOI.AbstractOptimizer)
     for v in MOI.get(model, MOI.ListOfVariableIndices())
-        x[v] = MOI.get(model, MOI.VariablePrimal(), v)
+        x[v.value] = MOI.get(model, MOI.VariablePrimal(), v)
     end
     return nothing
 end

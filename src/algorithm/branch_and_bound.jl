@@ -56,8 +56,7 @@ function process_node!(
 
     # 3. Grab solution data and bundle it into a NodeResult
     reset!(state.node_result)
-    simplex_iters = MOI.get(model, MOI.SimplexIterations())
-    state.node_result.simplex_iters = simplex_iters
+    state.node_result.simplex_iters = MOI.get(model, MOI.SimplexIterations())
     state.node_result.depth = length(node.branchings)
     term_status = MOI.get(model, MOI.TerminationStatus())
     if term_status == MOI.OPTIMAL
@@ -84,7 +83,7 @@ end
 # Only checks feasibility w.r.t. integrality constraints!
 function _num_int_infeasible(
     form::DMIPFormulation,
-    x::Dict{VI,Float64},
+    x::Vector{Float64},
     config::AlgorithmConfig,
 )::Int
     cnt = 0
@@ -94,7 +93,7 @@ function _num_int_infeasible(
             continue
         end
         vi = VI(i)
-        xi = x[vi]
+        xi = x[i]
         ϵ = config.int_tol
         xi_f = _approx_floor(xi, ϵ)
         xi_c = _approx_ceil(xi, ϵ)

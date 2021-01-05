@@ -13,7 +13,7 @@ end
 
 function MOI.get(opt::Optimizer, ::MOI.VariablePrimal, vi::VI)
     MOI.throw_if_not_valid(opt, vi)
-    return opt.result.best_solution[vi]
+    return opt.result.best_solution[vi.value]
 end
 
 function MOI.supports_constraint(
