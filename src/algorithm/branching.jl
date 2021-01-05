@@ -33,6 +33,7 @@ function branch(
         if var_set === nothing
             continue
         end
+        @assert typeof(var_set) <: Union{ZO, GI}
         vi = VI(i)
         xi = parent_result.x[i]
         xi_f = _approx_floor(xi, config.int_tol)

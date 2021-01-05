@@ -24,6 +24,35 @@ function _log_preamble(
     return nothing
 end
 
+function _log_postamble(result::Result, config::AlgorithmConfig)
+    config.silent && return nothing
+    # TODO: Summarize cutting planes added (none right now...)
+    @info Printf.@sprintf(
+        "Explored %u nodes (%u simplex iterations) in %.2f seconds.",
+        result.total_node_count,
+        result.total_simplex_iters,
+        result.total_elapsed_time_sec,
+    )
+    if result.termination_status == MOI.INFEASIBLE
+        @info "Model is infeasible."
+    elseif result.termination_status == MOI.DUAL_INFEASIBLE
+        @info "Model is unbounded."
+    else
+        if result.termination_status == MOI.OPTIMAL
+            @info "Optimal solution found."
+        elseif result.primal_bound < Inf && all(!isnan, result.best_solution)
+            @info "Feasible solution found."
+        end
+        @info Printf.@sprintf(
+            "Best objective %10e, best bound %10e, gap %.4f%%.",
+            result.primal_bound,
+            result.dual_bound,
+            _optimality_gap(result.primal_bound, result.dual_bound),
+        )
+    end
+    return nothing
+end
+
 function _log_node_update(state::CurrentState)
     cost = state.node_result.cost
     gap = _optimality_gap(state.primal_bound, state.dual_bound)

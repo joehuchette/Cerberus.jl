@@ -44,7 +44,9 @@ function optimize!(
             break
         end
     end
-    return Result(state, config)
+    result = Result(state, config)
+    _log_postamble(result, config)
+    return result
 end
 
 # TODO: Store config in CurrentState, remove as argument here.
@@ -145,7 +147,10 @@ function _attach_parent_info!(
         @assert config.incrementalism == HOT_START
         favorite_child.parent_info =
             ParentInfo(cost, nothing, get_model(result))
-        other_child.parent_info = ParentInfo(cost, get_basis(result), nothing)
+        # TODO: Should be able to do this without copying the basis. However,
+        # need to be careful that other_child now "owns" the basis, which is
+        # troublesome as empty!(result) currently will wipe it away.
+        other_child.parent_info = ParentInfo(cost, copy(get_basis(result)), nothing)
     end
     return nothing
 end

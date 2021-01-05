@@ -91,6 +91,9 @@ function set_basis_if_available!(
 )::Nothing
     # TODO: Check that basis is, in fact, a basis after modification
     @debug "Basis is being set ($(length(basis)) elements)"
+    if isempty(basis)
+        throw(ArgumentError("You are attempting to set an empty basis."))
+    end
     for (key, val) in basis
         MOI.set(model, MOI.ConstraintBasisStatus(), key, val)
     end
