@@ -87,12 +87,10 @@ end
     model = Cerberus.build_base_model(form, state, node, CONFIG, nothing)
     MOI.optimize!(model)
     @assert MOI.get(model, MOI.PrimalStatus()) == MOI.FEASIBLE_POINT
-    x = Dict{_VI,Float64}()
+    x = fill(NaN, Cerberus.num_variables(form))
     @inferred Cerberus._fill_solution!(x, model)
     @test length(x) == 3
-    @test x[_VI(1)] ≈ 1 / 2
-    @test x[_VI(2)] ≈ 2.5 / 2.1
-    @test x[_VI(3)] ≈ 0.0
+    @test x ≈ [1 / 2, 2.5 / 2.1, 0.0]
 end
 
 @testset "_update_basis!" begin

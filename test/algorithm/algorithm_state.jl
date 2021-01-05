@@ -1,20 +1,19 @@
 @testset "NodeResult" begin
     cost = 5.6
     x = [1.2, 3.4]
-    x_dict = _vec_to_dict(x)
     simplex_iters = 3
     depth = 12
     int_infeas = 4
     let nr1 = @inferred Cerberus.NodeResult(
             cost,
-            x_dict,
+            x,
             simplex_iters,
             depth,
             int_infeas,
             Cerberus.IncrementalData(Cerberus.NO_INCREMENTALISM),
         )
         @test nr1.cost == cost
-        @test nr1.x == x_dict
+        @test nr1.x == x
         @test nr1.simplex_iters == simplex_iters
         @test nr1.depth == depth
         @test nr1.int_infeas == int_infeas
@@ -24,7 +23,7 @@
 
     let nr2 = @inferred Cerberus.NodeResult(
             cost,
-            x_dict,
+            x,
             simplex_iters,
             depth,
             int_infeas,
@@ -39,7 +38,7 @@
         )
         nr2.incremental_data._basis = basis
         @test nr2.cost == cost
-        @test nr2.x == x_dict
+        @test nr2.x == x
         @test nr2.simplex_iters == simplex_iters
         @test nr2.depth == depth
         @test nr2.int_infeas == int_infeas
@@ -49,13 +48,20 @@
 
     @testset "reset!" begin
         cost = 5.6
-        x = Dict(_VI(1) => 15.7)
+        x = [15.7]
         si = 12
         dp = 5
         ii = 2
         basis = Dict{Any,MOI.BasisStatusCode}(_CI{_SV,_IN}(1) => MOI.BASIC)
         model = Gurobi.Optimizer()
-        nr = Cerberus.NodeResult(cost, x, si, dp, ii, Cerberus.IncrementalData(Cerberus.HOT_START))
+        nr = Cerberus.NodeResult(
+            cost,
+            x,
+            si,
+            dp,
+            ii,
+            Cerberus.IncrementalData(Cerberus.HOT_START),
+        )
         nr.incremental_data._basis = basis
         Cerberus.set_model!(nr, model)
         @test nr.cost == cost

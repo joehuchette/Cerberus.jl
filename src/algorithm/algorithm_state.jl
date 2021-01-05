@@ -109,7 +109,11 @@ mutable struct CurrentState
     total_simplex_iters::Int
     polling_state::PollingState
 
-    function CurrentState(nvars::Int, config::AlgorithmConfig; primal_bound::Real = Inf)
+    function CurrentState(
+        nvars::Int,
+        config::AlgorithmConfig;
+        primal_bound::Real = Inf,
+    )
         state = new(
             Gurobi.Env(),
             Tree(),

@@ -21,7 +21,17 @@
         in = Cerberus.NO_INCREMENTALISM,
         lo = false
 
-        config = Cerberus.AlgorithmConfig(lp_solver_factory = lp, silent = sl, branching_rule = br, time_limit_sec = tl, node_limit = nl, gap_tol = gt, int_tol = it, incrementalism = in, log_output = lo)
+        config = Cerberus.AlgorithmConfig(
+            lp_solver_factory = lp,
+            silent = sl,
+            branching_rule = br,
+            time_limit_sec = tl,
+            node_limit = nl,
+            gap_tol = gt,
+            int_tol = it,
+            incrementalism = in,
+            log_output = lo,
+        )
         @test config.lp_solver_factory == lp
         @test config.silent == sl
         @test config.branching_rule == br

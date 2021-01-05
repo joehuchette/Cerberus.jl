@@ -30,7 +30,7 @@ end
         cost = 1.2
         result = Cerberus.NodeResult(
             cost,
-            _vec_to_dict(x),
+            x,
             12,
             13,
             14,
@@ -51,7 +51,7 @@ end
               [Cerberus.BranchingDecision(_VI(1), 0, Cerberus.DOWN_BRANCH)]
         @test n2.parent_info == Cerberus.ParentInfo(-Inf, nothing, nothing)
 
-        x2 = Dict(_VI(1) => 1.0, _VI(2) => 0.7, _VI(3) => 0.1)
+        x2 = [1.0, 0.7, 0.1]
         result.x = x2
         n3, n4 = @inferred Cerberus.branch(
             fm,
@@ -73,7 +73,7 @@ end
         @test n4.parent_info == Cerberus.ParentInfo(-Inf, nothing, nothing)
 
         # Nothing to branch on, should throw. Really, should have pruned by integrality before.
-        x3 = Dict(_VI(1) => 1.0, _VI(2) => 0.7, _VI(3) => 0.0)
+        x3 = [1.0, 0.7, 0.0]
         result.x = x3
         @test_throws AssertionError Cerberus.branch(
             fm,
@@ -91,7 +91,7 @@ end
         cost = 1.2
         result = Cerberus.NodeResult(
             cost,
-            _vec_to_dict(x),
+            x,
             12,
             13,
             14,
@@ -110,7 +110,7 @@ end
               [Cerberus.BranchingDecision(_VI(2), 1, Cerberus.UP_BRANCH)]
 
         x2 = [0.6, 0.4, 2.55]
-        result.x = _vec_to_dict(x2)
+        result.x = x2
         fc_2, oc_2 = @inferred Cerberus.branch(
             fm,
             Cerberus.MostInfeasible(),

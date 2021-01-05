@@ -16,7 +16,8 @@ function optimize!(
     result = Result()
     # TODO: Model presolve. Must happen before initial state is built.
     # Initialize search tree with LP relaxation
-    state = CurrentState(num_variables(form), config, primal_bound=primal_bound)
+    state =
+        CurrentState(num_variables(form), config, primal_bound = primal_bound)
     if config.log_output
         _log_preamble(form, primal_bound)
     end
@@ -122,11 +123,14 @@ function _attach_parent_info!(
         favorite_child.parent_info = ParentInfo(cost, nothing, nothing)
         other_child.parent_info = ParentInfo(cost, nothing, nothing)
     elseif config.incrementalism == WARM_START
-        favorite_child.parent_info = ParentInfo(cost, get_basis(result), nothing)
-        other_child.parent_info = ParentInfo(cost, copy(get_basis(result)), nothing)
+        favorite_child.parent_info =
+            ParentInfo(cost, get_basis(result), nothing)
+        other_child.parent_info =
+            ParentInfo(cost, copy(get_basis(result)), nothing)
     else
         @assert config.incrementalism == HOT_START
-        favorite_child.parent_info = ParentInfo(cost, nothing, get_model(result))
+        favorite_child.parent_info =
+            ParentInfo(cost, nothing, get_model(result))
         other_child.parent_info = ParentInfo(cost, get_basis(result), nothing)
     end
     return nothing

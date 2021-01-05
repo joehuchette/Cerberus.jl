@@ -49,10 +49,10 @@ function update_node_bounds!(model::MOI.AbstractOptimizer, node::Node)
         interval = MOI.get(model, MOI.ConstraintSet(), ci)
         new_interval = (
             if bd.direction == DOWN_BRANCH
-            IN(interval.lower, bd.value)
-        else
-            IN(bd.value, interval.upper)
-        end
+                IN(interval.lower, bd.value)
+            else
+                IN(bd.value, interval.upper)
+            end
         )
         MOI.set(model, MOI.ConstraintSet(), ci, new_interval)
     end
@@ -66,17 +66,11 @@ function _fill_solution!(x::Vector{Float64}, model::MOI.AbstractOptimizer)
     return nothing
 end
 
-function update_basis!(
-    result::NodeResult,
-    model::MOI.AbstractOptimizer,
-)
+function update_basis!(result::NodeResult, model::MOI.AbstractOptimizer)
     return _update_basis!(get_basis(result), model)
 end
 
-function _update_basis!(
-    basis::Basis,
-    model::MOI.AbstractOptimizer,
-)
+function _update_basis!(basis::Basis, model::MOI.AbstractOptimizer)
     for (F, S) in MOI.get(model, MOI.ListOfConstraints())
         for ci in MOI.get(model, MOI.ListOfConstraintIndices{F,S}())
             basis[ci] = MOI.get(model, MOI.ConstraintBasisStatus(), ci)
@@ -84,7 +78,6 @@ function _update_basis!(
     end
     return nothing
 end
-
 
 set_basis_if_available!(model::MOI.AbstractOptimizer, ::Nothing) = nothing
 function set_basis_if_available!(
