@@ -24,11 +24,12 @@ function build_base_model(
     for i in 1:num_variables(form)
         bound = form.base_form.feasible_region.bounds[i]
         l, u = bound.lower, bound.upper
-        # TODO: Make this update more efficient, and unit test it.
         if form.integrality[i] isa ZO
             l = max(0, l)
             u = min(1, u)
         end
+        # Cache the above updates in formulation. Even better,
+        # batch add variables.
         MOI.add_constrained_variable(model, IN(l, u))
     end
     for aff_constr in form.base_form.feasible_region.aff_constrs
@@ -59,30 +60,28 @@ function update_node_bounds!(model::MOI.AbstractOptimizer, node::Node)
     return nothing
 end
 
-function _fill_solution!(x::Dict{VI,Float64}, model::MOI.AbstractOptimizer)
+function _fill_solution!(x::Vector{Float64}, model::MOI.AbstractOptimizer)
     for v in MOI.get(model, MOI.ListOfVariableIndices())
-        x[v] = MOI.get(model, MOI.VariablePrimal(), v)
+        x[v.value] = MOI.get(model, MOI.VariablePrimal(), v)
     end
     return nothing
 end
 
-function _fill_basis!(
-    basis::Dict{Any,MOI.BasisStatusCode},
-    model::MOI.AbstractOptimizer,
-)
+function update_basis!(result::NodeResult, model::MOI.AbstractOptimizer)
+    return _update_basis!(get_basis(result), model)
+end
+
+function _update_basis!(basis::Basis, model::MOI.AbstractOptimizer)
+    # TODO: Cache ListOfConstraints and ListOfConstraintIndices. This is a
+    # (surprising?) bottleneck, taking >50% of time in this function.
+    # One idea would be to make sure basis keys remain in sync with constraints
+    # in model, and then this function could just loop through keys(basis).
     for (F, S) in MOI.get(model, MOI.ListOfConstraints())
         for ci in MOI.get(model, MOI.ListOfConstraintIndices{F,S}())
             basis[ci] = MOI.get(model, MOI.ConstraintBasisStatus(), ci)
         end
     end
     return nothing
-end
-
-# TODO: Do we still need this function?
-function get_basis(model::MOI.AbstractOptimizer)::Basis
-    basis = Dict{Any,MOI.BasisStatusCode}()
-    _fill_basis!(basis, model)
-    return basis
 end
 
 set_basis_if_available!(model::MOI.AbstractOptimizer, ::Nothing) = nothing

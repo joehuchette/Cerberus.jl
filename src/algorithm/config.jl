@@ -2,25 +2,27 @@ abstract type BranchingRule end
 struct MostInfeasible <: BranchingRule end
 struct PseudocostBranching <: BranchingRule end
 
-const DEFAULT_LP_SOLVER_FACTORY =
-    (state, config) -> begin
-        model = Gurobi.Optimizer(state.gurobi_env)
-        MOI.set(model, MOI.Silent(), config.silent)
-        # TODO: Rather than set this parameter, we could instead handle the
-        # INF_OR_UNBD case directly. However, this might require resolving
-        # some node LPs, which is a bit tricky to do in the current design.
-        MOI.set(model, MOI.RawParameter("DualReductions"), 0)
-        model
-    end
+@enum Incrementalism NO_INCREMENTALISM WARM_START HOT_START
+
+function _default_lp_solver_factory(state, config)
+    model = Gurobi.Optimizer(state.gurobi_env)
+    # TODO: Rather than have factory as a configurable parameter, can probably
+    # just get by with making `silence_lp_solver::Bool` a parameter.
+    MOI.set(model, MOI.Silent(), config.silent)
+    # TODO: Rather than set this parameter, we could instead handle the
+    # INF_OR_UNBD case directly. However, this might require resolving
+    # some node LPs, which is a bit tricky to do in the current design.
+    MOI.set(model, MOI.RawParameter("DualReductions"), 0)
+    return model
+end
+const DEFAULT_LP_SOLVER_FACTORY = _default_lp_solver_factory
 const DEFAULT_SILENT = true
 const DEFAULT_BRANCHING_RULE = MostInfeasible()
 const DEFAULT_TIME_LIMIT_SEC = Inf
 const DEFAULT_NODE_LIMIT = 1_000_000
 const DEFAULT_GAP_TOL = 1e-4
 const DEFAULT_INTEGRALITY_TOL = 1e-5
-const DEFAULT_WARM_START = true
-const DEFAULT_HOT_START = false
-const DEFAULT_LOG_OUTPUT = true
+const DEFAULT_INCREMENTALISM = HOT_START
 
 Base.@kwdef mutable struct AlgorithmConfig
     lp_solver_factory::Function = DEFAULT_LP_SOLVER_FACTORY
@@ -30,7 +32,5 @@ Base.@kwdef mutable struct AlgorithmConfig
     node_limit::Int = DEFAULT_NODE_LIMIT
     gap_tol::Float64 = DEFAULT_GAP_TOL
     int_tol::Float64 = DEFAULT_INTEGRALITY_TOL
-    warm_start::Bool = DEFAULT_WARM_START
-    hot_start::Bool = DEFAULT_HOT_START
-    log_output::Bool = DEFAULT_LOG_OUTPUT
+    incrementalism::Incrementalism = DEFAULT_INCREMENTALISM
 end

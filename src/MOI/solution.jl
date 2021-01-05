@@ -25,14 +25,13 @@ function _has_feasible_solution(opt::Optimizer)
         return false
     end
     x = opt.result.best_solution
-    return length(x) == num_variables(opt.form.base_form)
+    return all(!isnan, x)
 end
 
 function MOI.get(opt::Optimizer, ::MOI.PrimalStatus)
     if opt.result === nothing
         return MOI.NO_SOLUTION
     end
-    x = opt.result.best_solution
     if _has_feasible_solution(opt)
         stat = opt.result.termination_status
         @assert stat != INFEASIBLE && stat != INF_OR_UNBOUNDED
