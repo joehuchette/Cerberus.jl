@@ -16,7 +16,7 @@ function optimize!(
     result = Result()
     # TODO: Model presolve. Must happen before initial state is built.
     # Initialize search tree with LP relaxation
-    state = CurrentState(primal_bound)
+    state = CurrentState(num_variables(form), config, primal_bound=primal_bound)
     if config.log_output
         _log_preamble(form, primal_bound)
     end
@@ -32,6 +32,7 @@ function optimize!(
     return Result(state, config)
 end
 
+# TODO: Store config in CurrentState, remove as argument here.
 function process_node!(
     state::CurrentState,
     form::DMIPFormulation,
@@ -54,7 +55,7 @@ function process_node!(
     MOI.optimize!(model)
 
     # 3. Grab solution data and bundle it into a NodeResult
-    empty!(state.node_result)
+    reset!(state.node_result)
     simplex_iters = MOI.get(model, MOI.SimplexIterations())
     state.node_result.simplex_iters = simplex_iters
     state.node_result.depth = length(node.branchings)
@@ -64,11 +65,11 @@ function process_node!(
         _fill_solution!(state.node_result.x, model)
         state.node_result.int_infeas =
             _num_int_infeasible(form, state.node_result.x, config)
-        if config.warm_start
-            _fill_basis!(state.node_result.basis, model)
-        end
-        if config.hot_start
-            state.node_result.model = model
+        if config.incrementalism == WARM_START
+            update_basis!(state.node_result, model)
+        elseif config.incrementalism == HOT_START
+            update_basis!(state.node_result, model)
+            set_model!(state.node_result, model)
         end
     elseif term_status == MOI.INFEASIBLE
         state.node_result.cost = Inf
@@ -115,15 +116,20 @@ function _attach_parent_info!(
     favorite_child::Node,
     other_child::Node,
     result::NodeResult,
+    config::AlgorithmConfig,
 )
-    # TODO: If we're setting hot start model, we really don't need to set basis...
-    #       So, can avoid a copy of the dict by giving it only to the second favorite
-    #       child. However, this will require us to pass config as an arg here.
-    favorite_child.parent_info =
-        ParentInfo(result.cost, result.basis, result.model)
-    # TODO: This only maintains hot start model on dives. Is this the right call?
-    other_child.parent_info =
-        ParentInfo(result.cost, copy(result.basis), nothing)
+    cost = result.cost
+    if config.incrementalism == NO_INCREMENTALISM
+        favorite_child.parent_info = ParentInfo(cost, nothing, nothing)
+        other_child.parent_info = ParentInfo(cost, nothing, nothing)
+    elseif config.incrementalism == WARM_START
+        favorite_child.parent_info = ParentInfo(cost, get_basis(result), nothing)
+        other_child.parent_info = ParentInfo(cost, copy(get_basis(result)), nothing)
+    else
+        @assert config.incrementalism == HOT_START
+        favorite_child.parent_info = ParentInfo(cost, nothing, get_model(result))
+        other_child.parent_info = ParentInfo(cost, get_basis(result), nothing)
+    end
     return nothing
 end
 
@@ -162,7 +168,7 @@ function update_state!(
         # 5. Branch!
         favorite_child, other_child =
             branch(form, config.branching_rule, node, result, config)
-        _attach_parent_info!(favorite_child, other_child, result)
+        _attach_parent_info!(favorite_child, other_child, result, config)
         push_node!(state.tree, other_child)
         push_node!(state.tree, favorite_child)
         # TODO: Add a check in this branch to ensure we don't have a "funny" return

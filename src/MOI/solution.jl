@@ -25,7 +25,7 @@ function _has_feasible_solution(opt::Optimizer)
         return false
     end
     x = opt.result.best_solution
-    return length(x) == num_variables(opt.form.base_form)
+    return all(i -> !isnan(x[VI(i)]), 1:num_variables(opt.form.base_form))
 end
 
 function MOI.get(opt::Optimizer, ::MOI.PrimalStatus)

@@ -34,8 +34,7 @@ end
             12,
             13,
             14,
-            Cerberus.Basis(),
-            nothing,
+            Cerberus.IncrementalData(Cerberus.HOT_START),
         )
         n1, n2 = @inferred Cerberus.branch(
             fm,
@@ -96,8 +95,7 @@ end
             12,
             13,
             14,
-            Cerberus.Basis(),
-            nothing,
+            Cerberus.IncrementalData(Cerberus.HOT_START),
         )
         fc, oc = @inferred Cerberus.branch(
             fm,
