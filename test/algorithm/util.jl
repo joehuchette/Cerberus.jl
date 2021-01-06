@@ -1,9 +1,5 @@
 function _is_root_node(node::Cerberus.Node)
-    isempty(node.branchings) || return false
-    node.parent_info.dual_bound == -Inf || return false
-    node.parent_info.basis === nothing || return false
-    node.parent_info.hot_start_model === nothing || return false
-    return true
+    return isempty(node.lb_diff) && isempty(node.ub_diff)
 end
 
 function _NodeResult(

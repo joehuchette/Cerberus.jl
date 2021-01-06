@@ -74,7 +74,7 @@ function process_node!(
     # 3. Grab solution data and bundle it into a NodeResult
     reset!(state.node_result)
     state.node_result.simplex_iters = MOI.get(model, MOI.SimplexIterations())
-    state.node_result.depth = length(node.branchings)
+    state.node_result.depth = node.depth
     term_status = MOI.get(model, MOI.TerminationStatus())
     if term_status == MOI.OPTIMAL
         state.node_result.cost = MOI.get(model, MOI.ObjectiveValue())
@@ -150,7 +150,8 @@ function _attach_parent_info!(
         # TODO: Should be able to do this without copying the basis. However,
         # need to be careful that other_child now "owns" the basis, which is
         # troublesome as empty!(result) currently will wipe it away.
-        other_child.parent_info = ParentInfo(cost, copy(get_basis(result)), nothing)
+        other_child.parent_info =
+            ParentInfo(cost, copy(get_basis(result)), nothing)
     end
     return nothing
 end
@@ -175,7 +176,7 @@ function update_state!(
     elseif result.cost == -Inf
         # 3. LP is unbounded.
         #  Implies MIP is infeasible or unbounded. Should only happen at root.
-        @assert isempty(node.branchings)
+        @assert isempty(node.lb_diff) && isempty(node.ub_diff)
         state.primal_bound = result.cost
     elseif result.int_infeas == 0
         # 4. Prune by integrality

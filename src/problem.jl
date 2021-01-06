@@ -1,6 +1,6 @@
-struct AffineConstraint
+struct AffineConstraint{S <: _C_SETS}
     f::SAF
-    s::_C_SETS
+    s::S
 end
 
 # TODO: Unit test
@@ -10,6 +10,7 @@ function _max_var_index(saf::SAF)
 end
 _max_var_index(ac::AffineConstraint) = _max_var_index(ac.f)
 
+# TODO: Store LT/GT/ET constraints separately in typed fields.
 mutable struct Polyhedron
     aff_constrs::Vector{AffineConstraint}
     bounds::Vector{IN}

@@ -45,16 +45,18 @@ function build_base_model(
 end
 
 function update_node_bounds!(model::MOI.AbstractOptimizer, node::Node)
-    for bd in node.branchings
-        ci = CI{SV,IN}(bd.vi.value)
+    for (vi, lb) in node.lb_diff
+        ci = CI{SV,IN}(vi.value)
         interval = MOI.get(model, MOI.ConstraintSet(), ci)
-        new_interval = (
-            if bd.direction == DOWN_BRANCH
-                IN(interval.lower, bd.value)
-            else
-                IN(bd.value, interval.upper)
-            end
-        )
+        # @assert lb >= interval.upper
+        new_interval = IN(lb, interval.upper)
+        MOI.set(model, MOI.ConstraintSet(), ci, new_interval)
+    end
+    for (vi, ub) in node.ub_diff
+        ci = CI{SV,IN}(vi.value)
+        interval = MOI.get(model, MOI.ConstraintSet(), ci)
+        # @assert ub <= interval.upper
+        new_interval = IN(interval.lower, ub)
         MOI.set(model, MOI.ConstraintSet(), ci, new_interval)
     end
     return nothing

@@ -55,10 +55,11 @@ end
         fm = _build_dmip_formulation()
         state = _CurrentState(Cerberus.num_variables(fm), CONFIG)
         # A bit hacky, but force infeasibility by branching both up and down.
-        node = Cerberus.Node([
-            Cerberus.BranchingDecision(_VI(1), 0, Cerberus.DOWN_BRANCH),
-            Cerberus.BranchingDecision(_VI(1), 1, Cerberus.UP_BRANCH),
-        ])
+        node = Cerberus.Node(
+            Cerberus.BoundDiff(_VI(1) => 1),
+            Cerberus.BoundDiff(_VI(1) => 0),
+            2,
+        )
         @inferred Cerberus.process_node!(state, fm, node, CONFIG)
         result = state.node_result
         @test result.cost == Inf
@@ -96,12 +97,8 @@ end
 end
 
 @testset "_attach_parent_info!" begin
-    fc = Cerberus.Node([
-        Cerberus.BranchingDecision(_VI(1), 1, Cerberus.UP_BRANCH),
-    ])
-    oc = Cerberus.Node([
-        Cerberus.BranchingDecision(_VI(1), 0, Cerberus.DOWN_BRANCH),
-    ])
+    fc = Cerberus.Node(Cerberus.BoundDiff(_VI(1) => 1), Cerberus.BoundDiff(), 2)
+    oc = Cerberus.Node(Cerberus.BoundDiff(), Cerberus.BoundDiff(_VI(1) => 0), 2)
     basis = Cerberus.Basis(_VI(1) => MOI.BASIC)
     model = Gurobi.Optimizer()
     cost = 12.3
@@ -146,7 +143,8 @@ end
         @test fc.parent_info.dual_bound == cost
         @test oc.parent_info.dual_bound == cost
         @test fc.parent_info.basis === nothing
-        @test oc.parent_info.basis === basis
+        @test oc.parent_info.basis !== basis
+        @test oc.parent_info.basis == basis
         @test fc.parent_info.hot_start_model === model
         @test oc.parent_info.hot_start_model === nothing
     end
@@ -243,14 +241,14 @@ end
     @inferred Cerberus.update_dual_bound!(cs)
     @test cs.dual_bound == db
     fc = Cerberus.pop_node!(cs.tree)
-    @test fc.branchings ==
-          [Cerberus.BranchingDecision(_VI(3), 1, Cerberus.UP_BRANCH)]
+    @test fc.lb_diff == Cerberus.BoundDiff(_VI(3) => 1)
+    @test fc.ub_diff == Cerberus.BoundDiff()
     @test fc.parent_info.dual_bound == db
     @test fc.parent_info.basis === nothing
     @test fc.parent_info.hot_start_model === model
     oc = Cerberus.pop_node!(cs.tree)
-    @test oc.branchings ==
-          [Cerberus.BranchingDecision(_VI(3), 0, Cerberus.DOWN_BRANCH)]
+    @test oc.lb_diff == Cerberus.BoundDiff()
+    @test oc.ub_diff == Cerberus.BoundDiff(_VI(3) => 0)
     @test oc.parent_info.dual_bound == db
     @test oc.parent_info.basis == basis
     @test oc.parent_info.hot_start_model === nothing
