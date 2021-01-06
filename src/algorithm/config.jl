@@ -4,7 +4,7 @@ struct PseudocostBranching <: BranchingRule end
 
 @enum Incrementalism NO_INCREMENTALISM WARM_START HOT_START
 
-# NOTE: This is not a true configurable parameter; it shoul really only be
+# NOTE: This is not a true configurable parameter; it should really only be
 # changed for debugging.
 const _SILENT_LP_SOLVER = true
 
@@ -23,7 +23,7 @@ function _default_lp_solver_factory(state, config)
     return model
 end
 const DEFAULT_LP_SOLVER_FACTORY = _default_lp_solver_factory
-const DEFAULT_SILENT = true
+const DEFAULT_SILENT = false
 const DEFAULT_BRANCHING_RULE = MostInfeasible()
 const DEFAULT_TIME_LIMIT_SEC = Inf
 const DEFAULT_NODE_LIMIT = 1_000_000

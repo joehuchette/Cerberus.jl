@@ -1,5 +1,5 @@
-# const Basis = Dict{Union{CI{SV,IN},CI{SAF,<:_C_SETS}},MOI.BasisStatusCode}
-const Basis = Dict{Any,MOI.BasisStatusCode}
+const Basis = Dict{Union{CI{SV,IN},CI{SAF,<:_C_SETS}},MOI.BasisStatusCode}
+# const Basis = Dict{Any,MOI.BasisStatusCode}
 
 struct ParentInfo
     dual_bound::Float64
@@ -47,7 +47,6 @@ function copy_without_pi(node::Node)
     )
 end
 
-# TODO: Unit test
 function apply_branching!(node::Node, bd::BranchingDecision)
     node.depth += 1
     vi = bd.vi
