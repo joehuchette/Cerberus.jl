@@ -10,21 +10,22 @@ function _max_var_index(saf::SAF)
 end
 _max_var_index(ac::AffineConstraint) = _max_var_index(ac.f)
 
-# TODO: Store LT/GT/ET constraints separately in typed fields.
 mutable struct Polyhedron
-    aff_constrs::Vector{AffineConstraint}
+    lt_constrs::Vector{AffineConstraint{LT}}
+    gt_constrs::Vector{AffineConstraint{GT}}
+    et_constrs::Vector{AffineConstraint{ET}}
     bounds::Vector{IN}
-    # TODO: Enforce that length(bound) is no less than max variable index
-    #       appearing in aff_constrs.
     function Polyhedron(
-        aff_constrs::Vector{AffineConstraint},
+        aff_constrs::Vector,
         bounds::Vector{IN},
     )
         n = length(bounds)
+        p = new([], [], [], bounds)
         for aff_constr in aff_constrs
             @assert _max_var_index(aff_constr) <= n
+            add_constraint(p, aff_constr)
         end
-        return new(aff_constrs, bounds)
+        return p
     end
 end
 
@@ -38,7 +39,27 @@ function add_variable(p::Polyhedron)
     return nothing
 end
 
-num_constraints(p::Polyhedron) = length(p.aff_constrs)
+# TODO: Unit test
+function add_constraint(p::Polyhedron, aff_constr::AffineConstraint{S}) where {S <: _C_SETS}
+    if S == LT
+        push!(p.lt_constrs, aff_constr)
+    elseif S == GT
+        push!(p.gt_constrs, aff_constr)
+    else
+        @assert S == ET
+        push!(p.et_constrs, aff_constr)
+    end
+    nothing
+end
+
+get_constraint(p::Polyhedron, T::Type{LT}, i::Int) = p.lt_constrs[i]
+get_constraint(p::Polyhedron, T::Type{GT}, i::Int) = p.gt_constrs[i]
+get_constraint(p::Polyhedron, T::Type{ET}, i::Int) = p.et_constrs[i]
+
+num_constraints(p::Polyhedron) = num_constraints(p, LT) + num_constraints(p, GT) + num_constraints(p, ET)
+num_constraints(p::Polyhedron, T::Type{LT}) = length(p.lt_constrs)
+num_constraints(p::Polyhedron, T::Type{GT}) = length(p.gt_constrs)
+num_constraints(p::Polyhedron, T::Type{ET}) = length(p.et_constrs)
 
 # TODO: Unit test
 function Base.isempty(p::Polyhedron)
@@ -54,9 +75,6 @@ mutable struct LPRelaxation
 
     function LPRelaxation(feasible_region::Polyhedron, obj::SAF)
         n = ambient_dim(feasible_region)
-        for aff_constr in feasible_region.aff_constrs
-            @assert _max_var_index(aff_constr) <= n
-        end
         @assert _max_var_index(obj) <= n
         return new(feasible_region, obj)
     end

@@ -30,11 +30,11 @@
             Cerberus.IncrementalData(Cerberus.WARM_START),
         )
         basis = Cerberus.Basis(
-            _VI(1) => MOI.BASIC,
-            _VI(2) => MOI.BASIC,
+            _CI{_SV,_IN}(1) => MOI.BASIC,
+            _CI{_SV,_IN}(2) => MOI.BASIC,
             _CI{_SAF,_GT}(1) => MOI.NONBASIC,
+            _CI{_SAF,_LT}(1) => MOI.NONBASIC,
             _CI{_SAF,_LT}(2) => MOI.NONBASIC,
-            _CI{_SAF,_LT}(3) => MOI.NONBASIC,
         )
         nr2.incremental_data._basis = basis
         @test nr2.cost == cost
@@ -52,7 +52,7 @@
         si = 12
         dp = 5
         ii = 2
-        basis = Dict{Any,MOI.BasisStatusCode}(_CI{_SV,_IN}(1) => MOI.BASIC)
+        basis = Cerberus.Basis(_CI{_SV,_IN}(1) => MOI.BASIC)
         model = Gurobi.Optimizer()
         nr = Cerberus.NodeResult(
             cost,

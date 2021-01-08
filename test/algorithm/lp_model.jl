@@ -103,12 +103,12 @@ end
     @assert MOI.get(model, MOI.PrimalStatus()) == MOI.FEASIBLE_POINT
     basis = Cerberus.Basis()
     @inferred Cerberus._update_basis!(basis, model)
-    @test basis == Dict{Any,MOI.BasisStatusCode}(
+    @test basis == Cerberus.Basis(
         _CI{_SV,_IN}(1) => MOI.NONBASIC_AT_LOWER,
         _CI{_SV,_IN}(2) => MOI.BASIC,
         _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
-        _CI{_SAF,_ET}(2) => MOI.NONBASIC,
-        _CI{_SAF,_LT}(3) => MOI.BASIC,
+        _CI{_SAF,_ET}(3) => MOI.NONBASIC,
+        _CI{_SAF,_LT}(2) => MOI.BASIC,
     )
 end
 
@@ -130,12 +130,12 @@ end
 @testset "set_basis_if_available!" begin
     # First, seed a suboptimal basis. This will disable presolve. It is only one pivot away from the optimal basis.
     let
-        subopt_basis = Dict{Any,MOI.BasisStatusCode}(
+        subopt_basis = Cerberus.Basis(
             _CI{_SV,_IN}(1) => MOI.BASIC,
             _CI{_SV,_IN}(2) => MOI.NONBASIC_AT_LOWER,
             _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
-            _CI{_SAF,_ET}(2) => MOI.NONBASIC,
-            _CI{_SAF,_LT}(3) => MOI.BASIC,
+            _CI{_SAF,_ET}(3) => MOI.NONBASIC,
+            _CI{_SAF,_LT}(2) => MOI.BASIC,
         )
         model = _set_basis_model(subopt_basis)
         MOI.optimize!(model)
@@ -144,12 +144,12 @@ end
 
     # Now, seed the optimal basis. This will solve the problem without any simplex iterations.
     let
-        opt_basis = Dict{Any,MOI.BasisStatusCode}(
+        opt_basis = Cerberus.Basis(
             _CI{_SV,_IN}(1) => MOI.NONBASIC_AT_LOWER,
             _CI{_SV,_IN}(2) => MOI.BASIC,
             _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
-            _CI{_SAF,_ET}(2) => MOI.NONBASIC,
-            _CI{_SAF,_LT}(3) => MOI.BASIC,
+            _CI{_SAF,_ET}(3) => MOI.NONBASIC,
+            _CI{_SAF,_LT}(2) => MOI.BASIC,
         )
         model = _set_basis_model(opt_basis)
         MOI.optimize!(model)

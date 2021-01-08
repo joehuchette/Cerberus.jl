@@ -32,8 +32,14 @@ function build_base_model(
         # batch add variables.
         MOI.add_constrained_variable(model, IN(l, u))
     end
-    for aff_constr in form.base_form.feasible_region.aff_constrs
-        MOI.add_constraint(model, aff_constr.f, aff_constr.s)
+    for lt_constr in form.base_form.feasible_region.lt_constrs
+        MOI.add_constraint(model, lt_constr.f, lt_constr.s)
+    end
+    for gt_constr in form.base_form.feasible_region.gt_constrs
+        MOI.add_constraint(model, gt_constr.f, gt_constr.s)
+    end
+    for et_constr in form.base_form.feasible_region.et_constrs
+        MOI.add_constraint(model, et_constr.f, et_constr.s)
     end
     # TODO: Test this once it does something...
     for formulater in form.disjunction_formulaters

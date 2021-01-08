@@ -22,12 +22,13 @@ end
         @test result.simplex_iters == 0
         @test length(result.x) == 3
         @test result.x ≈ [0.5, 2.5 / 2.1, 0.0]
+        # Indices correspond to what Gurobi.jl, not Cerberus, uses
         @test Cerberus.get_basis(result) == Cerberus.Basis(
             _CI{_SV,_IN}(1) => MOI.NONBASIC_AT_LOWER,
             _CI{_SV,_IN}(2) => MOI.BASIC,
             _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
-            _CI{_SAF,_ET}(2) => MOI.NONBASIC,
-            _CI{_SAF,_LT}(3) => MOI.BASIC,
+            _CI{_SAF,_ET}(3) => MOI.NONBASIC,
+            _CI{_SAF,_LT}(2) => MOI.BASIC,
         )
         @test Cerberus.get_model(result) isa Gurobi.Optimizer
     end
@@ -99,7 +100,7 @@ end
 @testset "_attach_parent_info!" begin
     fc = Cerberus.Node(Cerberus.BoundDiff(_VI(1) => 1), Cerberus.BoundDiff(), 2)
     oc = Cerberus.Node(Cerberus.BoundDiff(), Cerberus.BoundDiff(_VI(1) => 0), 2)
-    basis = Cerberus.Basis(_VI(1) => MOI.BASIC)
+    basis = Cerberus.Basis(_CI{_SV,_IN}(1) => MOI.BASIC)
     model = Gurobi.Optimizer()
     cost = 12.3
     result = Cerberus.NodeResult(
@@ -132,8 +133,8 @@ end
         @test oc.parent_info.basis !== basis
         @test oc.parent_info.basis isa Cerberus.Basis
         @test length(oc.parent_info.basis) == 1
-        @test haskey(oc.parent_info.basis, _VI(1))
-        @test oc.parent_info.basis[_VI(1)] == MOI.BASIC
+        @test haskey(oc.parent_info.basis, _CI{_SV,_IN}(1))
+        @test oc.parent_info.basis[_CI{_SV,_IN}(1)] == MOI.BASIC
         @test fc.parent_info.hot_start_model === nothing
         @test oc.parent_info.hot_start_model === nothing
     end
