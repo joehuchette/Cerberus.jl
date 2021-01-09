@@ -80,10 +80,18 @@ function _fill_solution!(x::Vector{Float64}, model::MOI.AbstractOptimizer)
 end
 
 function update_basis!(state::CurrentState, model::Gurobi.Optimizer)
-    return _update_basis!(get_basis(state.node_result), state.constraint_state, model)
+    return _update_basis!(
+        get_basis(state.node_result),
+        state.constraint_state,
+        model,
+    )
 end
 
-function _update_basis!(basis::Basis, constraint_state::ConstraintState, model::Gurobi.Optimizer)
+function _update_basis!(
+    basis::Basis,
+    constraint_state::ConstraintState,
+    model::Gurobi.Optimizer,
+)
     for ci in constraint_state.lt_constrs
         basis.lt_constrs[ci] = MOI.get(model, MOI.ConstraintBasisStatus(), ci)
     end
@@ -106,19 +114,22 @@ function set_basis_if_available!(
 )::Nothing
     # TODO: Check that basis is, in fact, a basis after modification
     @debug "Basis is being set ($(length(basis)) elements)"
-    if isempty(basis.lt_constrs) && isempty(basis.gt_constrs) && isempty(basis.et_constrs) && isempty(basis.var_constrs)
+    if isempty(basis.lt_constrs) &&
+       isempty(basis.gt_constrs) &&
+       isempty(basis.et_constrs) &&
+       isempty(basis.var_constrs)
         throw(ArgumentError("You are attempting to set an empty basis."))
     end
-    for (k,v) in basis.lt_constrs
+    for (k, v) in basis.lt_constrs
         MOI.set(model, MOI.ConstraintBasisStatus(), k, v)
     end
-    for (k,v) in basis.gt_constrs
+    for (k, v) in basis.gt_constrs
         MOI.set(model, MOI.ConstraintBasisStatus(), k, v)
     end
-    for (k,v) in basis.et_constrs
+    for (k, v) in basis.et_constrs
         MOI.set(model, MOI.ConstraintBasisStatus(), k, v)
     end
-    for (k,v) in basis.var_constrs
+    for (k, v) in basis.var_constrs
         MOI.set(model, MOI.ConstraintBasisStatus(), k, v)
     end
     return nothing

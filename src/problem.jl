@@ -1,4 +1,4 @@
-struct AffineConstraint{S <: _C_SETS}
+struct AffineConstraint{S<:_C_SETS}
     f::SAF
     s::S
 end
@@ -15,10 +15,7 @@ mutable struct Polyhedron
     gt_constrs::Vector{AffineConstraint{GT}}
     et_constrs::Vector{AffineConstraint{ET}}
     bounds::Vector{IN}
-    function Polyhedron(
-        aff_constrs::Vector,
-        bounds::Vector{IN},
-    )
+    function Polyhedron(aff_constrs::Vector, bounds::Vector{IN})
         n = length(bounds)
         p = new([], [], [], bounds)
         for aff_constr in aff_constrs
@@ -40,7 +37,10 @@ function add_variable(p::Polyhedron)
 end
 
 # TODO: Unit test
-function add_constraint(p::Polyhedron, aff_constr::AffineConstraint{S}) where {S <: _C_SETS}
+function add_constraint(
+    p::Polyhedron,
+    aff_constr::AffineConstraint{S},
+) where {S<:_C_SETS}
     if S == LT
         push!(p.lt_constrs, aff_constr)
     elseif S == GT
@@ -49,14 +49,18 @@ function add_constraint(p::Polyhedron, aff_constr::AffineConstraint{S}) where {S
         @assert S == ET
         push!(p.et_constrs, aff_constr)
     end
-    nothing
+    return nothing
 end
 
 get_constraint(p::Polyhedron, T::Type{LT}, i::Int) = p.lt_constrs[i]
 get_constraint(p::Polyhedron, T::Type{GT}, i::Int) = p.gt_constrs[i]
 get_constraint(p::Polyhedron, T::Type{ET}, i::Int) = p.et_constrs[i]
 
-num_constraints(p::Polyhedron) = num_constraints(p, LT) + num_constraints(p, GT) + num_constraints(p, ET)
+function num_constraints(p::Polyhedron)
+    return num_constraints(p, LT) +
+           num_constraints(p, GT) +
+           num_constraints(p, ET)
+end
 num_constraints(p::Polyhedron, T::Type{LT}) = length(p.lt_constrs)
 num_constraints(p::Polyhedron, T::Type{GT}) = length(p.gt_constrs)
 num_constraints(p::Polyhedron, T::Type{ET}) = length(p.et_constrs)

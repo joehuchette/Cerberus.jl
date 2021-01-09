@@ -29,13 +29,15 @@
             int_infeas,
             Cerberus.IncrementalData(Cerberus.WARM_START),
         )
-        basis = _Basis(Dict(
-            _CI{_SV,_IN}(1) => MOI.BASIC,
-            _CI{_SV,_IN}(2) => MOI.BASIC,
-            _CI{_SAF,_GT}(1) => MOI.NONBASIC,
-            _CI{_SAF,_LT}(1) => MOI.NONBASIC,
-            _CI{_SAF,_LT}(2) => MOI.NONBASIC,
-        ))
+        basis = _Basis(
+            Dict(
+                _CI{_SV,_IN}(1) => MOI.BASIC,
+                _CI{_SV,_IN}(2) => MOI.BASIC,
+                _CI{_SAF,_GT}(1) => MOI.NONBASIC,
+                _CI{_SAF,_LT}(1) => MOI.NONBASIC,
+                _CI{_SAF,_LT}(2) => MOI.NONBASIC,
+            ),
+        )
         nr2.incremental_data._basis = basis
         @test nr2.cost == cost
         @test nr2.x == x

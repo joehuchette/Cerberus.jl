@@ -96,7 +96,9 @@ function MOI.add_constraint(
     vi = f.variable
     MOI.throw_if_not_valid(opt, vi)
     if opt.form.integrality[vi.value] !== nothing
-        error("Already set variable integrality of $(opt.form.integrality[vi.value]) for $(vi); cannot overwrite to $set.")
+        error(
+            "Already set variable integrality of $(opt.form.integrality[vi.value]) for $(vi); cannot overwrite to $set.",
+        )
     end
     opt.form.integrality[vi.value] = set
     return CI{SV,S}(vi.value)

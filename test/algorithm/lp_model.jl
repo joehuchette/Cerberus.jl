@@ -104,13 +104,15 @@ end
     true_basis = Cerberus.Basis()
     state.node_result.incremental_data._basis = true_basis
     @inferred Cerberus.update_basis!(state, model)
-    expected_basis = _Basis(Dict(
-        _CI{_SV,_IN}(1) => MOI.NONBASIC_AT_LOWER,
-        _CI{_SV,_IN}(2) => MOI.BASIC,
-        _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
-        _CI{_SAF,_ET}(3) => MOI.NONBASIC,
-        _CI{_SAF,_LT}(2) => MOI.BASIC,
-    ))
+    expected_basis = _Basis(
+        Dict(
+            _CI{_SV,_IN}(1) => MOI.NONBASIC_AT_LOWER,
+            _CI{_SV,_IN}(2) => MOI.BASIC,
+            _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
+            _CI{_SAF,_ET}(3) => MOI.NONBASIC,
+            _CI{_SAF,_LT}(2) => MOI.BASIC,
+        ),
+    )
     @test true_basis.lt_constrs == expected_basis.lt_constrs
     @test true_basis.gt_constrs == expected_basis.gt_constrs
     @test true_basis.et_constrs == expected_basis.et_constrs
@@ -135,13 +137,15 @@ end
 @testset "set_basis_if_available!" begin
     # First, seed a suboptimal basis. This will disable presolve. It is only one pivot away from the optimal basis.
     let
-        subopt_basis = _Basis(Dict(
-            _CI{_SV,_IN}(1) => MOI.BASIC,
-            _CI{_SV,_IN}(2) => MOI.NONBASIC_AT_LOWER,
-            _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
-            _CI{_SAF,_ET}(3) => MOI.NONBASIC,
-            _CI{_SAF,_LT}(2) => MOI.BASIC,
-        ))
+        subopt_basis = _Basis(
+            Dict(
+                _CI{_SV,_IN}(1) => MOI.BASIC,
+                _CI{_SV,_IN}(2) => MOI.NONBASIC_AT_LOWER,
+                _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
+                _CI{_SAF,_ET}(3) => MOI.NONBASIC,
+                _CI{_SAF,_LT}(2) => MOI.BASIC,
+            ),
+        )
         model = _set_basis_model(subopt_basis)
         MOI.optimize!(model)
         @test MOI.get(model, MOI.SimplexIterations()) == 1
@@ -149,13 +153,15 @@ end
 
     # Now, seed the optimal basis. This will solve the problem without any simplex iterations.
     let
-        opt_basis = _Basis(Dict(
-            _CI{_SV,_IN}(1) => MOI.NONBASIC_AT_LOWER,
-            _CI{_SV,_IN}(2) => MOI.BASIC,
-            _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
-            _CI{_SAF,_ET}(3) => MOI.NONBASIC,
-            _CI{_SAF,_LT}(2) => MOI.BASIC,
-        ))
+        opt_basis = _Basis(
+            Dict(
+                _CI{_SV,_IN}(1) => MOI.NONBASIC_AT_LOWER,
+                _CI{_SV,_IN}(2) => MOI.BASIC,
+                _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
+                _CI{_SAF,_ET}(3) => MOI.NONBASIC,
+                _CI{_SAF,_LT}(2) => MOI.BASIC,
+            ),
+        )
         model = _set_basis_model(opt_basis)
         MOI.optimize!(model)
         @test MOI.get(model, MOI.SimplexIterations()) == 0

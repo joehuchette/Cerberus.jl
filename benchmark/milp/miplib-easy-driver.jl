@@ -4,9 +4,7 @@ const MOI = MathOptInterface
 using Cerberus, Gurobi, Justitia
 
 const INSTANCES = Dict(
-    name => Justitia.MIPLIBInstance(name)
-    for
-    name in [
+    name => Justitia.MIPLIBInstance(name) for name in [
         "30n20b8",
         "50v-10",
         "academictimetablessmall",
@@ -32,9 +30,9 @@ const TIME_LIMIT_SEC = 60.0
 const APPROACHES = Dict(
     "cerberus-no-ws" => Justitia.MOIBasedApproach{Cerberus.Optimizer}(
         () -> begin
-            model = Cerberus.Optimizer(Cerberus.AlgorithmConfig(
-                incrementalism = Cerberus.WARM_START,
-            ))
+            model = Cerberus.Optimizer(
+                Cerberus.AlgorithmConfig(incrementalism = Cerberus.WARM_START),
+            )
             MOI.set(model, MOI.TimeLimitSec(), TIME_LIMIT_SEC)
             return model
         end,
@@ -48,9 +46,9 @@ const APPROACHES = Dict(
     ),
     "cerberus-hs" => Justitia.MOIBasedApproach{Cerberus.Optimizer}(
         () -> begin
-            model = Cerberus.Optimizer(Cerberus.AlgorithmConfig(
-                incrementalism = Cerberus.HOT_START,
-            ))
+            model = Cerberus.Optimizer(
+                Cerberus.AlgorithmConfig(incrementalism = Cerberus.HOT_START),
+            )
             MOI.set(model, MOI.TimeLimitSec(), TIME_LIMIT_SEC)
             return model
         end,

@@ -57,7 +57,7 @@ end
 
 function _Basis(d::Dict)
     basis = Cerberus.Basis()
-    for (k,v) in d
+    for (k, v) in d
         if typeof(k) == _CI{_SAF,_LT}
             basis.lt_constrs[k] = v
         elseif typeof(k) == _CI{_SAF,_GT}

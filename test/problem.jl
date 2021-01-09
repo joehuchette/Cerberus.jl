@@ -46,10 +46,12 @@ end
 
     # TODO: Test throws on malformed Polyhedron
     @test_throws AssertionError Cerberus.Polyhedron(
-        [Cerberus.AffineConstraint(
-            1.0 * _SV(_VI(1)) + 2.0 * _SV(_VI(2)),
-            _ET(1.0),
-        )],
+        [
+            Cerberus.AffineConstraint(
+                1.0 * _SV(_VI(1)) + 2.0 * _SV(_VI(2)),
+                _ET(1.0),
+            ),
+        ],
         [_IN(0.0, 1.0)],
     )
     @testset "ambient_dim" begin

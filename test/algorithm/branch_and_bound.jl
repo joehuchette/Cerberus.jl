@@ -24,13 +24,15 @@ end
         @test result.x ≈ [0.5, 2.5 / 2.1, 0.0]
         true_basis = Cerberus.get_basis(result)
         expected_basis = # Indices correspond to what Gurobi.jl, not Cerberus, uses
-         _Basis(Dict(
-            _CI{_SV,_IN}(1) => MOI.NONBASIC_AT_LOWER,
-            _CI{_SV,_IN}(2) => MOI.BASIC,
-            _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
-            _CI{_SAF,_ET}(3) => MOI.NONBASIC,
-            _CI{_SAF,_LT}(2) => MOI.BASIC,
-        ))
+            _Basis(
+                Dict(
+                    _CI{_SV,_IN}(1) => MOI.NONBASIC_AT_LOWER,
+                    _CI{_SV,_IN}(2) => MOI.BASIC,
+                    _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
+                    _CI{_SAF,_ET}(3) => MOI.NONBASIC,
+                    _CI{_SAF,_LT}(2) => MOI.BASIC,
+                ),
+            )
         @test true_basis.lt_constrs == expected_basis.lt_constrs
         @test true_basis.gt_constrs == expected_basis.gt_constrs
         @test true_basis.et_constrs == expected_basis.et_constrs
@@ -171,11 +173,7 @@ end
     starting_pb = 12.3
     simplex_iters_per = 18
     depth = 7
-    cs = _CurrentState(
-        fm,
-        CONFIG,
-        primal_bound = starting_pb,
-    )
+    cs = _CurrentState(fm, CONFIG, primal_bound = starting_pb)
     @test _is_root_node(Cerberus.pop_node!(cs.tree))
     node = Cerberus.Node()
 

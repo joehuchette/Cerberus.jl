@@ -2,10 +2,12 @@
 MOI.supports_constraint(::Optimizer, ::Type{SAF}, ::Type{<:_C_SETS}) = true
 
 function MOI.is_valid(opt::Optimizer, c::CI{SAF,T}) where {T<:_C_SETS}
-    return 1 <= c.value <= num_constraints(opt.form.base_form.feasible_region, T)
+    return 1 <=
+           c.value <=
+           num_constraints(opt.form.base_form.feasible_region, T)
 end
 
-function MOI.add_constraint(opt::Optimizer, f::SAF, s::T) where {T <: _C_SETS}
+function MOI.add_constraint(opt::Optimizer, f::SAF, s::T) where {T<:_C_SETS}
     if !iszero(f.constant)
         throw(MOI.ScalarFunctionConstantNotZero{Float64,SAF,T}(f.constant))
     end
