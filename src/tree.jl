@@ -1,5 +1,28 @@
-const Basis = Dict{Union{CI{SV,IN},CI{SAF,<:_C_SETS}},MOI.BasisStatusCode}
-# const Basis = Dict{Any,MOI.BasisStatusCode}
+struct Basis
+    lt_constrs::Dict{CI{SAF,LT},MOI.BasisStatusCode}
+    gt_constrs::Dict{CI{SAF,GT},MOI.BasisStatusCode}
+    et_constrs::Dict{CI{SAF,ET},MOI.BasisStatusCode}
+    var_constrs::Dict{CI{SV,IN},MOI.BasisStatusCode}
+end
+Basis() = Basis(Dict(), Dict(), Dict(), Dict())
+
+# TODO: Unit test
+function Base.copy(src::Basis)
+    dest = Basis()
+    for (k,v) in src.lt_constrs
+        dest.lt_constrs[k] = v
+    end
+    for (k,v) in src.gt_constrs
+        dest.gt_constrs[k] = v
+    end
+    for (k,v) in src.et_constrs
+        dest.et_constrs[k] = v
+    end
+    for (k,v) in src.var_constrs
+        dest.var_constrs[k] = v
+    end
+    return dest
+end
 
 struct ParentInfo
     dual_bound::Float64
