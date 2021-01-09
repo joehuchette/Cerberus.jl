@@ -1,9 +1,8 @@
-
 @testset "Node" begin
     lb_diff = Cerberus.BoundDiff(_VI(2) => 1, _VI(3) => 0, _VI(6) => 1)
     ub_diff = Cerberus.BoundDiff(_VI(1) => 0, _VI(3) => 1, _VI(5) => 0)
     depth = 6
-    basis = Dict(
+    basis = _Basis(Dict(
         _CI{_SV,_IN}(1) => MOI.BASIC,
         _CI{_SV,_IN}(2) => MOI.NONBASIC,
         _CI{_SV,_IN}(3) => MOI.BASIC,
@@ -13,7 +12,7 @@
         _CI{_SAF,_GT}(2) => MOI.BASIC,
         _CI{_SAF,_GT}(3) => MOI.NONBASIC,
         _CI{_SAF,_GT}(4) => MOI.BASIC,
-    )
+    ))
     dual_bound = 3.2
     parent_info = Cerberus.ParentInfo(dual_bound, basis, nothing)
 

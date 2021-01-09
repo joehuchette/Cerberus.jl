@@ -19,11 +19,11 @@ function _NodeResult(
 end
 
 function _CurrentState(
-    nvars::Int,
+    fm::Cerberus.DMIPFormulation,
     config::Cerberus.AlgorithmConfig;
     primal_bound = Inf,
 )
-    state = Cerberus.CurrentState(nvars, config, primal_bound = primal_bound)
+    state = Cerberus.CurrentState(fm, config, primal_bound = primal_bound)
     state.gurobi_env = GRB_ENV
     return state
 end
