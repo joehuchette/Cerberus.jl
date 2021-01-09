@@ -84,10 +84,6 @@ function update_basis!(state::CurrentState, model::Gurobi.Optimizer)
 end
 
 function _update_basis!(basis::Basis, constraint_state::ConstraintState, model::Gurobi.Optimizer)
-    # TODO: Cache ListOfConstraints and ListOfConstraintIndices. This is a
-    # (surprising?) bottleneck, taking >50% of time in this function.
-    # One idea would be to make sure basis keys remain in sync with constraints
-    # in model, and then this function could just loop through keys(basis).
     for ci in constraint_state.lt_constrs
         basis.lt_constrs[ci] = MOI.get(model, MOI.ConstraintBasisStatus(), ci)
     end
