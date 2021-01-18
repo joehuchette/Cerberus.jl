@@ -12,21 +12,28 @@
 end
 
 function _test_polyhedron(p::Cerberus.Polyhedron)
-    @test typeof(p.aff_constrs[1].f) == _SAF
-    @test p.aff_constrs[1].f.terms == [
+    @test Cerberus.num_constraints(p) == 2
+    @test Cerberus.num_constraints(p, _LT) == length(p.lt_constrs) == 1
+    @test Cerberus.num_constraints(p, _GT) == length(p.gt_constrs) == 0
+    @test Cerberus.num_constraints(p, _ET) == length(p.et_constrs) == 1
+    et_constr = @inferred Cerberus.get_constraint(p, _ET, 1)
+    @test et_constr === p.et_constrs[1]
+    @test et_constr.f.terms == [
         MOI.ScalarAffineTerm{Float64}(2.1, _VI(2)),
         MOI.ScalarAffineTerm{Float64}(1.0, _VI(1)),
         MOI.ScalarAffineTerm{Float64}(3.0, _VI(3)),
     ]
-    @test p.aff_constrs[1].f.constant == 0.0
-    @test p.aff_constrs[1].s == _ET(3.0)
-    @test typeof(p.aff_constrs[2].f) == _SAF
-    @test p.aff_constrs[2].f.terms == [
+    @test et_constr.f.constant == 0.0
+    @test et_constr.s == _ET(3.0)
+
+    lt_constr = @inferred Cerberus.get_constraint(p, _LT, 1)
+    @test lt_constr === p.lt_constrs[1]
+    @test lt_constr.f.terms == [
         MOI.ScalarAffineTerm{Float64}(-3.5, _VI(1)),
         MOI.ScalarAffineTerm{Float64}(1.2, _VI(2)),
     ]
-    @test p.aff_constrs[2].f.constant == 0.0
-    @test p.aff_constrs[2].s == _LT(4.0)
+    @test lt_constr.f.constant == 0.0
+    @test lt_constr.s == _LT(4.0)
 
     @test p.bounds == [_IN(0.5, 1.0), _IN(-1.3, 2.3), _IN(0.0, 1.0)]
 
@@ -39,10 +46,12 @@ end
 
     # TODO: Test throws on malformed Polyhedron
     @test_throws AssertionError Cerberus.Polyhedron(
-        [Cerberus.AffineConstraint(
-            1.0 * _SV(_VI(1)) + 2.0 * _SV(_VI(2)),
-            _ET(1.0),
-        )],
+        [
+            Cerberus.AffineConstraint(
+                1.0 * _SV(_VI(1)) + 2.0 * _SV(_VI(2)),
+                _ET(1.0),
+            ),
+        ],
         [_IN(0.0, 1.0)],
     )
     @testset "ambient_dim" begin
@@ -115,15 +124,19 @@ end
 end
 
 function _test_gi_polyhedron(p::Cerberus.Polyhedron)
-    @test length(p.aff_constrs) == 1
-    @test typeof(p.aff_constrs[1].f) == _SAF
-    @test p.aff_constrs[1].f.terms == [
+    @test Cerberus.num_constraints(p) == 1
+    @test Cerberus.num_constraints(p, _LT) == 1
+    @test Cerberus.num_constraints(p, _GT) == 0
+    @test Cerberus.num_constraints(p, _ET) == 0
+    lt_constr = @inferred Cerberus.get_constraint(p, _LT, 1)
+    @test lt_constr === p.lt_constrs[1]
+    @test lt_constr.f.terms == [
         MOI.ScalarAffineTerm{Float64}(1.3, _VI(1)),
         MOI.ScalarAffineTerm{Float64}(3.7, _VI(2)),
         MOI.ScalarAffineTerm{Float64}(2.4, _VI(3)),
     ]
-    @test p.aff_constrs[1].f.constant == 0.0
-    @test p.aff_constrs[1].s == _LT(5.5)
+    @test lt_constr.f.constant == 0.0
+    @test lt_constr.s == _LT(5.5)
 
     @test p.bounds == [_IN(0.0, 4.5), _IN(0.0, 1.0), _IN(0.0, 3.0)]
 end

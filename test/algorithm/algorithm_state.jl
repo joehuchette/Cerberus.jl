@@ -29,12 +29,14 @@
             int_infeas,
             Cerberus.IncrementalData(Cerberus.WARM_START),
         )
-        basis = Cerberus.Basis(
-            _VI(1) => MOI.BASIC,
-            _VI(2) => MOI.BASIC,
-            _CI{_SAF,_GT}(1) => MOI.NONBASIC,
-            _CI{_SAF,_LT}(2) => MOI.NONBASIC,
-            _CI{_SAF,_LT}(3) => MOI.NONBASIC,
+        basis = _Basis(
+            Dict(
+                _CI{_SV,_IN}(1) => MOI.BASIC,
+                _CI{_SV,_IN}(2) => MOI.BASIC,
+                _CI{_SAF,_GT}(1) => MOI.NONBASIC,
+                _CI{_SAF,_LT}(1) => MOI.NONBASIC,
+                _CI{_SAF,_LT}(2) => MOI.NONBASIC,
+            ),
         )
         nr2.incremental_data._basis = basis
         @test nr2.cost == cost
@@ -52,7 +54,7 @@
         si = 12
         dp = 5
         ii = 2
-        basis = Dict{Any,MOI.BasisStatusCode}(_CI{_SV,_IN}(1) => MOI.BASIC)
+        basis = _Basis(Dict(_CI{_SV,_IN}(1) => MOI.BASIC))
         model = Gurobi.Optimizer()
         nr = Cerberus.NodeResult(
             cost,
@@ -78,7 +80,11 @@
         @test nr.int_infeas == 0
         @test length(nr.x) == 1
         @test all(isnan, values(nr.x))
-        @test all(isnan, Cerberus.get_basis(nr))
+        basis = Cerberus.get_basis(nr)
+        @test all(isnan, basis.lt_constrs)
+        @test all(isnan, basis.gt_constrs)
+        @test all(isnan, basis.et_constrs)
+        @test all(isnan, basis.var_constrs)
         @test Cerberus.get_model(nr) === nothing
     end
 end
@@ -86,13 +92,13 @@ end
 @testset "CurrentState" begin
     fm = _build_dmip_formulation()
 
-    nvars = 2
+    nvars = Cerberus.num_variables(fm)
     pb_float = 12.4
     pb_int = 12
 
-    cs1 = @inferred _CurrentState(nvars, CONFIG)
-    cs2 = @inferred _CurrentState(nvars, CONFIG, primal_bound = pb_float)
-    cs3 = @inferred _CurrentState(nvars, CONFIG, primal_bound = pb_int)
+    cs1 = @inferred _CurrentState(fm, CONFIG)
+    cs2 = @inferred _CurrentState(fm, CONFIG, primal_bound = pb_float)
+    cs3 = @inferred _CurrentState(fm, CONFIG, primal_bound = pb_int)
 
     @test length(cs1.tree) == 1
     @test length(cs2.tree) == 1

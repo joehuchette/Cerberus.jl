@@ -1,6 +1,6 @@
 @testset "build_base_model" begin
     form = _build_dmip_formulation()
-    state = Cerberus.CurrentState(Cerberus.num_variables(form), CONFIG)
+    state = Cerberus.CurrentState(form, CONFIG)
     node = Cerberus.Node()
     model =
         @inferred Cerberus.build_base_model(form, state, node, CONFIG, nothing)
@@ -47,7 +47,7 @@ end
 
 @testset "update_node_bounds!" begin
     form = _build_dmip_formulation()
-    state = _CurrentState(Cerberus.num_variables(form), CONFIG)
+    state = _CurrentState(form, CONFIG)
     node = Cerberus.Node()
     model =
         @inferred Cerberus.build_base_model(form, state, node, CONFIG, nothing)
@@ -70,7 +70,7 @@ end
 
 @testset "MOI.optimize!" begin
     form = _build_dmip_formulation()
-    state = _CurrentState(Cerberus.num_variables(form), CONFIG)
+    state = _CurrentState(form, CONFIG)
     node = Cerberus.Node()
     model = Cerberus.build_base_model(form, state, node, CONFIG, nothing)
     MOI.optimize!(model)
@@ -83,7 +83,7 @@ end
 
 @testset "_fill_solution!" begin
     form = _build_dmip_formulation()
-    state = _CurrentState(Cerberus.num_variables(form), CONFIG)
+    state = _CurrentState(form, CONFIG)
     node = Cerberus.Node()
     model = Cerberus.build_base_model(form, state, node, CONFIG, nothing)
     MOI.optimize!(model)
@@ -96,25 +96,32 @@ end
 
 @testset "_update_basis!" begin
     form = _build_dmip_formulation()
-    state = _CurrentState(Cerberus.num_variables(form), CONFIG)
+    state = _CurrentState(form, CONFIG)
     node = Cerberus.Node()
     model = Cerberus.build_base_model(form, state, node, CONFIG, nothing)
     MOI.optimize!(model)
     @assert MOI.get(model, MOI.PrimalStatus()) == MOI.FEASIBLE_POINT
-    basis = Cerberus.Basis()
-    @inferred Cerberus._update_basis!(basis, model)
-    @test basis == Dict{Any,MOI.BasisStatusCode}(
-        _CI{_SV,_IN}(1) => MOI.NONBASIC_AT_LOWER,
-        _CI{_SV,_IN}(2) => MOI.BASIC,
-        _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
-        _CI{_SAF,_ET}(2) => MOI.NONBASIC,
-        _CI{_SAF,_LT}(3) => MOI.BASIC,
+    true_basis = Cerberus.Basis()
+    state.node_result.incremental_data._basis = true_basis
+    @inferred Cerberus.update_basis!(state, model)
+    expected_basis = _Basis(
+        Dict(
+            _CI{_SV,_IN}(1) => MOI.NONBASIC_AT_LOWER,
+            _CI{_SV,_IN}(2) => MOI.BASIC,
+            _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
+            _CI{_SAF,_ET}(3) => MOI.NONBASIC,
+            _CI{_SAF,_LT}(2) => MOI.BASIC,
+        ),
     )
+    @test true_basis.lt_constrs == expected_basis.lt_constrs
+    @test true_basis.gt_constrs == expected_basis.gt_constrs
+    @test true_basis.et_constrs == expected_basis.et_constrs
+    @test true_basis.var_constrs == expected_basis.var_constrs
 end
 
 function _set_basis_model(basis::Cerberus.Basis)
     form = _build_dmip_formulation()
-    state = _CurrentState(Cerberus.num_variables(form), CONFIG)
+    state = _CurrentState(form, CONFIG)
     parent_info = Cerberus.ParentInfo(-Inf, basis, nothing)
     node = Cerberus.Node(
         Cerberus.BoundDiff(),
@@ -130,12 +137,14 @@ end
 @testset "set_basis_if_available!" begin
     # First, seed a suboptimal basis. This will disable presolve. It is only one pivot away from the optimal basis.
     let
-        subopt_basis = Dict{Any,MOI.BasisStatusCode}(
-            _CI{_SV,_IN}(1) => MOI.BASIC,
-            _CI{_SV,_IN}(2) => MOI.NONBASIC_AT_LOWER,
-            _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
-            _CI{_SAF,_ET}(2) => MOI.NONBASIC,
-            _CI{_SAF,_LT}(3) => MOI.BASIC,
+        subopt_basis = _Basis(
+            Dict(
+                _CI{_SV,_IN}(1) => MOI.BASIC,
+                _CI{_SV,_IN}(2) => MOI.NONBASIC_AT_LOWER,
+                _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
+                _CI{_SAF,_ET}(3) => MOI.NONBASIC,
+                _CI{_SAF,_LT}(2) => MOI.BASIC,
+            ),
         )
         model = _set_basis_model(subopt_basis)
         MOI.optimize!(model)
@@ -144,12 +153,14 @@ end
 
     # Now, seed the optimal basis. This will solve the problem without any simplex iterations.
     let
-        opt_basis = Dict{Any,MOI.BasisStatusCode}(
-            _CI{_SV,_IN}(1) => MOI.NONBASIC_AT_LOWER,
-            _CI{_SV,_IN}(2) => MOI.BASIC,
-            _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
-            _CI{_SAF,_ET}(2) => MOI.NONBASIC,
-            _CI{_SAF,_LT}(3) => MOI.BASIC,
+        opt_basis = _Basis(
+            Dict(
+                _CI{_SV,_IN}(1) => MOI.NONBASIC_AT_LOWER,
+                _CI{_SV,_IN}(2) => MOI.BASIC,
+                _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
+                _CI{_SAF,_ET}(3) => MOI.NONBASIC,
+                _CI{_SAF,_LT}(2) => MOI.BASIC,
+            ),
         )
         model = _set_basis_model(opt_basis)
         MOI.optimize!(model)

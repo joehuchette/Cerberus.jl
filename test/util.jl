@@ -54,3 +54,20 @@ function _build_gi_dmip_formulation()
         [nothing, _ZO(), _GI()],
     )
 end
+
+function _Basis(d::Dict)
+    basis = Cerberus.Basis()
+    for (k, v) in d
+        if typeof(k) == _CI{_SAF,_LT}
+            basis.lt_constrs[k] = v
+        elseif typeof(k) == _CI{_SAF,_GT}
+            basis.gt_constrs[k] = v
+        elseif typeof(k) == _CI{_SAF,_ET}
+            basis.et_constrs[k] = v
+        else
+            @assert typeof(k) == _CI{_SV,_IN}
+            basis.var_constrs[k] = v
+        end
+    end
+    return basis
+end

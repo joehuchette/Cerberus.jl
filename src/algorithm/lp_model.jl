@@ -30,10 +30,20 @@ function build_base_model(
         end
         # Cache the above updates in formulation. Even better,
         # batch add variables.
-        MOI.add_constrained_variable(model, IN(l, u))
+        vi, ci = MOI.add_constrained_variable(model, IN(l, u))
+        state.constraint_state.var_constrs[i] = ci
     end
-    for aff_constr in form.base_form.feasible_region.aff_constrs
-        MOI.add_constraint(model, aff_constr.f, aff_constr.s)
+    for (i, lt_constr) in enumerate(form.base_form.feasible_region.lt_constrs)
+        ci = MOI.add_constraint(model, lt_constr.f, lt_constr.s)
+        state.constraint_state.lt_constrs[i] = ci
+    end
+    for (i, gt_constr) in enumerate(form.base_form.feasible_region.gt_constrs)
+        ci = MOI.add_constraint(model, gt_constr.f, gt_constr.s)
+        state.constraint_state.gt_constrs[i] = ci
+    end
+    for (i, et_constr) in enumerate(form.base_form.feasible_region.et_constrs)
+        ci = MOI.add_constraint(model, et_constr.f, et_constr.s)
+        state.constraint_state.et_constrs[i] = ci
     end
     # TODO: Test this once it does something...
     for formulater in form.disjunction_formulaters
@@ -69,19 +79,30 @@ function _fill_solution!(x::Vector{Float64}, model::MOI.AbstractOptimizer)
     return nothing
 end
 
-function update_basis!(result::NodeResult, model::MOI.AbstractOptimizer)
-    return _update_basis!(get_basis(result), model)
+function update_basis!(state::CurrentState, model::Gurobi.Optimizer)
+    return _update_basis!(
+        get_basis(state.node_result),
+        state.constraint_state,
+        model,
+    )
 end
 
-function _update_basis!(basis::Basis, model::MOI.AbstractOptimizer)
-    # TODO: Cache ListOfConstraints and ListOfConstraintIndices. This is a
-    # (surprising?) bottleneck, taking >50% of time in this function.
-    # One idea would be to make sure basis keys remain in sync with constraints
-    # in model, and then this function could just loop through keys(basis).
-    for (F, S) in MOI.get(model, MOI.ListOfConstraints())
-        for ci in MOI.get(model, MOI.ListOfConstraintIndices{F,S}())
-            basis[ci] = MOI.get(model, MOI.ConstraintBasisStatus(), ci)
-        end
+function _update_basis!(
+    basis::Basis,
+    constraint_state::ConstraintState,
+    model::Gurobi.Optimizer,
+)
+    for ci in constraint_state.lt_constrs
+        basis.lt_constrs[ci] = MOI.get(model, MOI.ConstraintBasisStatus(), ci)
+    end
+    for ci in constraint_state.gt_constrs
+        basis.gt_constrs[ci] = MOI.get(model, MOI.ConstraintBasisStatus(), ci)
+    end
+    for ci in constraint_state.et_constrs
+        basis.et_constrs[ci] = MOI.get(model, MOI.ConstraintBasisStatus(), ci)
+    end
+    for ci in constraint_state.var_constrs
+        basis.var_constrs[ci] = MOI.get(model, MOI.ConstraintBasisStatus(), ci)
     end
     return nothing
 end
@@ -93,11 +114,23 @@ function set_basis_if_available!(
 )::Nothing
     # TODO: Check that basis is, in fact, a basis after modification
     @debug "Basis is being set ($(length(basis)) elements)"
-    if isempty(basis)
+    if isempty(basis.lt_constrs) &&
+       isempty(basis.gt_constrs) &&
+       isempty(basis.et_constrs) &&
+       isempty(basis.var_constrs)
         throw(ArgumentError("You are attempting to set an empty basis."))
     end
-    for (key, val) in basis
-        MOI.set(model, MOI.ConstraintBasisStatus(), key, val)
+    for (k, v) in basis.lt_constrs
+        MOI.set(model, MOI.ConstraintBasisStatus(), k, v)
+    end
+    for (k, v) in basis.gt_constrs
+        MOI.set(model, MOI.ConstraintBasisStatus(), k, v)
+    end
+    for (k, v) in basis.et_constrs
+        MOI.set(model, MOI.ConstraintBasisStatus(), k, v)
+    end
+    for (k, v) in basis.var_constrs
+        MOI.set(model, MOI.ConstraintBasisStatus(), k, v)
     end
     return nothing
 end

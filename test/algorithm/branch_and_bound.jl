@@ -14,7 +14,7 @@ end
     # A feasible model
     let
         fm = _build_dmip_formulation()
-        state = _CurrentState(Cerberus.num_variables(fm), CONFIG)
+        state = _CurrentState(fm, CONFIG)
         node = Cerberus.Node()
         @inferred Cerberus.process_node!(state, fm, node, CONFIG)
         result = state.node_result
@@ -22,13 +22,21 @@ end
         @test result.simplex_iters == 0
         @test length(result.x) == 3
         @test result.x ≈ [0.5, 2.5 / 2.1, 0.0]
-        @test Cerberus.get_basis(result) == Cerberus.Basis(
-            _CI{_SV,_IN}(1) => MOI.NONBASIC_AT_LOWER,
-            _CI{_SV,_IN}(2) => MOI.BASIC,
-            _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
-            _CI{_SAF,_ET}(2) => MOI.NONBASIC,
-            _CI{_SAF,_LT}(3) => MOI.BASIC,
-        )
+        true_basis = Cerberus.get_basis(result)
+        expected_basis = # Indices correspond to what Gurobi.jl, not Cerberus, uses
+            _Basis(
+                Dict(
+                    _CI{_SV,_IN}(1) => MOI.NONBASIC_AT_LOWER,
+                    _CI{_SV,_IN}(2) => MOI.BASIC,
+                    _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
+                    _CI{_SAF,_ET}(3) => MOI.NONBASIC,
+                    _CI{_SAF,_LT}(2) => MOI.BASIC,
+                ),
+            )
+        @test true_basis.lt_constrs == expected_basis.lt_constrs
+        @test true_basis.gt_constrs == expected_basis.gt_constrs
+        @test true_basis.et_constrs == expected_basis.et_constrs
+        @test true_basis.var_constrs == expected_basis.var_constrs
         @test Cerberus.get_model(result) isa Gurobi.Optimizer
     end
 
@@ -38,7 +46,7 @@ end
         no_inc_config = Cerberus.AlgorithmConfig(
             incrementalism = Cerberus.NO_INCREMENTALISM,
         )
-        state = _CurrentState(Cerberus.num_variables(fm), no_inc_config)
+        state = _CurrentState(fm, no_inc_config)
         node = Cerberus.Node()
         @inferred Cerberus.process_node!(state, fm, node, no_inc_config)
         result = state.node_result
@@ -53,7 +61,7 @@ end
     # An infeasible model
     let
         fm = _build_dmip_formulation()
-        state = _CurrentState(Cerberus.num_variables(fm), CONFIG)
+        state = _CurrentState(fm, CONFIG)
         # A bit hacky, but force infeasibility by branching both up and down.
         node = Cerberus.Node(
             Cerberus.BoundDiff(_VI(1) => 1),
@@ -66,7 +74,11 @@ end
         @test result.simplex_iters == 0
         @test length(result.x) == Cerberus.num_variables(fm)
         @test all(isnan, values(result.x))
-        @test isempty(Cerberus.get_basis(result))
+        basis = Cerberus.get_basis(result)
+        @test isempty(basis.lt_constrs)
+        @test isempty(basis.gt_constrs)
+        @test isempty(basis.et_constrs)
+        @test isempty(basis.var_constrs)
         @test Cerberus.get_model(result) === nothing
     end
 end
@@ -99,7 +111,7 @@ end
 @testset "_attach_parent_info!" begin
     fc = Cerberus.Node(Cerberus.BoundDiff(_VI(1) => 1), Cerberus.BoundDiff(), 2)
     oc = Cerberus.Node(Cerberus.BoundDiff(), Cerberus.BoundDiff(_VI(1) => 0), 2)
-    basis = Cerberus.Basis(_VI(1) => MOI.BASIC)
+    basis = _Basis(Dict(_CI{_SV,_IN}(1) => MOI.BASIC))
     model = Gurobi.Optimizer()
     cost = 12.3
     result = Cerberus.NodeResult(
@@ -131,9 +143,12 @@ end
         @test fc.parent_info.basis === basis
         @test oc.parent_info.basis !== basis
         @test oc.parent_info.basis isa Cerberus.Basis
-        @test length(oc.parent_info.basis) == 1
-        @test haskey(oc.parent_info.basis, _VI(1))
-        @test oc.parent_info.basis[_VI(1)] == MOI.BASIC
+        @test isempty(oc.parent_info.basis.lt_constrs)
+        @test isempty(oc.parent_info.basis.gt_constrs)
+        @test isempty(oc.parent_info.basis.et_constrs)
+        @test length(oc.parent_info.basis.var_constrs) == 1
+        @test haskey(oc.parent_info.basis.var_constrs, _CI{_SV,_IN}(1))
+        @test oc.parent_info.basis.var_constrs[_CI{_SV,_IN}(1)] == MOI.BASIC
         @test fc.parent_info.hot_start_model === nothing
         @test oc.parent_info.hot_start_model === nothing
     end
@@ -144,7 +159,10 @@ end
         @test oc.parent_info.dual_bound == cost
         @test fc.parent_info.basis === nothing
         @test oc.parent_info.basis !== basis
-        @test oc.parent_info.basis == basis
+        @test oc.parent_info.basis.lt_constrs == basis.lt_constrs
+        @test oc.parent_info.basis.gt_constrs == basis.gt_constrs
+        @test oc.parent_info.basis.et_constrs == basis.et_constrs
+        @test oc.parent_info.basis.var_constrs == basis.var_constrs
         @test fc.parent_info.hot_start_model === model
         @test oc.parent_info.hot_start_model === nothing
     end
@@ -155,11 +173,7 @@ end
     starting_pb = 12.3
     simplex_iters_per = 18
     depth = 7
-    cs = _CurrentState(
-        Cerberus.num_variables(fm),
-        CONFIG,
-        primal_bound = starting_pb,
-    )
+    cs = _CurrentState(fm, CONFIG, primal_bound = starting_pb)
     @test _is_root_node(Cerberus.pop_node!(cs.tree))
     node = Cerberus.Node()
 
@@ -219,7 +233,7 @@ end
     # 4. Branch
     frac_soln_2 = [0.0, 2.9, 0.6]
     db = 10.1
-    basis = Cerberus.Basis(_CI{_SV,_IN}(1) => MOI.BASIC)
+    basis = _Basis(Dict(_CI{_SV,_IN}(1) => MOI.BASIC))
     model = Gurobi.Optimizer()
     Cerberus.reset!(cs.node_result)
     cs.node_result.cost = 10.1
@@ -250,6 +264,9 @@ end
     @test oc.lb_diff == Cerberus.BoundDiff()
     @test oc.ub_diff == Cerberus.BoundDiff(_VI(3) => 0)
     @test oc.parent_info.dual_bound == db
-    @test oc.parent_info.basis == basis
+    @test oc.parent_info.basis.lt_constrs == basis.lt_constrs
+    @test oc.parent_info.basis.gt_constrs == basis.gt_constrs
+    @test oc.parent_info.basis.et_constrs == basis.et_constrs
+    @test oc.parent_info.basis.var_constrs == basis.var_constrs
     @test oc.parent_info.hot_start_model === nothing
 end

@@ -32,8 +32,7 @@ function optimize!(
     result = Result()
     # TODO: Model presolve. Must happen before initial state is built.
     # Initialize search tree with LP relaxation
-    state =
-        CurrentState(num_variables(form), config, primal_bound = primal_bound)
+    state = CurrentState(form, config, primal_bound = primal_bound)
     _log_preamble(form, primal_bound, config)
     while !isempty(state.tree)
         node = pop_node!(state.tree)
@@ -82,9 +81,9 @@ function process_node!(
         state.node_result.int_infeas =
             _num_int_infeasible(form, state.node_result.x, config)
         if config.incrementalism == WARM_START
-            update_basis!(state.node_result, model)
+            update_basis!(state, model)
         elseif config.incrementalism == HOT_START
-            update_basis!(state.node_result, model)
+            update_basis!(state, model)
             set_model!(state.node_result, model)
         end
     elseif term_status == MOI.INFEASIBLE

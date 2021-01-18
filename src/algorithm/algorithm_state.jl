@@ -25,9 +25,12 @@ function reset!(data::IncrementalData)
         # Do nothing
     else
         @assert data.spec in (WARM_START, HOT_START)
-        basis_sz = length(data._basis)
-        empty!(data._basis)
-        sizehint!(data._basis, basis_sz)
+        empty!(data._basis.lt_constrs)
+        empty!(data._basis.gt_constrs)
+        empty!(data._basis.et_constrs)
+        empty!(data._basis.var_constrs)
+        # basis_sz = length(data._basis)
+        # sizehint!(data._basis, basis_sz)
         data._model = nothing
     end
     return nothing
@@ -96,6 +99,22 @@ mutable struct PollingState
 end
 PollingState() = PollingState(0.0, 0, 0)
 
+mutable struct ConstraintState
+    lt_constrs::Vector{CI{SAF,LT}}
+    gt_constrs::Vector{CI{SAF,GT}}
+    et_constrs::Vector{CI{SAF,ET}}
+    var_constrs::Vector{CI{SV,IN}}
+end
+function ConstraintState(fm::DMIPFormulation)
+    p = fm.base_form.feasible_region
+    return ConstraintState(
+        Vector{CI{SAF,LT}}(undef, num_constraints(p, LT)),
+        Vector{CI{SAF,GT}}(undef, num_constraints(p, GT)),
+        Vector{CI{SAF,ET}}(undef, num_constraints(p, ET)),
+        Vector{CI{SV,IN}}(undef, ambient_dim(p)),
+    )
+end
+
 mutable struct CurrentState
     gurobi_env::Gurobi.Env
     tree::Tree
@@ -107,13 +126,15 @@ mutable struct CurrentState
     total_elapsed_time_sec::Float64
     total_node_count::Int
     total_simplex_iters::Int
+    constraint_state::ConstraintState
     polling_state::PollingState
 
     function CurrentState(
-        nvars::Int,
+        fm::DMIPFormulation,
         config::AlgorithmConfig;
         primal_bound::Real = Inf,
     )
+        nvars = num_variables(fm)
         state = new(
             Gurobi.Env(),
             Tree(),
@@ -125,6 +146,7 @@ mutable struct CurrentState
             0.0,
             0,
             0,
+            ConstraintState(fm),
             PollingState(),
         )
         push_node!(state.tree, Node())
