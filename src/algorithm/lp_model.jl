@@ -98,16 +98,13 @@ function set_basis_if_available!(
     node::Node,
 )
     if haskey(state.warm_starts, node)
-        _set_basis_if_available!(model, state.warm_starts[node])
+        _set_basis!(model, state.warm_starts[node])
         state.total_warm_starts += 1
     end
     return nothing
 end
 
-function _set_basis_if_available!(
-    model::MOI.AbstractOptimizer,
-    basis::Basis,
-)::Nothing
+function _set_basis!(model::MOI.AbstractOptimizer, basis::Basis)::Nothing
     # TODO: Check that basis is, in fact, a basis after modification
     @debug "Basis is being set ($(length(basis)) elements)"
     if isempty(basis.lt_constrs) &&

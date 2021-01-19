@@ -127,8 +127,6 @@ function update_state!(
     state.total_simplex_iters += node_result.simplex_iters
     state.polling_state.period_node_count += 1
     state.polling_state.period_simplex_iters += node_result.simplex_iters
-    # TODO: This is kind of hidden, and should be thought through more
-    # carefully. When are we allowed to reuse models?
     state.model_invalidated = true
     # 1. Prune by infeasibility
     if node_result.cost == Inf

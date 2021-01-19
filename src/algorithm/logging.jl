@@ -87,7 +87,7 @@ function _log_node_update(state::CurrentState, node_result::NodeResult)
 end
 
 const EARLY_POLLING_CUTOFF = 10.0
-const EARLY_POLLING_CADENCE = 0.0#0.25
+const EARLY_POLLING_CADENCE = 0.25
 const NORMAL_POLLING_CADENCE = 5.0
 
 # TODO: Unit test

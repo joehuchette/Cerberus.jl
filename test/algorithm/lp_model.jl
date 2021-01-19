@@ -125,7 +125,7 @@ function _set_basis_model(basis::Cerberus.Basis)
     node = Cerberus.Node(Cerberus.BoundDiff(), Cerberus.BoundDiff(), 0, -Inf)
     Cerberus.populate_base_model!(state, form, node, CONFIG)
     model = state.gurobi_model
-    Cerberus._set_basis_if_available!(model, basis)
+    Cerberus._set_basis!(model, basis)
     return model
 end
 
