@@ -32,14 +32,7 @@ end
         node = Cerberus.Node()
         x = [0.6, 0.7, 0.1]
         cost = 1.2
-        result = Cerberus.NodeResult(
-            cost,
-            x,
-            12,
-            13,
-            14,
-            Cerberus.IncrementalData(Cerberus.HOT_START),
-        )
+        result = Cerberus.NodeResult(cost, x, 12, 13, 14)
         n1, n2 = @inferred Cerberus.branch(
             fm,
             Cerberus.MostInfeasible(),
@@ -50,12 +43,12 @@ end
         @test n1.lb_diff == Cerberus.BoundDiff(_VI(1) => 1)
         @test n1.ub_diff == Cerberus.BoundDiff()
         @test n1.depth == 1
-        @test n1.parent_info == Cerberus.ParentInfo(-Inf, nothing, nothing)
+        @test n1.dual_bound == -Inf
 
         @test n2.lb_diff == Cerberus.BoundDiff()
         @test n2.ub_diff == Cerberus.BoundDiff(_VI(1) => 0)
         @test n2.depth == 1
-        @test n2.parent_info == Cerberus.ParentInfo(-Inf, nothing, nothing)
+        @test n2.dual_bound == -Inf
 
         x2 = [1.0, 0.7, 0.1]
         result.x = x2
@@ -69,12 +62,12 @@ end
         @test n3.lb_diff == Cerberus.BoundDiff()
         @test n3.ub_diff == Cerberus.BoundDiff(_VI(1) => 0, _VI(3) => 0)
         @test n3.depth == 2
-        @test n3.parent_info == Cerberus.ParentInfo(-Inf, nothing, nothing)
+        @test n3.dual_bound == -Inf
 
         @test n4.lb_diff == Cerberus.BoundDiff(_VI(3) => 1)
         @test n4.ub_diff == Cerberus.BoundDiff(_VI(1) => 0)
         @test n4.depth == 2
-        @test n4.parent_info == Cerberus.ParentInfo(-Inf, nothing, nothing)
+        @test n4.dual_bound == -Inf
 
         # Nothing to branch on, should throw. Really, should have pruned by integrality before.
         x3 = [1.0, 0.7, 0.0]
@@ -93,14 +86,7 @@ end
         node = Cerberus.Node()
         x = [0.6, 0.4, 0.7]
         cost = 1.2
-        result = Cerberus.NodeResult(
-            cost,
-            x,
-            12,
-            13,
-            14,
-            Cerberus.IncrementalData(Cerberus.HOT_START),
-        )
+        result = Cerberus.NodeResult(cost, x, 12, 13, 14)
         fc, oc = @inferred Cerberus.branch(
             fm,
             Cerberus.MostInfeasible(),

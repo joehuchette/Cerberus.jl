@@ -2,8 +2,8 @@
     form = _build_dmip_formulation()
     state = Cerberus.CurrentState(form, CONFIG)
     node = Cerberus.Node()
-    model =
-        @inferred Cerberus.build_base_model(form, state, node, CONFIG, nothing)
+    @inferred Cerberus.populate_base_model!(state, form, node, CONFIG)
+    model = state.gurobi_model
 
     @test MOI.get(model, MOI.NumberOfVariables()) == 3
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_ET}()) == 1
@@ -49,8 +49,8 @@ end
     form = _build_dmip_formulation()
     state = _CurrentState(form, CONFIG)
     node = Cerberus.Node()
-    model =
-        @inferred Cerberus.build_base_model(form, state, node, CONFIG, nothing)
+    @inferred Cerberus.populate_base_model!(state, form, node, CONFIG)
+    model = state.gurobi_model
     @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
     @test MOI.Utilities.get_bounds(model, Float64, _VI(1)) == (0.5, 1.0)
     @test MOI.Utilities.get_bounds(model, Float64, _VI(2)) == (-1.3, 2.3)
@@ -72,7 +72,8 @@ end
     form = _build_dmip_formulation()
     state = _CurrentState(form, CONFIG)
     node = Cerberus.Node()
-    model = Cerberus.build_base_model(form, state, node, CONFIG, nothing)
+    Cerberus.populate_base_model!(state, form, node, CONFIG)
+    model = state.gurobi_model
     MOI.optimize!(model)
     @test MOI.get(model, MOI.TerminationStatus()) == MOI.OPTIMAL
     @test MOI.get(model, MOI.PrimalStatus()) == MOI.FEASIBLE_POINT
@@ -85,25 +86,24 @@ end
     form = _build_dmip_formulation()
     state = _CurrentState(form, CONFIG)
     node = Cerberus.Node()
-    model = Cerberus.build_base_model(form, state, node, CONFIG, nothing)
+    Cerberus.populate_base_model!(state, form, node, CONFIG)
+    model = state.gurobi_model
     MOI.optimize!(model)
     @assert MOI.get(model, MOI.PrimalStatus()) == MOI.FEASIBLE_POINT
-    x = fill(NaN, Cerberus.num_variables(form))
-    @inferred Cerberus._fill_solution!(x, model)
+    x = @inferred Cerberus._get_lp_solution!(model)
     @test length(x) == 3
     @test x ≈ [1 / 2, 2.5 / 2.1, 0.0]
 end
 
-@testset "_update_basis!" begin
+@testset "get_basis" begin
     form = _build_dmip_formulation()
     state = _CurrentState(form, CONFIG)
     node = Cerberus.Node()
-    model = Cerberus.build_base_model(form, state, node, CONFIG, nothing)
+    Cerberus.populate_base_model!(state, form, node, CONFIG)
+    model = state.gurobi_model
     MOI.optimize!(model)
     @assert MOI.get(model, MOI.PrimalStatus()) == MOI.FEASIBLE_POINT
-    true_basis = Cerberus.Basis()
-    state.node_result.incremental_data._basis = true_basis
-    @inferred Cerberus.update_basis!(state, model)
+    true_basis = @inferred Cerberus.get_basis(state)
     expected_basis = _Basis(
         Dict(
             _CI{_SV,_IN}(1) => MOI.NONBASIC_AT_LOWER,
@@ -122,15 +122,10 @@ end
 function _set_basis_model(basis::Cerberus.Basis)
     form = _build_dmip_formulation()
     state = _CurrentState(form, CONFIG)
-    parent_info = Cerberus.ParentInfo(-Inf, basis, nothing)
-    node = Cerberus.Node(
-        Cerberus.BoundDiff(),
-        Cerberus.BoundDiff(),
-        0,
-        parent_info,
-    )
-    model = Cerberus.build_base_model(form, state, node, CONFIG, nothing)
-    Cerberus.set_basis_if_available!(model, node.parent_info.basis)
+    node = Cerberus.Node(Cerberus.BoundDiff(), Cerberus.BoundDiff(), 0, -Inf)
+    Cerberus.populate_base_model!(state, form, node, CONFIG)
+    model = state.gurobi_model
+    Cerberus._set_basis_if_available!(model, basis)
     return model
 end
 

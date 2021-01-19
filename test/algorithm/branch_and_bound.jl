@@ -16,28 +16,14 @@ end
         fm = _build_dmip_formulation()
         state = _CurrentState(fm, CONFIG)
         node = Cerberus.Node()
-        @inferred Cerberus.process_node!(state, fm, node, CONFIG)
-        result = state.node_result
+        result = @inferred Cerberus.process_node!(state, fm, node, CONFIG)
         @test result.cost ≈ 0.5 - 2.5 / 2.1
         @test result.simplex_iters == 0
         @test length(result.x) == 3
         @test result.x ≈ [0.5, 2.5 / 2.1, 0.0]
-        true_basis = Cerberus.get_basis(result)
-        expected_basis = # Indices correspond to what Gurobi.jl, not Cerberus, uses
-            _Basis(
-                Dict(
-                    _CI{_SV,_IN}(1) => MOI.NONBASIC_AT_LOWER,
-                    _CI{_SV,_IN}(2) => MOI.BASIC,
-                    _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
-                    _CI{_SAF,_ET}(3) => MOI.NONBASIC,
-                    _CI{_SAF,_LT}(2) => MOI.BASIC,
-                ),
-            )
-        @test true_basis.lt_constrs == expected_basis.lt_constrs
-        @test true_basis.gt_constrs == expected_basis.gt_constrs
-        @test true_basis.et_constrs == expected_basis.et_constrs
-        @test true_basis.var_constrs == expected_basis.var_constrs
-        @test Cerberus.get_model(result) isa Gurobi.Optimizer
+
+        true_basis = @inferred Cerberus.get_basis(state)
+        _test_is_equal_to_dmip_basis(true_basis)
     end
 
     # A feasible model with no incrementalism
@@ -48,14 +34,12 @@ end
         )
         state = _CurrentState(fm, no_inc_config)
         node = Cerberus.Node()
-        @inferred Cerberus.process_node!(state, fm, node, no_inc_config)
-        result = state.node_result
+        result =
+            @inferred Cerberus.process_node!(state, fm, node, no_inc_config)
         @test result.cost ≈ 0.5 - 2.5 / 2.1
         @test result.simplex_iters == 0
         @test length(result.x) == 3
         @test result.x ≈ [0.5, 2.5 / 2.1, 0.0]
-        @test_throws ErrorException Cerberus.get_basis(result)
-        @test_throws ErrorException Cerberus.get_model(result)
     end
 
     # An infeasible model
@@ -68,18 +52,11 @@ end
             Cerberus.BoundDiff(_VI(1) => 0),
             2,
         )
-        @inferred Cerberus.process_node!(state, fm, node, CONFIG)
-        result = state.node_result
+        result = @inferred Cerberus.process_node!(state, fm, node, CONFIG)
         @test result.cost == Inf
         @test result.simplex_iters == 0
-        @test length(result.x) == Cerberus.num_variables(fm)
+        @test isempty(result.x)
         @test all(isnan, values(result.x))
-        basis = Cerberus.get_basis(result)
-        @test isempty(basis.lt_constrs)
-        @test isempty(basis.gt_constrs)
-        @test isempty(basis.et_constrs)
-        @test isempty(basis.var_constrs)
-        @test Cerberus.get_model(result) === nothing
     end
 end
 
@@ -108,63 +85,45 @@ end
     end
 end
 
-@testset "_attach_parent_info!" begin
+@testset "_store_basis_if_desired!" begin
+    fm = _build_dmip_formulation()
+    state = Cerberus.CurrentState(fm, CONFIG)
+    node = Cerberus.Node()
+    Cerberus.process_node!(state, fm, node, CONFIG)
     fc = Cerberus.Node(Cerberus.BoundDiff(_VI(1) => 1), Cerberus.BoundDiff(), 2)
     oc = Cerberus.Node(Cerberus.BoundDiff(), Cerberus.BoundDiff(_VI(1) => 0), 2)
-    basis = _Basis(Dict(_CI{_SV,_IN}(1) => MOI.BASIC))
-    model = Gurobi.Optimizer()
     cost = 12.3
-    result = Cerberus.NodeResult(
-        cost,
-        [1.2, 2.3, 3.4],
-        1492,
-        12,
-        13,
-        Cerberus.IncrementalData(Cerberus.HOT_START),
-    )
-    result.incremental_data._basis = basis
-    Cerberus.set_model!(result, model)
+    result = Cerberus.NodeResult(cost, [1.2, 2.3, 3.4], 1492, 12, 13)
     let no_inc_config = Cerberus.AlgorithmConfig(
             incrementalism = Cerberus.NO_INCREMENTALISM,
         )
-        @inferred Cerberus._attach_parent_info!(fc, oc, result, no_inc_config)
-        @test fc.parent_info.dual_bound == cost
-        @test oc.parent_info.dual_bound == cost
-        @test fc.parent_info.basis === nothing
-        @test oc.parent_info.basis === nothing
-        @test fc.parent_info.hot_start_model === nothing
-        @test oc.parent_info.hot_start_model === nothing
+        @inferred Cerberus._store_basis_if_desired!(
+            state,
+            fc,
+            oc,
+            no_inc_config,
+        )
+        @test isempty(state.warm_starts)
     end
     let ws_config =
             Cerberus.AlgorithmConfig(incrementalism = Cerberus.WARM_START)
-        @inferred Cerberus._attach_parent_info!(fc, oc, result, ws_config)
-        @test fc.parent_info.dual_bound == cost
-        @test oc.parent_info.dual_bound == cost
-        @test fc.parent_info.basis === basis
-        @test oc.parent_info.basis !== basis
-        @test oc.parent_info.basis isa Cerberus.Basis
-        @test isempty(oc.parent_info.basis.lt_constrs)
-        @test isempty(oc.parent_info.basis.gt_constrs)
-        @test isempty(oc.parent_info.basis.et_constrs)
-        @test length(oc.parent_info.basis.var_constrs) == 1
-        @test haskey(oc.parent_info.basis.var_constrs, _CI{_SV,_IN}(1))
-        @test oc.parent_info.basis.var_constrs[_CI{_SV,_IN}(1)] == MOI.BASIC
-        @test fc.parent_info.hot_start_model === nothing
-        @test oc.parent_info.hot_start_model === nothing
+        @inferred Cerberus._store_basis_if_desired!(state, fc, oc, ws_config)
+        @test length(state.warm_starts) == 2
+        @test haskey(state.warm_starts, fc)
+        fc_basis = state.warm_starts[fc]
+        _test_is_equal_to_dmip_basis(fc_basis)
+        @test haskey(state.warm_starts, oc)
+        oc_basis = state.warm_starts[oc]
+        _test_is_equal_to_dmip_basis(oc_basis)
     end
+    empty!(state.warm_starts)
     let hs_config =
             Cerberus.AlgorithmConfig(incrementalism = Cerberus.HOT_START)
-        @inferred Cerberus._attach_parent_info!(fc, oc, result, hs_config)
-        @test fc.parent_info.dual_bound == cost
-        @test oc.parent_info.dual_bound == cost
-        @test fc.parent_info.basis === nothing
-        @test oc.parent_info.basis !== basis
-        @test oc.parent_info.basis.lt_constrs == basis.lt_constrs
-        @test oc.parent_info.basis.gt_constrs == basis.gt_constrs
-        @test oc.parent_info.basis.et_constrs == basis.et_constrs
-        @test oc.parent_info.basis.var_constrs == basis.var_constrs
-        @test fc.parent_info.hot_start_model === model
-        @test oc.parent_info.hot_start_model === nothing
+        @inferred Cerberus._store_basis_if_desired!(state, fc, oc, hs_config)
+        @test length(state.warm_starts) == 1
+        @test haskey(state.warm_starts, oc)
+        oc_basis = state.warm_starts[oc]
+        _test_is_equal_to_dmip_basis(oc_basis)
     end
 end
 
@@ -177,96 +136,94 @@ end
     @test _is_root_node(Cerberus.pop_node!(cs.tree))
     node = Cerberus.Node()
 
+    @test isempty(cs.warm_starts)
+
     # 1. Prune by infeasibility
-    nr1 = Cerberus.NodeResult(Cerberus.num_variables(fm), CONFIG)
-    cs.node_result.cost = Inf
-    cs.node_result.simplex_iters = simplex_iters_per
-    cs.node_result.depth = depth
-    cs.node_result.int_infeas = 0
-    @inferred Cerberus.update_state!(cs, fm, node, CONFIG)
-    @test isempty(cs.tree)
-    @test cs.total_node_count == 1
-    @test cs.primal_bound == starting_pb
-    @test cs.dual_bound == -Inf
-    @test length(cs.best_solution) == Cerberus.num_variables(fm)
-    @test all(isnan, values(cs.best_solution))
-    @test cs.total_simplex_iters == simplex_iters_per
+    let nr = Cerberus.NodeResult()
+        nr.cost = Inf
+        nr.simplex_iters = simplex_iters_per
+        nr.int_infeas = 0
+        @inferred Cerberus.update_state!(cs, fm, node, nr, CONFIG)
+        @test isempty(cs.tree)
+        @test cs.total_node_count == 1
+        @test cs.primal_bound == starting_pb
+        @test cs.dual_bound == -Inf
+        @test length(cs.best_solution) == Cerberus.num_variables(fm)
+        @test all(isnan, values(cs.best_solution))
+        @test cs.total_simplex_iters == simplex_iters_per
+        @test isempty(cs.warm_starts)
+    end
 
     # 2. Prune by bound
-    frac_soln = [0.2, 3.4, 0.6]
-    Cerberus.reset!(cs.node_result)
-    cs.node_result.cost = 13.5
-    cs.node_result.x = frac_soln
-    cs.node_result.simplex_iters = simplex_iters_per
-    cs.node_result.depth = depth
-    cs.node_result.int_infeas =
-        Cerberus._num_int_infeasible(fm, cs.node_result.x, CONFIG)
-    @test cs.node_result.int_infeas == 2
-    @inferred Cerberus.update_state!(cs, fm, node, CONFIG)
-    @test isempty(cs.tree)
-    @test cs.total_node_count == 2
-    @test cs.primal_bound == starting_pb
-    @test cs.dual_bound == -Inf
-    @test length(cs.best_solution) == Cerberus.num_variables(fm)
-    @test all(isnan, values(cs.best_solution))
-    @test cs.total_simplex_iters == 2 * simplex_iters_per
+    let nr = Cerberus.NodeResult()
+        nr.cost = 13.5
+        frac_soln = [0.2, 3.4, 0.6]
+        nr.x = frac_soln
+        nr.simplex_iters = simplex_iters_per
+        nr.depth = depth
+        nr.int_infeas = Cerberus._num_int_infeasible(fm, nr.x, CONFIG)
+        @test nr.int_infeas == 2
+        @inferred Cerberus.update_state!(cs, fm, node, nr, CONFIG)
+        @test isempty(cs.tree)
+        @test cs.total_node_count == 2
+        @test cs.primal_bound == starting_pb
+        @test cs.dual_bound == -Inf
+        @test length(cs.best_solution) == Cerberus.num_variables(fm)
+        @test all(isnan, values(cs.best_solution))
+        @test cs.total_simplex_iters == 2 * simplex_iters_per
+        @test isempty(cs.warm_starts)
+    end
 
     # 3. Prune by integrality
-    int_soln = [1.0, 3.4, 0.0]
     new_pb = 11.1
-    Cerberus.reset!(cs.node_result)
-    cs.node_result.cost = new_pb
-    cs.node_result.x = copy(int_soln)
-    cs.node_result.simplex_iters = simplex_iters_per
-    cs.node_result.depth = depth
-    cs.node_result.int_infeas =
-        Cerberus._num_int_infeasible(fm, cs.node_result.x, CONFIG)
-    @test cs.node_result.int_infeas == 0
-    @inferred Cerberus.update_state!(cs, fm, node, CONFIG)
-    @test isempty(cs.tree)
-    @test cs.total_node_count == 3
-    @test cs.primal_bound == new_pb
-    @test cs.dual_bound == -Inf
-    @test cs.best_solution == int_soln
-    @test cs.total_simplex_iters == 3 * simplex_iters_per
+    int_soln = [1.0, 3.4, 0.0]
+    let nr = Cerberus.NodeResult()
+        nr.cost = new_pb
+        nr.x = copy(int_soln)
+        nr.simplex_iters = simplex_iters_per
+        nr.depth = depth
+        nr.int_infeas = Cerberus._num_int_infeasible(fm, nr.x, CONFIG)
+        @test nr.int_infeas == 0
+        @inferred Cerberus.update_state!(cs, fm, node, nr, CONFIG)
+        @test isempty(cs.tree)
+        @test cs.total_node_count == 3
+        @test cs.primal_bound == new_pb
+        @test cs.dual_bound == -Inf
+        @test cs.best_solution == int_soln
+        @test cs.total_simplex_iters == 3 * simplex_iters_per
+        @test isempty(cs.warm_starts)
+    end
 
     # 4. Branch
-    frac_soln_2 = [0.0, 2.9, 0.6]
-    db = 10.1
-    basis = _Basis(Dict(_CI{_SV,_IN}(1) => MOI.BASIC))
-    model = Gurobi.Optimizer()
-    Cerberus.reset!(cs.node_result)
-    cs.node_result.cost = 10.1
-    cs.node_result.x = frac_soln_2
-    cs.node_result.simplex_iters = simplex_iters_per
-    cs.node_result.depth = depth
-    cs.node_result.int_infeas =
-        Cerberus._num_int_infeasible(fm, cs.node_result.x, CONFIG)
-    @test cs.node_result.int_infeas == 1
-    cs.node_result.incremental_data._basis = basis
-    Cerberus.set_model!(cs.node_result, model)
-    @inferred Cerberus.update_state!(cs, fm, node, CONFIG)
-    @test Cerberus.num_open_nodes(cs.tree) == 2
-    @test cs.total_node_count == 4
-    @test cs.primal_bound == new_pb
-    @test cs.dual_bound == -Inf
-    @test cs.best_solution == int_soln
-    @test cs.total_simplex_iters == 4 * simplex_iters_per
-    @inferred Cerberus.update_dual_bound!(cs)
-    @test cs.dual_bound == db
-    fc = Cerberus.pop_node!(cs.tree)
-    @test fc.lb_diff == Cerberus.BoundDiff(_VI(3) => 1)
-    @test fc.ub_diff == Cerberus.BoundDiff()
-    @test fc.parent_info.dual_bound == db
-    @test fc.parent_info.basis === nothing
-    @test fc.parent_info.hot_start_model === model
-    oc = Cerberus.pop_node!(cs.tree)
-    @test oc.lb_diff == Cerberus.BoundDiff()
-    @test oc.ub_diff == Cerberus.BoundDiff(_VI(3) => 0)
-    @test oc.parent_info.dual_bound == db
-    @test oc.parent_info.basis.lt_constrs == basis.lt_constrs
-    @test oc.parent_info.basis.gt_constrs == basis.gt_constrs
-    @test oc.parent_info.basis.et_constrs == basis.et_constrs
-    @test oc.parent_info.basis.var_constrs == basis.var_constrs
-    @test oc.parent_info.hot_start_model === nothing
+    let nr = Cerberus.process_node!(cs, fm, node, CONFIG)
+        db = 10.1
+        frac_soln_2 = [0.0, 2.9, 0.6]
+        nr.cost = db
+        nr.x = frac_soln_2
+        nr.simplex_iters = simplex_iters_per
+        nr.depth = depth
+        nr.int_infeas = Cerberus._num_int_infeasible(fm, nr.x, CONFIG)
+        @inferred Cerberus.update_state!(cs, fm, node, nr, CONFIG)
+        @test Cerberus.num_open_nodes(cs.tree) == 2
+        @test cs.total_node_count == 4
+        @test cs.primal_bound == new_pb
+        @test cs.dual_bound == -Inf
+        @test cs.best_solution == int_soln
+        @test cs.total_simplex_iters == 4 * simplex_iters_per
+        @inferred Cerberus.update_dual_bound!(cs)
+        @test cs.dual_bound == db
+        fc = Cerberus.pop_node!(cs.tree)
+        @test fc.lb_diff == Cerberus.BoundDiff(_VI(3) => 1)
+        @test fc.ub_diff == Cerberus.BoundDiff()
+        @test fc.dual_bound == db
+        @test length(cs.warm_starts) == 1
+        @test !haskey(cs.warm_starts, fc)
+        oc = Cerberus.pop_node!(cs.tree)
+        @test oc.lb_diff == Cerberus.BoundDiff()
+        @test oc.ub_diff == Cerberus.BoundDiff(_VI(3) => 0)
+        @test oc.dual_bound == db
+        @test haskey(cs.warm_starts, oc)
+        oc_basis = cs.warm_starts[oc]
+        _test_is_equal_to_dmip_basis(oc_basis)
+    end
 end

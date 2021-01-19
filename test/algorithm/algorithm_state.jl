@@ -10,82 +10,12 @@
             simplex_iters,
             depth,
             int_infeas,
-            Cerberus.IncrementalData(Cerberus.NO_INCREMENTALISM),
         )
         @test nr1.cost == cost
         @test nr1.x == x
         @test nr1.simplex_iters == simplex_iters
         @test nr1.depth == depth
         @test nr1.int_infeas == int_infeas
-        @test_throws ErrorException Cerberus.get_basis(nr1)
-        @test_throws ErrorException Cerberus.get_model(nr1)
-    end
-
-    let nr2 = @inferred Cerberus.NodeResult(
-            cost,
-            x,
-            simplex_iters,
-            depth,
-            int_infeas,
-            Cerberus.IncrementalData(Cerberus.WARM_START),
-        )
-        basis = _Basis(
-            Dict(
-                _CI{_SV,_IN}(1) => MOI.BASIC,
-                _CI{_SV,_IN}(2) => MOI.BASIC,
-                _CI{_SAF,_GT}(1) => MOI.NONBASIC,
-                _CI{_SAF,_LT}(1) => MOI.NONBASIC,
-                _CI{_SAF,_LT}(2) => MOI.NONBASIC,
-            ),
-        )
-        nr2.incremental_data._basis = basis
-        @test nr2.cost == cost
-        @test nr2.x == x
-        @test nr2.simplex_iters == simplex_iters
-        @test nr2.depth == depth
-        @test nr2.int_infeas == int_infeas
-        @test Cerberus.get_basis(nr2) === basis
-        @test_throws ErrorException Cerberus.get_model(nr2)
-    end
-
-    @testset "reset!" begin
-        cost = 5.6
-        x = [15.7]
-        si = 12
-        dp = 5
-        ii = 2
-        basis = _Basis(Dict(_CI{_SV,_IN}(1) => MOI.BASIC))
-        model = Gurobi.Optimizer()
-        nr = Cerberus.NodeResult(
-            cost,
-            x,
-            si,
-            dp,
-            ii,
-            Cerberus.IncrementalData(Cerberus.HOT_START),
-        )
-        nr.incremental_data._basis = basis
-        Cerberus.set_model!(nr, model)
-        @test nr.cost == cost
-        @test nr.x == x
-        @test nr.simplex_iters == si
-        @test nr.depth == dp
-        @test nr.int_infeas == ii
-        @test Cerberus.get_basis(nr) === basis
-        @test Cerberus.get_model(nr) === model
-        Cerberus.reset!(nr)
-        @test isnan(nr.cost)
-        @test nr.simplex_iters == 0
-        @test nr.depth == 0
-        @test nr.int_infeas == 0
-        @test length(nr.x) == 1
-        @test all(isnan, values(nr.x))
-        basis = Cerberus.get_basis(nr)
-        @test all(isnan, basis.lt_constrs)
-        @test all(isnan, basis.gt_constrs)
-        @test all(isnan, basis.et_constrs)
-        @test all(isnan, basis.var_constrs)
-        @test Cerberus.get_model(nr) === nothing
     end
 end
 

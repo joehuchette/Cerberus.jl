@@ -71,3 +71,21 @@ function _Basis(d::Dict)
     end
     return basis
 end
+
+# Indices correspond to what Gurobi.jl, not Cerberus, uses
+const DMIP_BASIS = _Basis(
+    Dict(
+        _CI{_SV,_IN}(1) => MOI.NONBASIC_AT_LOWER,
+        _CI{_SV,_IN}(2) => MOI.BASIC,
+        _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
+        _CI{_SAF,_ET}(3) => MOI.NONBASIC,
+        _CI{_SAF,_LT}(2) => MOI.BASIC,
+    ),
+)
+
+function _test_is_equal_to_dmip_basis(basis::Cerberus.Basis)
+    @test basis.lt_constrs == DMIP_BASIS.lt_constrs
+    @test basis.gt_constrs == DMIP_BASIS.gt_constrs
+    @test basis.et_constrs == DMIP_BASIS.et_constrs
+    @test basis.var_constrs == DMIP_BASIS.var_constrs
+end
