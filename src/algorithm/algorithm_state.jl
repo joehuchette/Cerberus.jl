@@ -41,22 +41,13 @@ struct Basis
 end
 Basis() = Basis(Dict(), Dict(), Dict(), Dict())
 
-# TODO: Unit test
 function Base.copy(src::Basis)
-    dest = Basis()
-    for (k, v) in src.lt_constrs
-        dest.lt_constrs[k] = v
-    end
-    for (k, v) in src.gt_constrs
-        dest.gt_constrs[k] = v
-    end
-    for (k, v) in src.et_constrs
-        dest.et_constrs[k] = v
-    end
-    for (k, v) in src.var_constrs
-        dest.var_constrs[k] = v
-    end
-    return dest
+    return Basis(
+        copy(src.lt_constrs),
+        copy(src.gt_constrs),
+        copy(src.et_constrs),
+        copy(src.var_constrs),
+    )
 end
 
 mutable struct CurrentState

@@ -61,3 +61,32 @@ end
     @test cs2.total_simplex_iters == 0
     @test cs3.total_simplex_iters == 0
 end
+
+@testset "copy(::Basis)" begin
+    src = _Basis(
+        Dict(
+            _CI{_SV,_IN}(1) => MOI.NONBASIC_AT_LOWER,
+            _CI{_SV,_IN}(2) => MOI.BASIC,
+            _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
+            _CI{_SAF,_ET}(3) => MOI.NONBASIC,
+            _CI{_SAF,_LT}(2) => MOI.BASIC,
+        ),
+    )
+    dest = copy(src)
+    @test src.lt_constrs == dest.lt_constrs
+    @test src.gt_constrs == dest.gt_constrs
+    @test src.et_constrs == dest.et_constrs
+    @test src.var_constrs == dest.var_constrs
+    empty!(src.lt_constrs)
+    empty!(src.gt_constrs)
+    empty!(src.et_constrs)
+    empty!(src.var_constrs)
+    @test dest.lt_constrs == Dict(_CI{_SAF,_LT}(2) => MOI.BASIC)
+    @test isempty(dest.gt_constrs)
+    @test dest.et_constrs == Dict(_CI{_SAF,_ET}(3) => MOI.NONBASIC)
+    @test dest.var_constrs == Dict(
+        _CI{_SV,_IN}(1) => MOI.NONBASIC_AT_LOWER,
+        _CI{_SV,_IN}(2) => MOI.BASIC,
+        _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
+    )
+end
