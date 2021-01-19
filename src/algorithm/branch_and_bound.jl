@@ -38,7 +38,7 @@ function optimize!(
         node = pop_node!(state.tree)
         node_result = process_node!(state, form, node, config)
         update_state!(state, form, node, node_result, config)
-        _log_if_necessary(state, config)
+        _log_if_necessary(state, node_result, config)
         if _is_time_to_terminate(state, config)
             break
         end
@@ -129,7 +129,7 @@ function update_state!(
     state.polling_state.period_simplex_iters += node_result.simplex_iters
     # TODO: This is kind of hidden, and should be thought through more
     # carefully. When are we allowed to reuse models?
-    state.model_invalidated = config.incrementalism == HOT_START
+    state.model_invalidated = true
     # 1. Prune by infeasibility
     if node_result.cost == Inf
         # Do nothing
@@ -159,6 +159,11 @@ function update_state!(
         push_node!(state.tree, other_child)
         push_node!(state.tree, favorite_child)
         _store_basis_if_desired!(state, favorite_child, other_child, config)
+        # TODO: Can be even more clever with this and reuse the same model
+        # throughout the tree. However, we currently update bounds based on a
+        # diff with the root. So, after backtracking we will need to reset all
+        # bounds, but can otherwise reuse the same model.
+        state.model_invalidated = config.incrementalism != Cerberus.HOT_START
         # TODO: Add a check in this branch to ensure we don't have a "funny" return
         #       status. This is a little kludgy since we don't necessarily store the
         #       MOI model in node_result. Maybe need to add termination status as a field...

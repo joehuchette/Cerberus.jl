@@ -40,6 +40,7 @@ function populate_base_model!(
     MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
     state.gurobi_model = model
     state.model_invalidated = false
+    state.total_model_builds += 1
     return nothing
 end
 
@@ -97,7 +98,8 @@ function set_basis_if_available!(
     node::Node,
 )
     if haskey(state.warm_starts, node)
-        return _set_basis_if_available!(model, state.warm_starts[node])
+        _set_basis_if_available!(model, state.warm_starts[node])
+        state.total_warm_starts += 1
     end
     return nothing
 end

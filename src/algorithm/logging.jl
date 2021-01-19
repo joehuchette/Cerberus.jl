@@ -53,20 +53,20 @@ function _log_postamble(result::Result, config::AlgorithmConfig)
     return nothing
 end
 
-function _log_node_update(state::CurrentState)
-    cost = state.node_result.cost
+function _log_node_update(state::CurrentState, node_result::NodeResult)
+    cost = node_result.cost
     gap = _optimality_gap(state.primal_bound, state.dual_bound)
     @info Printf.@sprintf(
         "%5u %5u   %8.5f %4u %4s %8s %8.5f %8s  %5.1f %5us",
         state.total_node_count,
         length(state.tree),
         cost,
-        state.node_result.depth,
+        node_result.depth,
         # If infeasible, don't report int infeasibility as 0.
         if cost == Inf
             "    -"
         else
-            Printf.@sprintf("%5u", state.node_result.int_infeas)
+            Printf.@sprintf("%5u", node_result.int_infeas)
         end,
         if state.primal_bound == Inf
             "         -"
@@ -87,16 +87,20 @@ function _log_node_update(state::CurrentState)
 end
 
 const EARLY_POLLING_CUTOFF = 10.0
-const EARLY_POLLING_CADENCE = 0.25
+const EARLY_POLLING_CADENCE = 0.0#0.25
 const NORMAL_POLLING_CADENCE = 5.0
 
 # TODO: Unit test
-function _log_if_necessary(state::CurrentState, config::AlgorithmConfig)
+function _log_if_necessary(
+    state::CurrentState,
+    result::NodeResult,
+    config::AlgorithmConfig,
+)
     config.silent && return nothing
     elapsed_time_sec = state.total_elapsed_time_sec
     if elapsed_time_sec > state.polling_state.next_polling_target_time_sec
         update_dual_bound!(state)
-        _log_node_update(state)
+        _log_node_update(state, result)
         if elapsed_time_sec <= EARLY_POLLING_CUTOFF
             state.polling_state.next_polling_target_time_sec +=
                 EARLY_POLLING_CADENCE

@@ -72,6 +72,8 @@ mutable struct CurrentState
     total_elapsed_time_sec::Float64
     total_node_count::Int
     total_simplex_iters::Int
+    total_model_builds::Int
+    total_warm_starts::Int
     constraint_state::ConstraintState
     polling_state::PollingState
 
@@ -95,6 +97,8 @@ mutable struct CurrentState
         state.total_elapsed_time_sec = 0.0
         state.total_node_count = 0
         state.total_simplex_iters = 0
+        state.total_model_builds = 0
+        state.total_warm_starts = 0
         state.constraint_state = ConstraintState(fm)
         state.polling_state = PollingState()
         return state
