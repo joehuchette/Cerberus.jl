@@ -4,7 +4,7 @@ function _log_preamble(
     config::AlgorithmConfig,
 )
     config.silent && return nothing
-    m = num_constraints(fm.base_form.feasible_region)
+    m = num_constraints(fm.feasible_region)
     n = num_variables(fm)
     d = length(fm.disjunction_formulaters)
     @info "Cerberus: An (experimental) solver for disjunctive mixed-integer programming."

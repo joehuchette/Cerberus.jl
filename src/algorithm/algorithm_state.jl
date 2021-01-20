@@ -24,7 +24,7 @@ mutable struct ConstraintState
     var_constrs::Vector{CI{SV,IN}}
 end
 function ConstraintState(fm::DMIPFormulation)
-    p = fm.base_form.feasible_region
+    p = fm.feasible_region
     return ConstraintState(
         Vector{CI{SAF,LT}}(undef, num_constraints(p, LT)),
         Vector{CI{SAF,GT}}(undef, num_constraints(p, GT)),

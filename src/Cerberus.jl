@@ -15,9 +15,16 @@ const CI = MOI.ConstraintIndex
 const ZO = MOI.ZeroOne
 const GI = MOI.Integer
 
+"Sets allowed in linear constraints."
 const _C_SETS = Union{ET,GT,LT}
+
+"Allowed objective types."
 const _O_FUNCS = Union{SV,SAF}
+
+"Sets allowed as variable bounds."
 const _V_BOUND_SETS = Union{ET,GT,LT,IN}
+
+"Integrality sets allowed."
 const _V_INT_SETS = Union{Nothing,ZO,GI}
 
 include("problem.jl")

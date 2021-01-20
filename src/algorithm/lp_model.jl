@@ -9,7 +9,7 @@ function populate_base_model!(
     end
     model = config.lp_solver_factory(state, config)::Gurobi.Optimizer
     for i in 1:num_variables(form)
-        bound = form.base_form.feasible_region.bounds[i]
+        bound = form.feasible_region.bounds[i]
         l, u = bound.lower, bound.upper
         if form.integrality[i] isa ZO
             l = max(0, l)
@@ -20,15 +20,15 @@ function populate_base_model!(
         vi, ci = MOI.add_constrained_variable(model, IN(l, u))
         state.constraint_state.var_constrs[i] = ci
     end
-    for (i, lt_constr) in enumerate(form.base_form.feasible_region.lt_constrs)
+    for (i, lt_constr) in enumerate(form.feasible_region.lt_constrs)
         ci = MOI.add_constraint(model, lt_constr.f, lt_constr.s)
         state.constraint_state.lt_constrs[i] = ci
     end
-    for (i, gt_constr) in enumerate(form.base_form.feasible_region.gt_constrs)
+    for (i, gt_constr) in enumerate(form.feasible_region.gt_constrs)
         ci = MOI.add_constraint(model, gt_constr.f, gt_constr.s)
         state.constraint_state.gt_constrs[i] = ci
     end
-    for (i, et_constr) in enumerate(form.base_form.feasible_region.et_constrs)
+    for (i, et_constr) in enumerate(form.feasible_region.et_constrs)
         ci = MOI.add_constraint(model, et_constr.f, et_constr.s)
         state.constraint_state.et_constrs[i] = ci
     end
@@ -36,7 +36,7 @@ function populate_base_model!(
     for formulater in form.disjunction_formulaters
         apply!(model, formulator, node)
     end
-    MOI.set(model, MOI.ObjectiveFunction{SAF}(), form.base_form.obj)
+    MOI.set(model, MOI.ObjectiveFunction{SAF}(), form.obj)
     MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
     state.gurobi_model = model
     state.model_invalidated = false

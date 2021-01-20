@@ -20,17 +20,13 @@ function _build_polyhedron()
     )
 end
 
-function _build_relaxation()
-    poly = _build_polyhedron()
-    v = [_SV(_VI(i)) for i in 1:3]
-    return Cerberus.LPRelaxation(_build_polyhedron(), 1.0 * v[1] - 1.0 * v[2])
-end
-
 function _build_dmip_formulation()
+    v = [_SV(_VI(i)) for i in 1:3]
     return Cerberus.DMIPFormulation(
-        _build_relaxation(),
+        _build_polyhedron(),
         Cerberus.AbstractFormulater[],
         [_ZO(), nothing, _ZO()],
+        1.0 * v[1] - 1.0 * v[2],
     )
 end
 
@@ -49,9 +45,10 @@ end
 
 function _build_gi_dmip_formulation()
     return Cerberus.DMIPFormulation(
-        Cerberus.LPRelaxation(_build_gi_polyhedron(), convert(_SAF, 0.0)),
+        _build_gi_polyhedron(),
         Cerberus.AbstractFormulater[],
         [nothing, _ZO(), _GI()],
+        convert(_SAF, 0.0),
     )
 end
 

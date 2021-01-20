@@ -1,6 +1,6 @@
 function MOI.add_variable(opt::Optimizer)
     add_variable(opt.form)
-    return VI(num_variables(opt.form.base_form))
+    return VI(num_variables(opt.form))
 end
 
 function MOI.add_variables(opt::Optimizer, N::Int)
@@ -8,7 +8,7 @@ function MOI.add_variables(opt::Optimizer, N::Int)
 end
 
 function MOI.is_valid(opt::Optimizer, v::VI)
-    return 1 <= v.value <= num_variables(opt.form.base_form)
+    return 1 <= v.value <= num_variables(opt.form)
 end
 
 function MOI.get(opt::Optimizer, ::MOI.VariablePrimal, vi::VI)
@@ -46,7 +46,7 @@ end
 
 function MOI.is_valid(opt::Optimizer, c::CI{SV,S}) where {S<:_V_BOUND_SETS}
     MOI.is_valid(opt, VI(c.value)) || return false
-    p = opt.form.base_form.feasible_region
+    p = opt.form.feasible_region
     return S == _get_scalar_set(p, c.value)
 end
 
@@ -63,27 +63,27 @@ end
 function MOI.add_constraint(opt::Optimizer, f::SV, s::ET)
     MOI.throw_if_not_valid(opt, f.variable)
     idx = f.variable.value
-    opt.form.base_form.feasible_region.bounds[idx] = IN(s.value, s.value)
+    opt.form.feasible_region.bounds[idx] = IN(s.value, s.value)
     return CI{SV,ET}(idx)
 end
 function MOI.add_constraint(opt::Optimizer, f::SV, s::GT)
     MOI.throw_if_not_valid(opt, f.variable)
     idx = f.variable.value
-    prev_int = opt.form.base_form.feasible_region.bounds[idx]
-    opt.form.base_form.feasible_region.bounds[idx] = IN(s.lower, prev_int.upper)
+    prev_int = opt.form.feasible_region.bounds[idx]
+    opt.form.feasible_region.bounds[idx] = IN(s.lower, prev_int.upper)
     return CI{SV,GT}(idx)
 end
 function MOI.add_constraint(opt::Optimizer, f::SV, s::LT)
     MOI.throw_if_not_valid(opt, f.variable)
     idx = f.variable.value
-    prev_int = opt.form.base_form.feasible_region.bounds[idx]
-    opt.form.base_form.feasible_region.bounds[idx] = IN(prev_int.lower, s.upper)
+    prev_int = opt.form.feasible_region.bounds[idx]
+    opt.form.feasible_region.bounds[idx] = IN(prev_int.lower, s.upper)
     return CI{SV,LT}(idx)
 end
 function MOI.add_constraint(opt::Optimizer, f::SV, s::IN)
     MOI.throw_if_not_valid(opt, f.variable)
     idx = f.variable.value
-    opt.form.base_form.feasible_region.bounds[idx] = IN(s.lower, s.upper)
+    opt.form.feasible_region.bounds[idx] = IN(s.lower, s.upper)
     return CI{SV,IN}(idx)
 end
 
@@ -118,7 +118,7 @@ function MOI.get(
 ) where {S<:_V_BOUND_SETS}
     cnt = 0
     for i in 1:num_variables(opt.form)
-        p = opt.form.base_form.feasible_region
+        p = opt.form.feasible_region
         if S == _get_scalar_set(p, i)
             cnt += 1
         end
@@ -132,7 +132,7 @@ function MOI.get(
 ) where {S<:_V_BOUND_SETS}
     indices = CI{SV,S}[]
     for i in 1:num_variables(opt.form)
-        p = opt.form.base_form.feasible_region
+        p = opt.form.feasible_region
         if S == _get_scalar_set(p, i)
             push!(indices, CI{SV,S}(i))
         end

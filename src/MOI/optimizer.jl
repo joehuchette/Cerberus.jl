@@ -46,11 +46,11 @@ end
 
 function MOI.optimize!(opt::Optimizer)
     if _is_max_sense(opt)
-        opt.form.base_form.obj *= -1.0
+        opt.form.obj *= -1.0
     end
     opt.result = optimize!(opt.form, opt.config, _get_primal_bound(opt))
     if _is_max_sense(opt)
-        opt.form.base_form.obj *= -1.0
+        opt.form.obj *= -1.0
     end
     return nothing
 end

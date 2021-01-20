@@ -71,51 +71,25 @@ end
     end
 end
 
-@testset "LPRelaxation" begin
-    p = _build_polyhedron()
-    lp = @inferred _build_relaxation()
-
-    _test_polyhedron(lp.feasible_region)
-    @test typeof(lp.obj) == _SAF
-    @test lp.obj.terms == [
-        MOI.ScalarAffineTerm{Float64}(1.0, _VI(1)),
-        MOI.ScalarAffineTerm{Float64}(-1.0, _VI(2)),
-    ]
-    @test lp.obj.constant == 0.0
-
-    @test Cerberus.num_variables(lp) == 3
-
-    @testset "empty constructor" begin
-        lp = @inferred Cerberus.LPRelaxation()
-        @test Cerberus.num_variables(lp) == 0
-        @test Cerberus.ambient_dim(lp.feasible_region) == 0
-        @test Cerberus.num_constraints(lp.feasible_region) == 0
-        @test isempty(lp.obj.terms)
-        @test lp.obj.constant == 0.0
-    end
-
-    # TODO: Test throws on malformed LPRelaxation
-end
-
 @testset "DMIPFormulation" begin
     fm = @inferred _build_dmip_formulation()
-    _test_polyhedron(fm.base_form.feasible_region)
-    @test typeof(fm.base_form.obj) == _SAF
-    @test fm.base_form.obj.terms == [
+    _test_polyhedron(fm.feasible_region)
+    @test typeof(fm.obj) == _SAF
+    @test fm.obj.terms == [
         MOI.ScalarAffineTerm{Float64}(1.0, _VI(1)),
         MOI.ScalarAffineTerm{Float64}(-1.0, _VI(2)),
     ]
-    @test fm.base_form.obj.constant == 0.0
+    @test fm.obj.constant == 0.0
     @test isempty(fm.disjunction_formulaters)
     @test fm.integrality == [_ZO(), nothing, _ZO()]
 
     @testset "empty constructor" begin
         fm = @inferred Cerberus.DMIPFormulation()
         @test Cerberus.num_variables(fm) == 0
-        @test Cerberus.ambient_dim(fm.base_form.feasible_region) == 0
-        @test Cerberus.num_constraints(fm.base_form.feasible_region) == 0
-        @test isempty(fm.base_form.obj.terms)
-        @test fm.base_form.obj.constant == 0.0
+        @test Cerberus.ambient_dim(fm.feasible_region) == 0
+        @test Cerberus.num_constraints(fm.feasible_region) == 0
+        @test isempty(fm.obj.terms)
+        @test fm.obj.constant == 0.0
         @test isempty(fm.disjunction_formulaters)
         @test isempty(fm.integrality)
     end
@@ -146,7 +120,7 @@ end
     _test_gi_polyhedron(p)
 
     fm = @inferred _build_gi_dmip_formulation()
-    _test_gi_polyhedron(fm.base_form.feasible_region)
+    _test_gi_polyhedron(fm.feasible_region)
     @test isempty(fm.disjunction_formulaters)
     @test fm.integrality == [nothing, _ZO(), _GI()]
 end
