@@ -36,9 +36,9 @@ function optimize!(
     _log_preamble(form, primal_bound, config)
     while !isempty(state.tree)
         node = pop_node!(state.tree)
-        process_node!(state, form, node, config)
-        update_state!(state, form, node, config)
-        _log_if_necessary(state, config)
+        node_result = process_node!(state, form, node, config)
+        update_state!(state, form, node, node_result, config)
+        _log_if_necessary(state, node_result, config)
         if _is_time_to_terminate(state, config)
             break
         end
@@ -54,46 +54,35 @@ function process_node!(
     form::DMIPFormulation,
     node::Node,
     config::AlgorithmConfig,
-)::Nothing
+)::NodeResult
     # 1. Build model
-    model = build_base_model(
-        form,
-        state,
-        node,
-        config,
-        node.parent_info.hot_start_model,
-    )
+    populate_base_model!(state, form, node, config)
+    model = state.gurobi_model
     # Update bounds on binary variables at the current node
     update_node_bounds!(model, node)
-    set_basis_if_available!(model, node.parent_info.basis)
+    set_basis_if_available!(model, state, node)
 
     # 2. Solve model
     MOI.optimize!(model)
 
     # 3. Grab solution data and bundle it into a NodeResult
-    reset!(state.node_result)
-    state.node_result.simplex_iters = MOI.get(model, MOI.SimplexIterations())
-    state.node_result.depth = node.depth
+    node_result = NodeResult()
+    node_result.simplex_iters = MOI.get(model, MOI.SimplexIterations())
+    node_result.depth = node.depth
     term_status = MOI.get(model, MOI.TerminationStatus())
     if term_status == MOI.OPTIMAL
-        state.node_result.cost = MOI.get(model, MOI.ObjectiveValue())
-        _fill_solution!(state.node_result.x, model)
-        state.node_result.int_infeas =
-            _num_int_infeasible(form, state.node_result.x, config)
-        if config.incrementalism == WARM_START
-            update_basis!(state, model)
-        elseif config.incrementalism == HOT_START
-            update_basis!(state, model)
-            set_model!(state.node_result, model)
-        end
+        node_result.cost = MOI.get(model, MOI.ObjectiveValue())
+        node_result.x = _get_lp_solution!(model)
+        node_result.int_infeas =
+            _num_int_infeasible(form, node_result.x, config)
     elseif term_status == MOI.INFEASIBLE
-        state.node_result.cost = Inf
+        node_result.cost = Inf
     elseif term_status == MOI.DUAL_INFEASIBLE
-        state.node_result.cost = -Inf
+        node_result.cost = -Inf
     else
         error("Unexpected termination status $term_status at node LP.")
     end
-    return nothing
+    return node_result
 end
 
 # Only checks feasibility w.r.t. integrality constraints!
@@ -127,76 +116,76 @@ function _num_int_infeasible(
     return cnt
 end
 
-function _attach_parent_info!(
-    favorite_child::Node,
-    other_child::Node,
-    result::NodeResult,
-    config::AlgorithmConfig,
-)
-    cost = result.cost
-    if config.incrementalism == NO_INCREMENTALISM
-        favorite_child.parent_info = ParentInfo(cost, nothing, nothing)
-        other_child.parent_info = ParentInfo(cost, nothing, nothing)
-    elseif config.incrementalism == WARM_START
-        favorite_child.parent_info =
-            ParentInfo(cost, get_basis(result), nothing)
-        other_child.parent_info =
-            ParentInfo(cost, copy(get_basis(result)), nothing)
-    else
-        @assert config.incrementalism == HOT_START
-        favorite_child.parent_info =
-            ParentInfo(cost, nothing, get_model(result))
-        # TODO: Should be able to do this without copying the basis. However,
-        # need to be careful that other_child now "owns" the basis, which is
-        # troublesome as empty!(result) currently will wipe it away.
-        other_child.parent_info =
-            ParentInfo(cost, copy(get_basis(result)), nothing)
-    end
-    return nothing
-end
-
 function update_state!(
     state::CurrentState,
     form::DMIPFormulation,
     node::Node,
+    node_result::NodeResult,
     config::AlgorithmConfig,
 )
-    result = state.node_result
     state.total_node_count += 1
-    state.total_simplex_iters += result.simplex_iters
+    state.total_simplex_iters += node_result.simplex_iters
     state.polling_state.period_node_count += 1
-    state.polling_state.period_simplex_iters += result.simplex_iters
+    state.polling_state.period_simplex_iters += node_result.simplex_iters
+    state.model_invalidated = true
     # 1. Prune by infeasibility
-    if result.cost == Inf
+    if node_result.cost == Inf
         # Do nothing
-    elseif result.cost > state.primal_bound
+    elseif node_result.cost > state.primal_bound
         # 2. Prune by bound
         # Do nothing
-    elseif result.cost == -Inf
+    elseif node_result.cost == -Inf
         # 3. LP is unbounded.
         #  Implies MIP is infeasible or unbounded. Should only happen at root.
         @assert isempty(node.lb_diff) && isempty(node.ub_diff)
-        state.primal_bound = result.cost
-    elseif result.int_infeas == 0
+        state.primal_bound = node_result.cost
+    elseif node_result.int_infeas == 0
         # 4. Prune by integrality
         # Have <= to handle case where we seed the optimal cost but
         # not the optimal solution
-        if result.cost <= state.primal_bound
-            state.primal_bound = result.cost
+        if node_result.cost <= state.primal_bound
+            state.primal_bound = node_result.cost
             # TODO: Make this more efficient, keys should not change.
-            copy!(state.best_solution, result.x)
+            copy!(state.best_solution, node_result.x)
         end
     else
         # 5. Branch!
         favorite_child, other_child =
-            branch(form, config.branching_rule, node, result, config)
-        _attach_parent_info!(favorite_child, other_child, result, config)
+            branch(form, config.branching_rule, node, node_result, config)
+        favorite_child.dual_bound = node_result.cost
+        other_child.dual_bound = node_result.cost
         push_node!(state.tree, other_child)
         push_node!(state.tree, favorite_child)
+        _store_basis_if_desired!(state, favorite_child, other_child, config)
+        # TODO: Can be even more clever with this and reuse the same model
+        # throughout the tree. However, we currently update bounds based on a
+        # diff with the root. So, after backtracking we will need to reset all
+        # bounds, but can otherwise reuse the same model.
+        state.model_invalidated = config.incrementalism != Cerberus.HOT_START
         # TODO: Add a check in this branch to ensure we don't have a "funny" return
         #       status. This is a little kludgy since we don't necessarily store the
-        #       MOI model in result. Maybe need to add termination status as a field...
+        #       MOI model in node_result. Maybe need to add termination status as a field...
     end
     state.total_elapsed_time_sec = time() - state.starting_time
+    delete!(state.warm_starts, node)
+    return nothing
+end
+
+function _store_basis_if_desired!(
+    state::CurrentState,
+    favorite_child::Node,
+    other_child::Node,
+    config::AlgorithmConfig,
+)
+    if config.incrementalism == NO_INCREMENTALISM
+        # Do nothing
+    elseif config.incrementalism == WARM_START
+        basis = get_basis(state)
+        state.warm_starts[favorite_child] = basis
+        state.warm_starts[other_child] = copy(basis)
+    else
+        @assert config.incrementalism == HOT_START
+        state.warm_starts[other_child] = get_basis(state)
+    end
     return nothing
 end

@@ -1,25 +1,12 @@
-function build_base_model(
-    form::DMIPFormulation,
+function populate_base_model!(
     state::CurrentState,
+    form::DMIPFormulation,
     node::Node,
     config::AlgorithmConfig,
-    hot_start_model::Gurobi.Optimizer,
 )
-    # We assume that the model can be reused from the parent with only
-    # changes to the variable bounds.
-    # TODO: Revisit the assumption here when the formulation is
-    # changing in the tree.
-    # TODO: Unit test this.
-    return hot_start_model
-end
-
-function build_base_model(
-    form::DMIPFormulation,
-    state::CurrentState,
-    node::Node,
-    config::AlgorithmConfig,
-    hot_start_model::Nothing,
-)
+    if !state.model_invalidated
+        return nothing
+    end
     model = config.lp_solver_factory(state, config)::Gurobi.Optimizer
     for i in 1:num_variables(form)
         bound = form.base_form.feasible_region.bounds[i]
@@ -51,7 +38,10 @@ function build_base_model(
     end
     MOI.set(model, MOI.ObjectiveFunction{SAF}(), form.base_form.obj)
     MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-    return model
+    state.gurobi_model = model
+    state.model_invalidated = false
+    state.total_model_builds += 1
+    return nothing
 end
 
 function update_node_bounds!(model::MOI.AbstractOptimizer, node::Node)
@@ -72,46 +62,49 @@ function update_node_bounds!(model::MOI.AbstractOptimizer, node::Node)
     return nothing
 end
 
-function _fill_solution!(x::Vector{Float64}, model::MOI.AbstractOptimizer)
+function _get_lp_solution!(model::MOI.AbstractOptimizer)
+    nvars = MOI.get(model, MOI.NumberOfVariables())
+    x = Vector{Float64}(undef, nvars)
     for v in MOI.get(model, MOI.ListOfVariableIndices())
         x[v.value] = MOI.get(model, MOI.VariablePrimal(), v)
     end
-    return nothing
+    return x
 end
 
-function update_basis!(state::CurrentState, model::Gurobi.Optimizer)
-    return _update_basis!(
-        get_basis(state.node_result),
-        state.constraint_state,
-        model,
-    )
+function get_basis(state::CurrentState)::Basis
+    basis = Basis()
+    for ci in state.constraint_state.lt_constrs
+        basis.lt_constrs[ci] =
+            MOI.get(state.gurobi_model, MOI.ConstraintBasisStatus(), ci)
+    end
+    for ci in state.constraint_state.gt_constrs
+        basis.gt_constrs[ci] =
+            MOI.get(state.gurobi_model, MOI.ConstraintBasisStatus(), ci)
+    end
+    for ci in state.constraint_state.et_constrs
+        basis.et_constrs[ci] =
+            MOI.get(state.gurobi_model, MOI.ConstraintBasisStatus(), ci)
+    end
+    for ci in state.constraint_state.var_constrs
+        basis.var_constrs[ci] =
+            MOI.get(state.gurobi_model, MOI.ConstraintBasisStatus(), ci)
+    end
+    return basis
 end
 
-function _update_basis!(
-    basis::Basis,
-    constraint_state::ConstraintState,
-    model::Gurobi.Optimizer,
-)
-    for ci in constraint_state.lt_constrs
-        basis.lt_constrs[ci] = MOI.get(model, MOI.ConstraintBasisStatus(), ci)
-    end
-    for ci in constraint_state.gt_constrs
-        basis.gt_constrs[ci] = MOI.get(model, MOI.ConstraintBasisStatus(), ci)
-    end
-    for ci in constraint_state.et_constrs
-        basis.et_constrs[ci] = MOI.get(model, MOI.ConstraintBasisStatus(), ci)
-    end
-    for ci in constraint_state.var_constrs
-        basis.var_constrs[ci] = MOI.get(model, MOI.ConstraintBasisStatus(), ci)
-    end
-    return nothing
-end
-
-set_basis_if_available!(model::MOI.AbstractOptimizer, ::Nothing) = nothing
 function set_basis_if_available!(
     model::MOI.AbstractOptimizer,
-    basis::Basis,
-)::Nothing
+    state::CurrentState,
+    node::Node,
+)
+    if haskey(state.warm_starts, node)
+        _set_basis!(model, state.warm_starts[node])
+        state.total_warm_starts += 1
+    end
+    return nothing
+end
+
+function _set_basis!(model::MOI.AbstractOptimizer, basis::Basis)::Nothing
     # TODO: Check that basis is, in fact, a basis after modification
     @debug "Basis is being set ($(length(basis)) elements)"
     if isempty(basis.lt_constrs) &&

@@ -1,95 +1,13 @@
-# TODO: Unit test getters/setters
-# NOTE: The ownership model of _basis and _model are a bit complicated. They
-# will be potentially copied to a ParentInfo object, which will then take
-# ownership of the data. This should be formalized and explicitly stated in the
-# documentation.
-mutable struct IncrementalData
-    _basis::Union{Nothing,Basis}
-    _model::Union{Nothing,Gurobi.Optimizer}
-    spec::Incrementalism
-
-    function IncrementalData(spec::Incrementalism)
-        if spec == NO_INCREMENTALISM
-            return new(nothing, nothing, spec)
-        elseif spec == WARM_START
-            return new(Basis(), nothing, spec)
-        else
-            @assert spec == HOT_START
-            return new(Basis(), nothing, spec)
-        end
-    end
-end
-
-function reset!(data::IncrementalData)
-    if data.spec == NO_INCREMENTALISM
-        # Do nothing
-    else
-        @assert data.spec in (WARM_START, HOT_START)
-        empty!(data._basis.lt_constrs)
-        empty!(data._basis.gt_constrs)
-        empty!(data._basis.et_constrs)
-        empty!(data._basis.var_constrs)
-        # basis_sz = length(data._basis)
-        # sizehint!(data._basis, basis_sz)
-        data._model = nothing
-    end
-    return nothing
-end
-
 mutable struct NodeResult
     cost::Float64
     x::Vector{Float64}
     simplex_iters::Int
     depth::Int
     int_infeas::Int
-    incremental_data::IncrementalData
 end
 
-function NodeResult(nvars::Int, config::AlgorithmConfig)
-    return NodeResult(
-        NaN,
-        fill(NaN, nvars),
-        0,
-        0,
-        0,
-        IncrementalData(config.incrementalism),
-    )
-end
-
-function get_basis(result::NodeResult)
-    data = result.incremental_data
-    if !(data.spec in (WARM_START, HOT_START))
-        throw(ErrorException("You are not allowed to access the basis."))
-    end
-    return data._basis
-end
-
-function get_model(result::NodeResult)
-    data = result.incremental_data
-    if data.spec != HOT_START
-        throw(ErrorException("You are not allowed to access the model."))
-    end
-    return data._model
-end
-
-function set_model!(result::NodeResult, model::Gurobi.Optimizer)
-    data = result.incremental_data
-    if data.spec != HOT_START
-        throw(ErrorException("You are not allowed to access the model."))
-    end
-    data._model = model
-    return nothing
-end
-
-function reset!(result::NodeResult)
-    result.cost = NaN
-    # Save sizes of x and basis; keys should not change throughout tree anyway
-    fill!(result.x, NaN)
-    result.simplex_iters = 0
-    result.depth = 0
-    result.int_infeas = 0
-    reset!(result.incremental_data)
-    return nothing
+function NodeResult()
+    return NodeResult(NaN, Float64[], 0, 0, 0)
 end
 
 mutable struct PollingState
@@ -115,10 +33,29 @@ function ConstraintState(fm::DMIPFormulation)
     )
 end
 
+struct Basis
+    lt_constrs::Dict{CI{SAF,LT},MOI.BasisStatusCode}
+    gt_constrs::Dict{CI{SAF,GT},MOI.BasisStatusCode}
+    et_constrs::Dict{CI{SAF,ET},MOI.BasisStatusCode}
+    var_constrs::Dict{CI{SV,IN},MOI.BasisStatusCode}
+end
+Basis() = Basis(Dict(), Dict(), Dict(), Dict())
+
+function Base.copy(src::Basis)
+    return Basis(
+        copy(src.lt_constrs),
+        copy(src.gt_constrs),
+        copy(src.et_constrs),
+        copy(src.var_constrs),
+    )
+end
+
 mutable struct CurrentState
     gurobi_env::Gurobi.Env
+    gurobi_model::Gurobi.Optimizer
+    model_invalidated::Bool
     tree::Tree
-    node_result::NodeResult
+    warm_starts::Dict{Node,Basis}
     primal_bound::Float64
     dual_bound::Float64
     best_solution::Vector{Float64}
@@ -126,6 +63,8 @@ mutable struct CurrentState
     total_elapsed_time_sec::Float64
     total_node_count::Int
     total_simplex_iters::Int
+    total_model_builds::Int
+    total_warm_starts::Int
     constraint_state::ConstraintState
     polling_state::PollingState
 
@@ -135,21 +74,24 @@ mutable struct CurrentState
         primal_bound::Real = Inf,
     )
         nvars = num_variables(fm)
-        state = new(
-            Gurobi.Env(),
-            Tree(),
-            NodeResult(nvars, config),
-            primal_bound,
-            -Inf,
-            fill(NaN, nvars),
-            time(),
-            0.0,
-            0,
-            0,
-            ConstraintState(fm),
-            PollingState(),
-        )
+        state = new()
+        state.gurobi_env = Gurobi.Env()
+        # Don't set gurobi_model, just mark it as invalidated to force build.
+        state.model_invalidated = true
+        state.tree = Tree()
         push_node!(state.tree, Node())
+        state.warm_starts = Dict{Node,Basis}()
+        state.primal_bound = primal_bound
+        state.dual_bound = -Inf
+        state.best_solution = fill(NaN, nvars)
+        state.starting_time = time()
+        state.total_elapsed_time_sec = 0.0
+        state.total_node_count = 0
+        state.total_simplex_iters = 0
+        state.total_model_builds = 0
+        state.total_warm_starts = 0
+        state.constraint_state = ConstraintState(fm)
+        state.polling_state = PollingState()
         return state
     end
 end
@@ -159,9 +101,8 @@ function update_dual_bound!(state::CurrentState)
         # Tree is exhausted, so have proven optimality of best found solution.
         state.dual_bound = state.primal_bound
     else
-        state.dual_bound = minimum(
-            node.parent_info.dual_bound for node in state.tree.open_nodes
-        )
+        state.dual_bound =
+            minimum(node.dual_bound for node in state.tree.open_nodes)
     end
     return nothing
 end

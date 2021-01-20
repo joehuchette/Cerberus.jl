@@ -13,7 +13,7 @@ function _branch(
     direction::BranchingDirection,
 )
     # TODO: Can likely reuse this memory instead of copying
-    new_node = copy_without_pi(node)
+    new_node = copy(node)
     apply_branching!(
         new_node,
         BranchingDecision(branch_vi, rounded_val, direction),

@@ -2,30 +2,16 @@
     lb_diff = Cerberus.BoundDiff(_VI(2) => 1, _VI(3) => 0, _VI(6) => 1)
     ub_diff = Cerberus.BoundDiff(_VI(1) => 0, _VI(3) => 1, _VI(5) => 0)
     depth = 6
-    basis = _Basis(
-        Dict(
-            _CI{_SV,_IN}(1) => MOI.BASIC,
-            _CI{_SV,_IN}(2) => MOI.NONBASIC,
-            _CI{_SV,_IN}(3) => MOI.BASIC,
-            _CI{_SV,_IN}(4) => MOI.NONBASIC_AT_LOWER,
-            _CI{_SV,_IN}(5) => MOI.BASIC,
-            _CI{_SAF,_LT}(1) => MOI.NONBASIC,
-            _CI{_SAF,_GT}(2) => MOI.BASIC,
-            _CI{_SAF,_GT}(3) => MOI.NONBASIC,
-            _CI{_SAF,_GT}(4) => MOI.BASIC,
-        ),
-    )
     dual_bound = 3.2
-    parent_info = Cerberus.ParentInfo(dual_bound, basis, nothing)
 
     n1 = @inferred Cerberus.Node()
     n2 = @inferred Cerberus.Node(lb_diff, ub_diff, depth)
-    n3 = @inferred Cerberus.Node(lb_diff, ub_diff, depth, parent_info)
+    n3 = @inferred Cerberus.Node(lb_diff, ub_diff, depth, dual_bound)
     @test_throws ArgumentError Cerberus.Node(
         lb_diff,
         ub_diff,
         depth - 1,
-        parent_info,
+        dual_bound,
     )
 
     @test n1.depth == 0
@@ -40,18 +26,14 @@
     @test n2.ub_diff == ub_diff
     @test n3.ub_diff == ub_diff
 
-    @test n1.parent_info.dual_bound == -Inf
-    @test n2.parent_info.dual_bound == -Inf
-    @test n3.parent_info.dual_bound == dual_bound
+    @test n1.dual_bound == -Inf
+    @test n2.dual_bound == -Inf
+    @test n3.dual_bound == dual_bound
 
-    @test n1.parent_info.basis === nothing
-    @test n2.parent_info.basis === nothing
-    @test n3.parent_info.basis == basis
-
-    @testset "copy_without_pi" begin
-        _n1 = Cerberus.copy_without_pi(n1)
-        _n2 = Cerberus.copy_without_pi(n2)
-        _n3 = Cerberus.copy_without_pi(n3)
+    @testset "copy" begin
+        _n1 = copy(n1)
+        _n2 = copy(n2)
+        _n3 = copy(n3)
 
         @test _n1.depth == 0
         @test _n2.depth == depth
@@ -65,13 +47,9 @@
         @test _n2.ub_diff == ub_diff
         @test _n3.ub_diff == ub_diff
 
-        @test _n1.parent_info.dual_bound == -Inf
-        @test _n2.parent_info.dual_bound == -Inf
-        @test _n3.parent_info.dual_bound == -Inf
-
-        @test _n1.parent_info.basis === nothing
-        @test _n2.parent_info.basis === nothing
-        @test _n3.parent_info.basis === nothing
+        @test _n1.dual_bound == -Inf
+        @test _n2.dual_bound == -Inf
+        @test _n3.dual_bound == dual_bound
     end
     @testset "apply_branching!" begin
         let bd = Cerberus.BranchingDecision(_VI(4), 7, Cerberus.DOWN_BRANCH)

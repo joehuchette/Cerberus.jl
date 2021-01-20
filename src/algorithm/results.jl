@@ -8,9 +8,11 @@ mutable struct Result
     total_node_count::Int
     total_simplex_iters::Int
     total_elapsed_time_sec::Float64
+    total_model_builds::Int
+    total_warm_starts::Int
 
     function Result()
-        return new(Inf, -Inf, Float64[], NOT_OPTIMIZED, 0, 0, 0)
+        return new(Inf, -Inf, Float64[], NOT_OPTIMIZED, 0, 0, 0, 0, 0)
     end
 end
 
@@ -33,5 +35,7 @@ function Result(state::CurrentState, config::AlgorithmConfig)
     result.total_node_count = state.total_node_count
     result.total_simplex_iters = state.total_simplex_iters
     result.total_elapsed_time_sec = state.total_elapsed_time_sec
+    result.total_model_builds = state.total_model_builds
+    result.total_warm_starts = state.total_warm_starts
     return result
 end
