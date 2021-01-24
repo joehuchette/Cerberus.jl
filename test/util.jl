@@ -1,5 +1,6 @@
 const _VI = MOI.VariableIndex
 const _SV = MOI.SingleVariable
+const _SAT = MOI.ScalarAffineTerm{Float64}
 const _SAF = MOI.ScalarAffineFunction{Float64}
 const _ET = MOI.EqualTo{Float64}
 const _GT = MOI.GreaterThan{Float64}
@@ -52,37 +53,21 @@ function _build_gi_dmip_formulation()
     )
 end
 
-function _Basis(d::Dict)
-    basis = Cerberus.Basis()
-    for (k, v) in d
-        if typeof(k) == _CI{_SAF,_LT}
-            basis.lt_constrs[k] = v
-        elseif typeof(k) == _CI{_SAF,_GT}
-            basis.gt_constrs[k] = v
-        elseif typeof(k) == _CI{_SAF,_ET}
-            basis.et_constrs[k] = v
-        else
-            @assert typeof(k) == _CI{_SV,_IN}
-            basis.var_constrs[k] = v
-        end
-    end
-    return basis
-end
-
 # Indices correspond to what Gurobi.jl, not Cerberus, uses
-const DMIP_BASIS = _Basis(
-    Dict(
-        _CI{_SV,_IN}(1) => MOI.NONBASIC_AT_LOWER,
-        _CI{_SV,_IN}(2) => MOI.BASIC,
-        _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
-        _CI{_SAF,_ET}(3) => MOI.NONBASIC,
-        _CI{_SAF,_LT}(2) => MOI.BASIC,
-    ),
+const DMIP_BASIS = Cerberus.Basis(
+    [MOI.NONBASIC_AT_LOWER, MOI.BASIC, MOI.NONBASIC_AT_LOWER],
+    [MOI.BASIC],
+    MOI.BasisStatusCode[],
+    [MOI.NONBASIC],
+    MOI.BasisStatusCode[],
+    MOI.BasisStatusCode[],
 )
 
 function _test_is_equal_to_dmip_basis(basis::Cerberus.Basis)
-    @test basis.lt_constrs == DMIP_BASIS.lt_constrs
-    @test basis.gt_constrs == DMIP_BASIS.gt_constrs
-    @test basis.et_constrs == DMIP_BASIS.et_constrs
-    @test basis.var_constrs == DMIP_BASIS.var_constrs
+    @test basis.base_var_constrs == DMIP_BASIS.base_var_constrs
+    @test basis.base_lt_constrs == DMIP_BASIS.base_lt_constrs
+    @test basis.base_gt_constrs == DMIP_BASIS.base_gt_constrs
+    @test basis.base_et_constrs == DMIP_BASIS.base_et_constrs
+    @test basis.branch_lt_constrs == DMIP_BASIS.branch_lt_constrs
+    @test basis.branch_gt_constrs == DMIP_BASIS.branch_gt_constrs
 end

@@ -59,9 +59,11 @@ end
     node = Cerberus.Node(
         Cerberus.BoundDiff(_VI(3) => 1),
         Cerberus.BoundDiff(_VI(1) => 0),
+        Cerberus.AffineConstraint{_LT}[],
+        Cerberus.AffineConstraint{_GT}[],
         2,
     )
-    @inferred Cerberus.update_node_bounds!(model, node)
+    @inferred Cerberus.apply_branchings!(model, state, node)
     @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
     @test MOI.Utilities.get_bounds(model, Float64, _VI(1)) == (0.5, 0.0)
     @test MOI.Utilities.get_bounds(model, Float64, _VI(2)) == (-1.3, 2.3)
@@ -104,42 +106,49 @@ end
     MOI.optimize!(model)
     @assert MOI.get(model, MOI.PrimalStatus()) == MOI.FEASIBLE_POINT
     true_basis = @inferred Cerberus.get_basis(state)
-    expected_basis = _Basis(
-        Dict(
-            _CI{_SV,_IN}(1) => MOI.NONBASIC_AT_LOWER,
-            _CI{_SV,_IN}(2) => MOI.BASIC,
-            _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
-            _CI{_SAF,_ET}(3) => MOI.NONBASIC,
-            _CI{_SAF,_LT}(2) => MOI.BASIC,
-        ),
+    expected_basis = Cerberus.Basis(
+        [MOI.NONBASIC_AT_LOWER, MOI.BASIC, MOI.NONBASIC_AT_LOWER],
+        [MOI.BASIC],
+        MOI.BasisStatusCode[],
+        [MOI.NONBASIC],
+        MOI.BasisStatusCode[],
+        MOI.BasisStatusCode[],
     )
-    @test true_basis.lt_constrs == expected_basis.lt_constrs
-    @test true_basis.gt_constrs == expected_basis.gt_constrs
-    @test true_basis.et_constrs == expected_basis.et_constrs
-    @test true_basis.var_constrs == expected_basis.var_constrs
+    @test true_basis.base_var_constrs == expected_basis.base_var_constrs
+    @test true_basis.base_lt_constrs == expected_basis.base_lt_constrs
+    @test true_basis.base_gt_constrs == expected_basis.base_gt_constrs
+    @test true_basis.base_et_constrs == expected_basis.base_et_constrs
+    @test true_basis.branch_lt_constrs == expected_basis.branch_lt_constrs
+    @test true_basis.branch_gt_constrs == expected_basis.branch_gt_constrs
 end
 
 function _set_basis_model(basis::Cerberus.Basis)
     form = _build_dmip_formulation()
     state = _CurrentState(form, CONFIG)
-    node = Cerberus.Node(Cerberus.BoundDiff(), Cerberus.BoundDiff(), 0, -Inf)
+    node = Cerberus.Node(
+        Cerberus.BoundDiff(),
+        Cerberus.BoundDiff(),
+        Cerberus.AffineConstraint{_LT}[],
+        Cerberus.AffineConstraint{_GT}[],
+        0,
+        -Inf,
+    )
     Cerberus.populate_base_model!(state, form, node, CONFIG)
     model = state.gurobi_model
-    Cerberus._set_basis!(model, basis)
+    Cerberus._set_basis!(model, state.constraint_state, basis)
     return model
 end
 
 @testset "set_basis_if_available!" begin
     # First, seed a suboptimal basis. This will disable presolve. It is only one pivot away from the optimal basis.
     let
-        subopt_basis = _Basis(
-            Dict(
-                _CI{_SV,_IN}(1) => MOI.BASIC,
-                _CI{_SV,_IN}(2) => MOI.NONBASIC_AT_LOWER,
-                _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
-                _CI{_SAF,_ET}(3) => MOI.NONBASIC,
-                _CI{_SAF,_LT}(2) => MOI.BASIC,
-            ),
+        subopt_basis = Cerberus.Basis(
+            [MOI.BASIC, MOI.NONBASIC_AT_LOWER, MOI.NONBASIC_AT_LOWER],
+            [MOI.BASIC],
+            MOI.BasisStatusCode[],
+            [MOI.NONBASIC],
+            MOI.BasisStatusCode[],
+            MOI.BasisStatusCode[],
         )
         model = _set_basis_model(subopt_basis)
         MOI.optimize!(model)
@@ -148,14 +157,13 @@ end
 
     # Now, seed the optimal basis. This will solve the problem without any simplex iterations.
     let
-        opt_basis = _Basis(
-            Dict(
-                _CI{_SV,_IN}(1) => MOI.NONBASIC_AT_LOWER,
-                _CI{_SV,_IN}(2) => MOI.BASIC,
-                _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
-                _CI{_SAF,_ET}(3) => MOI.NONBASIC,
-                _CI{_SAF,_LT}(2) => MOI.BASIC,
-            ),
+        opt_basis = Cerberus.Basis(
+            [MOI.NONBASIC_AT_LOWER, MOI.BASIC, MOI.NONBASIC_AT_LOWER],
+            [MOI.BASIC],
+            MOI.BasisStatusCode[],
+            [MOI.NONBASIC],
+            MOI.BasisStatusCode[],
+            MOI.BasisStatusCode[],
         )
         model = _set_basis_model(opt_basis)
         MOI.optimize!(model)
