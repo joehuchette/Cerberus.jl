@@ -27,6 +27,55 @@
     end
 end
 
+@testset "apply_branching!" begin
+    fm = _build_dmip_formulation()
+    node = Cerberus.Node()
+    let f = _SV(_VI(2)), s = _LT(1.0)
+        bd = Cerberus.BranchingDecision(f, s)
+        @inferred Cerberus.apply_branching!(node, bd)
+        @test isempty(node.lb_diff)
+        @test node.ub_diff == Cerberus.BoundDiff(_VI(2) => 1)
+        @test isempty(node.lt_constrs)
+        @test isempty(node.gt_constrs)
+        @test node.depth == 1
+        @test node.dual_bound == -Inf
+    end
+    let f = _SV(_VI(4)), s = _GT(3.0)
+        bd = Cerberus.BranchingDecision(f, s)
+        @inferred Cerberus.apply_branching!(node, bd)
+        @test node.lb_diff == Cerberus.BoundDiff(_VI(4) => 3)
+        @test node.ub_diff == Cerberus.BoundDiff(_VI(2) => 1)
+        @test isempty(node.lt_constrs)
+        @test isempty(node.gt_constrs)
+        @test node.depth == 2
+        @test node.dual_bound == -Inf
+    end
+    let f = _SAF([_SAT(1.2, _VI(1)), _SAT(3.4, _VI(3))], 5.6), s = _LT(7.8)
+        bd = Cerberus.BranchingDecision(f, s)
+        @inferred Cerberus.apply_branching!(node, bd)
+        @test node.lb_diff == Cerberus.BoundDiff(_VI(4) => 3)
+        @test node.ub_diff == Cerberus.BoundDiff(_VI(2) => 1)
+        @test node.lt_constrs == [Cerberus.AffineConstraint(f, s)]
+        @test isempty(node.gt_constrs)
+        @test node.depth == 3
+        @test node.dual_bound == -Inf
+    end
+    let f = _SAF([_SAT(2.4, _VI(2)), _SAT(4.6, _VI(1))], 6.8), s = _GT(8.0)
+        bd = Cerberus.BranchingDecision(f, s)
+        @inferred Cerberus.apply_branching!(node, bd)
+        @test node.lb_diff == Cerberus.BoundDiff(_VI(4) => 3)
+        @test node.ub_diff == Cerberus.BoundDiff(_VI(2) => 1)
+        @test length(node.lt_constrs) == 1
+        @test node.lt_constrs[1].f.terms ==
+              [_SAT(1.2, _VI(1)), _SAT(3.4, _VI(3))]
+        @test node.lt_constrs[1].f.constant == 5.6
+        @test node.lt_constrs[1].s == _LT(7.8)
+        @test node.gt_constrs == [Cerberus.AffineConstraint(f, s)]
+        @test node.depth == 4
+        @test node.dual_bound == -Inf
+    end
+end
+
 @testset "MostInfeasible" begin
     let fm = _build_dmip_formulation()
         node = Cerberus.Node()

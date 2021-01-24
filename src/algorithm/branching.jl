@@ -27,12 +27,15 @@ function apply_branching!(node::Node, bd::BranchingDecision{SV,GT})
     return nothing
 end
 
-function apply_branching!(
-    node::Node,
-    bd::BranchingDecision{SAF,S},
-) where {S<:Union{LT,GT}}
+function apply_branching!(node::Node, bd::BranchingDecision{SAF,LT})
     node.depth += 1
-    push!(node.general_constrs, AffineConstraint(bd.f, bd.s))
+    push!(node.lt_constrs, AffineConstraint(bd.f, bd.s))
+    return nothing
+end
+
+function apply_branching!(node::Node, bd::BranchingDecision{SAF,GT})
+    node.depth += 1
+    push!(node.gt_constrs, AffineConstraint(bd.f, bd.s))
     return nothing
 end
 
