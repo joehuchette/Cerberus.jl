@@ -8,7 +8,7 @@ const MOIT = MOI.Test
 const MOIU = MOI.Utilities
 
 function _build_optimizer(
-    warm_start::Bool,
+    warm_start_strategy::Cerberus.WarmStartStrategy,
     model_reuse_strategy::Cerberus.ModelReuseStrategy,
 )
     return MOIU.CachingOptimizer(
@@ -26,14 +26,15 @@ function _build_optimizer(
                     end
                 )
             model.config.silent = true
-            model.config.warm_start = warm_start
+            model.config.warm_start_strategy = warm_start_strategy
             model.config.model_reuse_strategy = model_reuse_strategy
             model
         end,
     )
 end
 
-const OPTIMIZER = _build_optimizer(true, Cerberus.REUSE_ON_DIVES)
+const OPTIMIZER =
+    _build_optimizer(Cerberus.WHENEVER_POSSIBLE, Cerberus.REUSE_ON_DIVES)
 
 const MOI_CONFIG = MOIT.TestConfig(
     modify_lhs = false,
@@ -114,10 +115,10 @@ end
 const MOIB = MOI.Bridges
 
 function _build_bridged_optimizer(
-    warm_start::Bool,
+    warm_start_strategy::Cerberus.WarmStartStrategy,
     model_reuse_strategy::Cerberus.ModelReuseStrategy,
 )
-    opt = _build_optimizer(warm_start, model_reuse_strategy)
+    opt = _build_optimizer(warm_start_strategy, model_reuse_strategy)
     bridged_opt = MOIB.LazyBridgeOptimizer(opt)
     MOIB.add_bridge(bridged_opt, MOIB.Constraint.ScalarizeBridge{Float64})
     MOIB.add_bridge(bridged_opt, MOIB.Constraint.SemiToBinaryBridge{Float64})
@@ -128,7 +129,10 @@ end
 
 @testset "contlinear" begin
     MOIT.contlineartest(
-        _build_bridged_optimizer(true, Cerberus.REUSE_ON_DIVES),
+        _build_bridged_optimizer(
+            Cerberus.WHENEVER_POSSIBLE,
+            Cerberus.REUSE_ON_DIVES,
+        ),
         MOI_CONFIG,
         [
             # Needs setting of VariablePrimalStart
@@ -139,7 +143,11 @@ end
 
 # TODO: Add bridges to support below sets
 @testset "intlinear" begin
-    for ws in (true, false),
+    for ws in (
+            Cerberus.NO_WARM_STARTS,
+            Cerberus.WHEN_BACKTRACKING,
+            Cerberus.WHENEVER_POSSIBLE,
+        ),
         mr in
         (Cerberus.NO_REUSE, Cerberus.REUSE_ON_DIVES, Cerberus.USE_SINGLE_MODEL)
 

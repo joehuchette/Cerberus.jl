@@ -24,15 +24,24 @@
 end
 
 @testset "End-to-end" begin
-    for (warm_start, model_reuse_strategy, model_builds, warm_starts) in [
-        (false, Cerberus.NO_REUSE, 3, 0),
-        (false, Cerberus.REUSE_ON_DIVES, 2, 0),
-        (true, Cerberus.NO_REUSE, 3, 2),
-        (true, Cerberus.REUSE_ON_DIVES, 2, 1),
-        (true, Cerberus.USE_SINGLE_MODEL, 1, 1),
+    for (
+        warm_start_strategy,
+        model_reuse_strategy,
+        model_builds,
+        warm_starts,
+    ) in [
+        (Cerberus.NO_WARM_STARTS, Cerberus.NO_REUSE, 3, 0),
+        (Cerberus.NO_WARM_STARTS, Cerberus.REUSE_ON_DIVES, 2, 0),
+        (Cerberus.NO_WARM_STARTS, Cerberus.USE_SINGLE_MODEL, 1, 0),
+        (Cerberus.WHEN_BACKTRACKING, Cerberus.NO_REUSE, 3, 1),
+        (Cerberus.WHEN_BACKTRACKING, Cerberus.REUSE_ON_DIVES, 2, 1),
+        (Cerberus.WHEN_BACKTRACKING, Cerberus.USE_SINGLE_MODEL, 1, 1),
+        (Cerberus.WHENEVER_POSSIBLE, Cerberus.NO_REUSE, 3, 2),
+        (Cerberus.WHENEVER_POSSIBLE, Cerberus.REUSE_ON_DIVES, 2, 2),
+        (Cerberus.WHENEVER_POSSIBLE, Cerberus.USE_SINGLE_MODEL, 1, 2),
     ]
         config = Cerberus.AlgorithmConfig(
-            warm_start = warm_start,
+            warm_start_strategy = warm_start_strategy,
             model_reuse_strategy = model_reuse_strategy,
             silent = true,
         )

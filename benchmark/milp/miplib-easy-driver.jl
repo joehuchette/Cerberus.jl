@@ -34,7 +34,7 @@ const APPROACHES = Dict(
                 model = Cerberus.Optimizer(
                     Cerberus.AlgorithmConfig(
                         Cerberus.AlgorithmConfig(
-                            warm_start = false,
+                            warm_start_strategy = Cerberus.NO_WARM_STARTS,
                             model_reuse_strategy = Cerberus.NO_REUSE,
                         ),
                     ),
@@ -48,7 +48,7 @@ const APPROACHES = Dict(
             () -> begin
                 model = Cerberus.Optimizer(
                     Cerberus.AlgorithmConfig(
-                        warm_start = true,
+                        warm_start_strategy = Cerberus.WHENEVER_POSSIBLE,
                         model_reuse_strategy = Cerberus.NO_REUSE,
                     ),
                 )
@@ -62,7 +62,7 @@ const APPROACHES = Dict(
                 model = Cerberus.Optimizer(
                     Cerberus.AlgorithmConfig(
                         Cerberus.AlgorithmConfig(
-                            warm_start = true,
+                            warm_start_strategy = Cerberus.WHENEVER_POSSIBLE,
                             model_reuse_strategy = Cerberus.USE_SINGLE_MODEL,
                         ),
                     ),

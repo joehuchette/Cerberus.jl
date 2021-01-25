@@ -194,16 +194,17 @@ function _store_basis_if_desired!(
     other_child::Node,
     config::AlgorithmConfig,
 )
-    if !config.warm_start
+    if config.warm_start_strategy == NO_WARM_STARTS
         # Do nothing
-    elseif config.model_reuse_strategy == NO_REUSE
-        basis = get_basis(state)
-        state.warm_starts[favorite_child] = basis
-        state.warm_starts[other_child] = copy(basis)
     else
-        @assert config.model_reuse_strategy in
-                (REUSE_ON_DIVES, USE_SINGLE_MODEL)
-        state.warm_starts[other_child] = get_basis(state)
+        basis = get_basis(state)
+        if config.warm_start_strategy == WHEN_BACKTRACKING
+            state.warm_starts[other_child] = basis
+        else
+            @assert config.warm_start_strategy == WHENEVER_POSSIBLE
+            state.warm_starts[favorite_child] = copy(basis)
+            state.warm_starts[other_child] = basis
+        end
     end
     return nothing
 end

@@ -30,7 +30,7 @@ end
     let
         fm = _build_dmip_formulation()
         no_inc_config = Cerberus.AlgorithmConfig(
-            warm_start = false,
+            warm_start_strategy = Cerberus.NO_WARM_STARTS,
             model_reuse_strategy = Cerberus.NO_REUSE,
         )
         state = _CurrentState(fm, no_inc_config)
@@ -110,7 +110,7 @@ end
     cost = 12.3
     result = Cerberus.NodeResult(cost, [1.2, 2.3, 3.4], 1492, 12, 13)
     let no_incrementalism_config = Cerberus.AlgorithmConfig(
-            warm_start = false,
+            warm_start_strategy = Cerberus.NO_WARM_STARTS,
             model_reuse_strategy = Cerberus.NO_REUSE,
         )
         @inferred Cerberus._store_basis_if_desired!(
@@ -122,7 +122,7 @@ end
         @test isempty(state.warm_starts)
     end
     let warm_start_only_config = Cerberus.AlgorithmConfig(
-            warm_start = true,
+            warm_start_strategy = Cerberus.WHENEVER_POSSIBLE,
             model_reuse_strategy = Cerberus.NO_REUSE,
         )
         @inferred Cerberus._store_basis_if_desired!(
@@ -141,7 +141,7 @@ end
     end
     empty!(state.warm_starts)
     let warm_start_off_dives_config = Cerberus.AlgorithmConfig(
-            warm_start = true,
+            warm_start_strategy = Cerberus.WHEN_BACKTRACKING,
             model_reuse_strategy = Cerberus.REUSE_ON_DIVES,
         )
         @inferred Cerberus._store_basis_if_desired!(
