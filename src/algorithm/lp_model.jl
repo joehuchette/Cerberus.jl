@@ -22,15 +22,18 @@ function populate_base_model!(
         push!(state.constraint_state.base_var_constrs, ci)
     end
     for lt_constr in form.feasible_region.lt_constrs
-        ci = MOIU.normalize_and_add_constraint(model, lt_constr.f, lt_constr.s)
+        # Invariant: constraint is normalized via MOIU.normalize_constant.
+        ci = MOI.add_constraint(model, lt_constr.f, lt_constr.s)
         push!(state.constraint_state.base_lt_constrs, ci)
     end
     for gt_constr in form.feasible_region.gt_constrs
-        ci = MOIU.normalize_and_add_constraint(model, gt_constr.f, gt_constr.s)
+        # Invariant: constraint is normalized via MOIU.normalize_constant.
+        ci = MOI.add_constraint(model, gt_constr.f, gt_constr.s)
         push!(state.constraint_state.base_gt_constrs, ci)
     end
     for et_constr in form.feasible_region.et_constrs
-        ci = MOIU.normalize_and_add_constraint(model, et_constr.f, et_constr.s)
+        # Invariant: constraint is normalized via MOIU.normalize_constant.
+        ci = MOI.add_constraint(model, et_constr.f, et_constr.s)
         push!(state.constraint_state.base_et_constrs, ci)
     end
     # TODO: Test this once it does something...
@@ -69,8 +72,9 @@ function apply_branchings!(
         # Invariant: The constraints are added in order. If we're adding
         # constraint i attached at this node, and length of branch_lt_constrs
         #  is no less than i, then we've already added it, so can skip.
+        # Invariant: constraint is normalized via MOIU.normalize_constant.
         if i > num_branch_lt_constrs
-            ci = MOIU.normalize_and_add_constraint(model, ac.f, ac.s)
+            ci = MOI.add_constraint(model, ac.f, ac.s)
             push!(state.constraint_state.branch_lt_constrs, ci)
         end
     end
@@ -79,8 +83,9 @@ function apply_branchings!(
         # Invariant: The constraints are added in order. If we're adding
         # constraint i attached at this node, and length of branch_gt_constrs
         #  is no less than i, then we've already added it, so can skip.
+        # Invariant: constraint is normalized via MOIU.normalize_constant.
         if i > num_branch_gt_constrs
-            ci = MOIU.normalize_and_add_constraint(model, ac.f, ac.s)
+            ci = MOI.add_constraint(model, ac.f, ac.s)
             push!(state.constraint_state.branch_gt_constrs, ci)
         end
     end

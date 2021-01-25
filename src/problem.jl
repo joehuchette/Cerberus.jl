@@ -65,10 +65,12 @@ the constraint must be less than the ambient dimension of the polyhedron.
 """
 function add_constraint(
     p::Polyhedron,
-    aff_constr::AffineConstraint{S},
+    _aff_constr::AffineConstraint{S},
 ) where {S<:_C_SETS}
     n = ambient_dim(p)
-    @assert _max_var_index(aff_constr) <= n
+    @assert _max_var_index(_aff_constr) <= n
+    f, s = MOIU.normalize_constant(_aff_constr.f, _aff_constr.s)
+    aff_constr = AffineConstraint{S}(f, s)
     if S == LT
         push!(p.lt_constrs, aff_constr)
     elseif S == GT
