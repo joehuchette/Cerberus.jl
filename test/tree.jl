@@ -1,15 +1,37 @@
 @testset "Node" begin
     lb_diff = Cerberus.BoundDiff(_VI(2) => 1, _VI(3) => 0, _VI(6) => 1)
     ub_diff = Cerberus.BoundDiff(_VI(1) => 0, _VI(3) => 1, _VI(5) => 0)
+    lt_constrs = [
+        Cerberus.AffineConstraint{_LT}(
+            _SAF([_SAT(2.3, _VI(5))], 1.9),
+            _LT(4.5),
+        ),
+    ]
+    gt_constrs = [
+        Cerberus.AffineConstraint{_GT}(
+            _SAF([_SAT(2.3, _VI(5)), _SAT(4.5, _VI(3))], 6.7),
+            _GT(6.7),
+        ),
+    ]
     depth = 6
     dual_bound = 3.2
 
     n1 = @inferred Cerberus.Node()
-    n2 = @inferred Cerberus.Node(lb_diff, ub_diff, depth)
-    n3 = @inferred Cerberus.Node(lb_diff, ub_diff, depth, dual_bound)
+    n2 =
+        @inferred Cerberus.Node(lb_diff, ub_diff, lt_constrs, gt_constrs, depth)
+    n3 = @inferred Cerberus.Node(
+        lb_diff,
+        ub_diff,
+        lt_constrs,
+        gt_constrs,
+        depth,
+        dual_bound,
+    )
     @test_throws ArgumentError Cerberus.Node(
         lb_diff,
         ub_diff,
+        lt_constrs,
+        gt_constrs,
         depth - 1,
         dual_bound,
     )
@@ -25,6 +47,14 @@
     @test isempty(n1.ub_diff)
     @test n2.ub_diff == ub_diff
     @test n3.ub_diff == ub_diff
+
+    @test isempty(n1.lt_constrs)
+    @test n2.lt_constrs == lt_constrs
+    @test n3.lt_constrs == lt_constrs
+
+    @test isempty(n1.gt_constrs)
+    @test n2.gt_constrs == gt_constrs
+    @test n3.gt_constrs == gt_constrs
 
     @test n1.dual_bound == -Inf
     @test n2.dual_bound == -Inf
@@ -47,12 +77,20 @@
         @test _n2.ub_diff == ub_diff
         @test _n3.ub_diff == ub_diff
 
+        @test isempty(_n1.lt_constrs)
+        @test _n2.lt_constrs == lt_constrs
+        @test _n3.lt_constrs == lt_constrs
+
+        @test isempty(_n1.gt_constrs)
+        @test _n2.gt_constrs == gt_constrs
+        @test _n3.gt_constrs == gt_constrs
+
         @test _n1.dual_bound == -Inf
         @test _n2.dual_bound == -Inf
         @test _n3.dual_bound == dual_bound
     end
     @testset "apply_branching!" begin
-        let bd = Cerberus.BranchingDecision(_VI(4), 7, Cerberus.DOWN_BRANCH)
+        let bd = Cerberus.BranchingDecision(_SV(_VI(4)), _LT(7.0))
             Cerberus.apply_branching!(n1, bd)
             Cerberus.apply_branching!(n2, bd)
             Cerberus.apply_branching!(n3, bd)
@@ -74,7 +112,7 @@
         end
 
         # Now apply a dominated branch
-        let bd = Cerberus.BranchingDecision(_VI(1), 0, Cerberus.UP_BRANCH)
+        let bd = Cerberus.BranchingDecision(_SV(_VI(1)), _GT(0.0))
             Cerberus.apply_branching!(n1, bd)
             Cerberus.apply_branching!(n2, bd)
             Cerberus.apply_branching!(n3, bd)
@@ -97,16 +135,32 @@ end
 @testset "Tree" begin
     # BFS, branching first on 1 and then on 2
     n1 = Cerberus.Node()
-    n2 = Cerberus.Node(Cerberus.BoundDiff(), Cerberus.BoundDiff(_VI(1) => 0), 1)
-    n3 = Cerberus.Node(Cerberus.BoundDiff(_VI(1) => 1), Cerberus.BoundDiff(), 1)
+    n2 = Cerberus.Node(
+        Cerberus.BoundDiff(),
+        Cerberus.BoundDiff(_VI(1) => 0),
+        Cerberus.AffineConstraint{_LT}[],
+        Cerberus.AffineConstraint{_GT}[],
+        1,
+    )
+    n3 = Cerberus.Node(
+        Cerberus.BoundDiff(_VI(1) => 1),
+        Cerberus.BoundDiff(),
+        Cerberus.AffineConstraint{_LT}[],
+        Cerberus.AffineConstraint{_GT}[],
+        1,
+    )
     n4 = Cerberus.Node(
         Cerberus.BoundDiff(_VI(1) => 1),
         Cerberus.BoundDiff(_VI(2) => 0),
+        Cerberus.AffineConstraint{_LT}[],
+        Cerberus.AffineConstraint{_GT}[],
         2,
     )
     n5 = Cerberus.Node(
         Cerberus.BoundDiff(_VI(2) => 1),
         Cerberus.BoundDiff(_VI(1) => 0),
+        Cerberus.AffineConstraint{_LT}[],
+        Cerberus.AffineConstraint{_GT}[],
         2,
     )
 

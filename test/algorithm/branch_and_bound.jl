@@ -50,6 +50,8 @@ end
         node = Cerberus.Node(
             Cerberus.BoundDiff(_VI(1) => 1),
             Cerberus.BoundDiff(_VI(1) => 0),
+            Cerberus.AffineConstraint{_LT}[],
+            Cerberus.AffineConstraint{_GT}[],
             2,
         )
         result = @inferred Cerberus.process_node!(state, fm, node, CONFIG)
@@ -90,8 +92,20 @@ end
     state = Cerberus.CurrentState(fm, CONFIG)
     node = Cerberus.Node()
     Cerberus.process_node!(state, fm, node, CONFIG)
-    fc = Cerberus.Node(Cerberus.BoundDiff(_VI(1) => 1), Cerberus.BoundDiff(), 2)
-    oc = Cerberus.Node(Cerberus.BoundDiff(), Cerberus.BoundDiff(_VI(1) => 0), 2)
+    fc = Cerberus.Node(
+        Cerberus.BoundDiff(_VI(1) => 1),
+        Cerberus.BoundDiff(),
+        Cerberus.AffineConstraint{_LT}[],
+        Cerberus.AffineConstraint{_GT}[],
+        2,
+    )
+    oc = Cerberus.Node(
+        Cerberus.BoundDiff(),
+        Cerberus.BoundDiff(_VI(1) => 0),
+        Cerberus.AffineConstraint{_LT}[],
+        Cerberus.AffineConstraint{_GT}[],
+        2,
+    )
     cost = 12.3
     result = Cerberus.NodeResult(cost, [1.2, 2.3, 3.4], 1492, 12, 13)
     let no_inc_config = Cerberus.AlgorithmConfig(

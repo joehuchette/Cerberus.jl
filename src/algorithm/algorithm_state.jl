@@ -1,13 +1,22 @@
-mutable struct NodeResult
-    cost::Float64
-    x::Vector{Float64}
-    simplex_iters::Int
-    depth::Int
-    int_infeas::Int
+struct Basis
+    base_var_constrs::Vector{MOI.BasisStatusCode}
+    base_lt_constrs::Vector{MOI.BasisStatusCode}
+    base_gt_constrs::Vector{MOI.BasisStatusCode}
+    base_et_constrs::Vector{MOI.BasisStatusCode}
+    branch_lt_constrs::Vector{MOI.BasisStatusCode}
+    branch_gt_constrs::Vector{MOI.BasisStatusCode}
 end
+Basis() = Basis([], [], [], [], [], [])
 
-function NodeResult()
-    return NodeResult(NaN, Float64[], 0, 0, 0)
+function Base.copy(src::Basis)
+    return Basis(
+        copy(src.base_var_constrs),
+        copy(src.base_lt_constrs),
+        copy(src.base_gt_constrs),
+        copy(src.base_et_constrs),
+        copy(src.branch_lt_constrs),
+        copy(src.branch_gt_constrs),
+    )
 end
 
 mutable struct PollingState
@@ -17,37 +26,37 @@ mutable struct PollingState
 end
 PollingState() = PollingState(0.0, 0, 0)
 
+"""
+
+"""
 mutable struct ConstraintState
-    lt_constrs::Vector{CI{SAF,LT}}
-    gt_constrs::Vector{CI{SAF,GT}}
-    et_constrs::Vector{CI{SAF,ET}}
-    var_constrs::Vector{CI{SV,IN}}
+    base_var_constrs::Vector{CI{SV,IN}}
+    base_lt_constrs::Vector{CI{SAF,LT}}
+    base_gt_constrs::Vector{CI{SAF,GT}}
+    base_et_constrs::Vector{CI{SAF,ET}}
+    branch_lt_constrs::Vector{CI{SAF,LT}}
+    branch_gt_constrs::Vector{CI{SAF,GT}}
 end
 function ConstraintState(fm::DMIPFormulation)
     p = fm.feasible_region
     return ConstraintState(
-        Vector{CI{SAF,LT}}(undef, num_constraints(p, LT)),
-        Vector{CI{SAF,GT}}(undef, num_constraints(p, GT)),
-        Vector{CI{SAF,ET}}(undef, num_constraints(p, ET)),
-        Vector{CI{SV,IN}}(undef, ambient_dim(p)),
+        Vector{CI{SV,IN}}[],
+        Vector{CI{SAF,LT}}[],
+        Vector{CI{SAF,GT}}[],
+        Vector{CI{SAF,ET}}[],
+        Vector{CI{SAF,LT}}[],
+        Vector{CI{SAF,GT}}[],
     )
 end
 
-struct Basis
-    lt_constrs::Dict{CI{SAF,LT},MOI.BasisStatusCode}
-    gt_constrs::Dict{CI{SAF,GT},MOI.BasisStatusCode}
-    et_constrs::Dict{CI{SAF,ET},MOI.BasisStatusCode}
-    var_constrs::Dict{CI{SV,IN},MOI.BasisStatusCode}
-end
-Basis() = Basis(Dict(), Dict(), Dict(), Dict())
-
-function Base.copy(src::Basis)
-    return Basis(
-        copy(src.lt_constrs),
-        copy(src.gt_constrs),
-        copy(src.et_constrs),
-        copy(src.var_constrs),
-    )
+function Base.empty!(cs::ConstraintState)
+    empty!(cs.base_var_constrs)
+    empty!(cs.base_lt_constrs)
+    empty!(cs.base_gt_constrs)
+    empty!(cs.base_et_constrs)
+    empty!(cs.branch_lt_constrs)
+    empty!(cs.branch_gt_constrs)
+    return nothing
 end
 
 mutable struct CurrentState

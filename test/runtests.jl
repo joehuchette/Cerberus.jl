@@ -3,6 +3,7 @@ using Cerberus
 using SparseArrays
 import Gurobi, MathOptInterface
 const MOI = MathOptInterface
+const MOIU = MOI.Utilities
 
 include("util.jl")
 include("algorithm/util.jl")

@@ -63,30 +63,32 @@ end
 end
 
 @testset "copy(::Basis)" begin
-    src = _Basis(
-        Dict(
-            _CI{_SV,_IN}(1) => MOI.NONBASIC_AT_LOWER,
-            _CI{_SV,_IN}(2) => MOI.BASIC,
-            _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
-            _CI{_SAF,_ET}(3) => MOI.NONBASIC,
-            _CI{_SAF,_LT}(2) => MOI.BASIC,
-        ),
+    src = Cerberus.Basis(
+        [MOI.NONBASIC_AT_LOWER, MOI.BASIC, MOI.NONBASIC_AT_LOWER],
+        [MOI.BASIC],
+        MOI.BasisStatusCode[],
+        [MOI.NONBASIC],
+        MOI.BasisStatusCode[],
+        [MOI.NONBASIC_AT_UPPER],
     )
     dest = copy(src)
-    @test src.lt_constrs == dest.lt_constrs
-    @test src.gt_constrs == dest.gt_constrs
-    @test src.et_constrs == dest.et_constrs
-    @test src.var_constrs == dest.var_constrs
-    empty!(src.lt_constrs)
-    empty!(src.gt_constrs)
-    empty!(src.et_constrs)
-    empty!(src.var_constrs)
-    @test dest.lt_constrs == Dict(_CI{_SAF,_LT}(2) => MOI.BASIC)
-    @test isempty(dest.gt_constrs)
-    @test dest.et_constrs == Dict(_CI{_SAF,_ET}(3) => MOI.NONBASIC)
-    @test dest.var_constrs == Dict(
-        _CI{_SV,_IN}(1) => MOI.NONBASIC_AT_LOWER,
-        _CI{_SV,_IN}(2) => MOI.BASIC,
-        _CI{_SV,_IN}(3) => MOI.NONBASIC_AT_LOWER,
-    )
+    @test src.base_var_constrs == dest.base_var_constrs
+    @test src.base_lt_constrs == dest.base_lt_constrs
+    @test src.base_gt_constrs == dest.base_gt_constrs
+    @test src.base_et_constrs == dest.base_et_constrs
+    @test src.branch_lt_constrs == dest.branch_lt_constrs
+    @test src.branch_gt_constrs == dest.branch_gt_constrs
+    empty!(src.base_var_constrs)
+    empty!(src.base_lt_constrs)
+    empty!(src.base_gt_constrs)
+    empty!(src.base_et_constrs)
+    empty!(src.branch_lt_constrs)
+    empty!(src.branch_gt_constrs)
+    @test dest.base_var_constrs ==
+          [MOI.NONBASIC_AT_LOWER, MOI.BASIC, MOI.NONBASIC_AT_LOWER]
+    @test dest.base_lt_constrs == [MOI.BASIC]
+    @test isempty(dest.base_gt_constrs)
+    @test dest.base_et_constrs == [MOI.NONBASIC]
+    @test isempty(dest.branch_lt_constrs)
+    @test dest.branch_gt_constrs == [MOI.NONBASIC_AT_UPPER]
 end

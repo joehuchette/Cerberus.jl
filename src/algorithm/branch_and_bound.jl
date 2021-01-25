@@ -48,6 +48,18 @@ function optimize!(
     return result
 end
 
+mutable struct NodeResult
+    cost::Float64
+    x::Vector{Float64}
+    simplex_iters::Int
+    depth::Int
+    int_infeas::Int
+end
+
+function NodeResult()
+    return NodeResult(NaN, Float64[], 0, 0, 0)
+end
+
 # TODO: Store config in CurrentState, remove as argument here.
 function process_node!(
     state::CurrentState,
@@ -59,7 +71,7 @@ function process_node!(
     populate_base_model!(state, form, node, config)
     model = state.gurobi_model
     # Update bounds on binary variables at the current node
-    update_node_bounds!(model, node)
+    apply_branchings!(model, state, node)
     set_basis_if_available!(model, state, node)
 
     # 2. Solve model
