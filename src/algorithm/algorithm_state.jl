@@ -30,30 +30,30 @@ PollingState() = PollingState(0.0, 0, 0)
 
 """
 mutable struct ConstraintState
+    base_var_constrs::Vector{CI{SV,IN}}
     base_lt_constrs::Vector{CI{SAF,LT}}
     base_gt_constrs::Vector{CI{SAF,GT}}
     base_et_constrs::Vector{CI{SAF,ET}}
-    base_var_constrs::Vector{CI{SV,IN}}
     branch_lt_constrs::Vector{CI{SAF,LT}}
     branch_gt_constrs::Vector{CI{SAF,GT}}
 end
 function ConstraintState(fm::DMIPFormulation)
     p = fm.feasible_region
     return ConstraintState(
+        Vector{CI{SV,IN}}[],
         Vector{CI{SAF,LT}}[],
         Vector{CI{SAF,GT}}[],
         Vector{CI{SAF,ET}}[],
-        Vector{CI{SV,IN}}[],
         Vector{CI{SAF,LT}}[],
         Vector{CI{SAF,GT}}[],
     )
 end
 
 function Base.empty!(cs::ConstraintState)
+    empty!(cs.base_var_constrs)
     empty!(cs.base_lt_constrs)
     empty!(cs.base_gt_constrs)
     empty!(cs.base_et_constrs)
-    empty!(cs.base_var_constrs)
     empty!(cs.branch_lt_constrs)
     empty!(cs.branch_gt_constrs)
     return nothing
