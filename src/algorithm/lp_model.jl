@@ -1,4 +1,3 @@
-# TODO: Unit test
 function reset_formulation_upon_backtracking!(
     state::CurrentState,
     form::DMIPFormulation,
@@ -47,9 +46,11 @@ function populate_base_model!(
     config::AlgorithmConfig,
 )
     if !state.rebuild_model
+        # If the above check passed, we would like to reuse the same model and
+        # not rebuild from scratch...
         if state.backtracking
-            # Upon backtracking, need to reset bounds and reapply (or reset)
-            # disjunctive formulations.
+            # ...however, upon backtracking we need to reset bounds and reapply
+            # (or reset) disjunctive formulations.
             reset_formulation_upon_backtracking!(state, form, node)
         end
         return nothing
@@ -95,10 +96,7 @@ function populate_base_model!(
     return nothing
 end
 
-function apply_branchings!(
-    state::CurrentState,
-    node::Node,
-)
+function apply_branchings!(state::CurrentState, node::Node)
     model = state.gurobi_model
     for (vi, lb) in node.lb_diff
         ci = CI{SV,IN}(vi.value)
@@ -189,12 +187,13 @@ function get_basis(state::CurrentState)::Basis
     return basis
 end
 
-function set_basis_if_available!(
-    state::CurrentState,
-    node::Node,
-)
+function set_basis_if_available!(state::CurrentState, node::Node)
     if haskey(state.warm_starts, node)
-        _set_basis!(state.gurobi_model, state.constraint_state, state.warm_starts[node])
+        _set_basis!(
+            state.gurobi_model,
+            state.constraint_state,
+            state.warm_starts[node],
+        )
         state.total_warm_starts += 1
     end
     return nothing
