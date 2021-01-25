@@ -7,23 +7,34 @@ const MOI = MathOptInterface
 const MOIT = MOI.Test
 const MOIU = MOI.Utilities
 
-const OPTIMIZER = MOIU.CachingOptimizer(
-    MOIU.UniversalFallback(MOIU.Model{Float64}()),
-    begin
-        model = Cerberus.Optimizer(CONFIG)
-        model.config.lp_solver_factory =
-            (state, config) -> (
-                begin
-                    model = Gurobi.Optimizer(GRB_ENV)
-                    MOI.set(model, MOI.Silent(), true)
-                    MOI.set(model, MOI.RawParameter("DualReductions"), 0)
-                    MOI.set(model, MOI.RawParameter("InfUnbdInfo"), 1)
-                    return model
-                end
-            )
-        model
-    end,
+function _build_optimizer(
+    warm_start_strategy::Cerberus.WarmStartStrategy,
+    model_reuse_strategy::Cerberus.ModelReuseStrategy,
 )
+    return MOIU.CachingOptimizer(
+        MOIU.UniversalFallback(MOIU.Model{Float64}()),
+        begin
+            model = Cerberus.Optimizer(Cerberus.AlgorithmConfig())
+            model.config.lp_solver_factory =
+                (state, config) -> (
+                    begin
+                        model = Gurobi.Optimizer(GRB_ENV)
+                        MOI.set(model, MOI.Silent(), true)
+                        MOI.set(model, MOI.RawParameter("DualReductions"), 0)
+                        MOI.set(model, MOI.RawParameter("InfUnbdInfo"), 1)
+                        return model
+                    end
+                )
+            model.config.silent = true
+            model.config.warm_start_strategy = warm_start_strategy
+            model.config.model_reuse_strategy = model_reuse_strategy
+            model
+        end,
+    )
+end
+
+const OPTIMIZER =
+    _build_optimizer(Cerberus.WHENEVER_POSSIBLE, Cerberus.REUSE_ON_DIVES)
 
 const MOI_CONFIG = MOIT.TestConfig(
     modify_lhs = false,
@@ -103,33 +114,56 @@ end
 
 const MOIB = MOI.Bridges
 
-const BRIDGED_OPTIMIZER = MOIB.LazyBridgeOptimizer(OPTIMIZER)
-MOIB.add_bridge(BRIDGED_OPTIMIZER, MOIB.Constraint.ScalarizeBridge{Float64})
-MOIB.add_bridge(BRIDGED_OPTIMIZER, MOIB.Constraint.SemiToBinaryBridge{Float64})
-MOIB.add_bridge(BRIDGED_OPTIMIZER, MOIB.Constraint.SplitIntervalBridge{Float64})
-MOIB.add_bridge(BRIDGED_OPTIMIZER, MOIB.Variable.ZerosBridge{Float64})
+function _build_bridged_optimizer(
+    warm_start_strategy::Cerberus.WarmStartStrategy,
+    model_reuse_strategy::Cerberus.ModelReuseStrategy,
+)
+    opt = _build_optimizer(warm_start_strategy, model_reuse_strategy)
+    bridged_opt = MOIB.LazyBridgeOptimizer(opt)
+    MOIB.add_bridge(bridged_opt, MOIB.Constraint.ScalarizeBridge{Float64})
+    MOIB.add_bridge(bridged_opt, MOIB.Constraint.SemiToBinaryBridge{Float64})
+    MOIB.add_bridge(bridged_opt, MOIB.Constraint.SplitIntervalBridge{Float64})
+    MOIB.add_bridge(bridged_opt, MOIB.Variable.ZerosBridge{Float64})
+    return bridged_opt
+end
 
 @testset "contlinear" begin
-    MOIT.contlineartest(BRIDGED_OPTIMIZER, MOI_CONFIG, [
-        # Needs setting of VariablePrimalStart
-        "partial_start",
-    ])
+    MOIT.contlineartest(
+        _build_bridged_optimizer(
+            Cerberus.WHENEVER_POSSIBLE,
+            Cerberus.REUSE_ON_DIVES,
+        ),
+        MOI_CONFIG,
+        [
+            # Needs setting of VariablePrimalStart
+            "partial_start",
+        ],
+    )
 end
 
 # TODO: Add bridges to support below sets
 @testset "intlinear" begin
-    MOIT.intlineartest(
-        BRIDGED_OPTIMIZER,
-        MOI_CONFIG,
-        [
-            # Needs SOS1/SOS2
-            "int2",
+    for ws in (
+            Cerberus.NO_WARM_STARTS,
+            Cerberus.WHEN_BACKTRACKING,
+            Cerberus.WHENEVER_POSSIBLE,
+        ),
+        mr in
+        (Cerberus.NO_REUSE, Cerberus.REUSE_ON_DIVES, Cerberus.USE_SINGLE_MODEL)
 
-            # Needs MOI.ACTIVATE_ON_ONE
-            "indicator1",
-            "indicator2",
-            "indicator3",
-            "indicator4",
-        ],
-    )
+        MOIT.intlineartest(
+            _build_bridged_optimizer(ws, mr),
+            MOI_CONFIG,
+            [
+                # Needs SOS1/SOS2
+                "int2",
+
+                # Needs MOI.ACTIVATE_ON_ONE
+                "indicator1",
+                "indicator2",
+                "indicator3",
+                "indicator4",
+            ],
+        )
+    end
 end

@@ -2,7 +2,8 @@ abstract type BranchingRule end
 struct MostInfeasible <: BranchingRule end
 struct PseudocostBranching <: BranchingRule end
 
-@enum Incrementalism NO_INCREMENTALISM WARM_START HOT_START
+@enum WarmStartStrategy NO_WARM_STARTS WHEN_BACKTRACKING WHENEVER_POSSIBLE
+@enum ModelReuseStrategy NO_REUSE REUSE_ON_DIVES USE_SINGLE_MODEL
 
 # NOTE: This is not a true configurable parameter; it should really only be
 # changed for debugging.
@@ -29,7 +30,8 @@ const DEFAULT_TIME_LIMIT_SEC = Inf
 const DEFAULT_NODE_LIMIT = 1_000_000
 const DEFAULT_GAP_TOL = 1e-4
 const DEFAULT_INTEGRALITY_TOL = 1e-5
-const DEFAULT_INCREMENTALISM = HOT_START
+const DEFAULT_WARM_START_STRATEGY = WHEN_BACKTRACKING
+const DEFAULT_MODEL_REUSE_STRATEGY = USE_SINGLE_MODEL
 
 Base.@kwdef mutable struct AlgorithmConfig
     lp_solver_factory::Function = DEFAULT_LP_SOLVER_FACTORY
@@ -39,5 +41,6 @@ Base.@kwdef mutable struct AlgorithmConfig
     node_limit::Int = DEFAULT_NODE_LIMIT
     gap_tol::Float64 = DEFAULT_GAP_TOL
     int_tol::Float64 = DEFAULT_INTEGRALITY_TOL
-    incrementalism::Incrementalism = DEFAULT_INCREMENTALISM
+    warm_start_strategy::WarmStartStrategy = DEFAULT_WARM_START_STRATEGY
+    model_reuse_strategy::ModelReuseStrategy = DEFAULT_MODEL_REUSE_STRATEGY
 end

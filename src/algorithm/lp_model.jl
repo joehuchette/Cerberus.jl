@@ -1,10 +1,58 @@
+function reset_formulation_upon_backtracking!(
+    state::CurrentState,
+    form::DMIPFormulation,
+    node::Node,
+)
+    model = state.gurobi_model
+    for i in 1:num_variables(form)
+        bound = form.feasible_region.bounds[i]
+        l, u = bound.lower, bound.upper
+        if form.integrality[i] isa ZO
+            l = max(0, l)
+            u = min(1, u)
+        end
+        vi = VI(i)
+        if haskey(node.lb_diff, vi)
+            l = max(l, node.lb_diff[vi])
+        end
+        if haskey(node.ub_diff, vi)
+            u = min(u, node.ub_diff[vi])
+        end
+        ci = CI{SV,IN}(i)
+        MOI.set(model, MOI.ConstraintSet(), ci, IN(l, u))
+    end
+    # TODO: Can potentially be smarter about not deleting all of these
+    # constraints on a backtrack.
+    MOI.delete(model, state.constraint_state.branch_lt_constrs)
+    empty!(state.constraint_state.branch_lt_constrs)
+    MOI.delete(model, state.constraint_state.branch_gt_constrs)
+    empty!(state.constraint_state.branch_gt_constrs)
+    for ac in node.lt_constrs
+        # Invariant: constraint was normalized via MOIU.normalize_constant.
+        ci = MOI.add_constraint(model, ac.f, ac.s)
+        push!(state.constraint_state.branch_lt_constrs, ci)
+    end
+    for ac in node.gt_constrs
+        # Invariant: constraint was normalized via MOIU.normalize_constant.
+        ci = MOI.add_constraint(model, ac.f, ac.s)
+        push!(state.constraint_state.branch_gt_constrs, ci)
+    end
+end
+
 function populate_base_model!(
     state::CurrentState,
     form::DMIPFormulation,
     node::Node,
     config::AlgorithmConfig,
 )
-    if !state.model_invalidated
+    if !state.rebuild_model
+        # If the above check passed, we would like to reuse the same model and
+        # not rebuild from scratch...
+        if state.backtracking
+            # ...however, upon backtracking we need to reset bounds and reapply
+            # (or reset) disjunctive formulations.
+            reset_formulation_upon_backtracking!(state, form, node)
+        end
         return nothing
     end
     empty!(state.constraint_state)
@@ -43,16 +91,13 @@ function populate_base_model!(
     MOI.set(model, MOI.ObjectiveFunction{SAF}(), form.obj)
     MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
     state.gurobi_model = model
-    state.model_invalidated = false
+    state.rebuild_model = false
     state.total_model_builds += 1
     return nothing
 end
 
-function apply_branchings!(
-    model::MOI.AbstractOptimizer,
-    state::CurrentState,
-    node::Node,
-)
+function apply_branchings!(state::CurrentState, node::Node)
+    model = state.gurobi_model
     for (vi, lb) in node.lb_diff
         ci = CI{SV,IN}(vi.value)
         interval = MOI.get(model, MOI.ConstraintSet(), ci)
@@ -142,13 +187,13 @@ function get_basis(state::CurrentState)::Basis
     return basis
 end
 
-function set_basis_if_available!(
-    model::MOI.AbstractOptimizer,
-    state::CurrentState,
-    node::Node,
-)
+function set_basis_if_available!(state::CurrentState, node::Node)
     if haskey(state.warm_starts, node)
-        _set_basis!(model, state.constraint_state, state.warm_starts[node])
+        _set_basis!(
+            state.gurobi_model,
+            state.constraint_state,
+            state.warm_starts[node],
+        )
         state.total_warm_starts += 1
     end
     return nothing

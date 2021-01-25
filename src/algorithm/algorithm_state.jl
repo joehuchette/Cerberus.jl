@@ -62,8 +62,11 @@ end
 mutable struct CurrentState
     gurobi_env::Gurobi.Env
     gurobi_model::Gurobi.Optimizer
-    model_invalidated::Bool
+    rebuild_model::Bool
     tree::Tree
+    backtracking::Bool
+    # TODO: Hashing nodes might be more expensive than we'd like. Instead, just
+    # attach an ID to each node and use Ints as keys.
     warm_starts::Dict{Node,Basis}
     primal_bound::Float64
     dual_bound::Float64
@@ -85,8 +88,9 @@ mutable struct CurrentState
         nvars = num_variables(fm)
         state = new()
         state.gurobi_env = Gurobi.Env()
-        # Don't set gurobi_model, just mark it as invalidated to force build.
-        state.model_invalidated = true
+        state.backtracking = false
+        # Model is undefined here in constructor; build it before accessing.
+        state.rebuild_model = true
         state.tree = Tree()
         push_node!(state.tree, Node())
         state.warm_starts = Dict{Node,Basis}()

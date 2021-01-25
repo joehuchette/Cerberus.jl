@@ -69,12 +69,12 @@ function process_node!(
 )::NodeResult
     # 1. Build model
     populate_base_model!(state, form, node, config)
-    model = state.gurobi_model
     # Update bounds on binary variables at the current node
-    apply_branchings!(model, state, node)
-    set_basis_if_available!(model, state, node)
+    apply_branchings!(state, node)
+    set_basis_if_available!(state, node)
 
     # 2. Solve model
+    model = state.gurobi_model
     MOI.optimize!(model)
 
     # 3. Grab solution data and bundle it into a NodeResult
@@ -139,7 +139,7 @@ function update_state!(
     state.total_simplex_iters += node_result.simplex_iters
     state.polling_state.period_node_count += 1
     state.polling_state.period_simplex_iters += node_result.simplex_iters
-    state.model_invalidated = true
+    state.backtracking = true
     # 1. Prune by infeasibility
     if node_result.cost == Inf
         # Do nothing
@@ -173,10 +173,15 @@ function update_state!(
         # throughout the tree. However, we currently update bounds based on a
         # diff with the root. So, after backtracking we will need to reset all
         # bounds, but can otherwise reuse the same model.
-        state.model_invalidated = config.incrementalism != Cerberus.HOT_START
+        state.backtracking = false
         # TODO: Add a check in this branch to ensure we don't have a "funny" return
         #       status. This is a little kludgy since we don't necessarily store the
         #       MOI model in node_result. Maybe need to add termination status as a field...
+    end
+    state.rebuild_model = if state.backtracking
+        (config.model_reuse_strategy != USE_SINGLE_MODEL)
+    else
+        (config.model_reuse_strategy == NO_REUSE)
     end
     state.total_elapsed_time_sec = time() - state.starting_time
     delete!(state.warm_starts, node)
@@ -189,15 +194,17 @@ function _store_basis_if_desired!(
     other_child::Node,
     config::AlgorithmConfig,
 )
-    if config.incrementalism == NO_INCREMENTALISM
+    if config.warm_start_strategy == NO_WARM_STARTS
         # Do nothing
-    elseif config.incrementalism == WARM_START
-        basis = get_basis(state)
-        state.warm_starts[favorite_child] = basis
-        state.warm_starts[other_child] = copy(basis)
     else
-        @assert config.incrementalism == HOT_START
-        state.warm_starts[other_child] = get_basis(state)
+        basis = get_basis(state)
+        if config.warm_start_strategy == WHEN_BACKTRACKING
+            state.warm_starts[other_child] = basis
+        else
+            @assert config.warm_start_strategy == WHENEVER_POSSIBLE
+            state.warm_starts[favorite_child] = copy(basis)
+            state.warm_starts[other_child] = basis
+        end
     end
     return nothing
 end

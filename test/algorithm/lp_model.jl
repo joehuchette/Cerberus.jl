@@ -50,7 +50,7 @@ end
         Cerberus.AffineConstraint{_GT}[],
         2,
     )
-    @inferred Cerberus.apply_branchings!(model, state, node)
+    @inferred Cerberus.apply_branchings!(state, node)
     @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
     @test MOI.Utilities.get_bounds(model, Float64, _VI(1)) == (0.5, 0.0)
     @test MOI.Utilities.get_bounds(model, Float64, _VI(2)) == (-1.3, 2.3)
@@ -59,9 +59,10 @@ end
     let f = _SAF([_SAT(1.2, _VI(1)), _SAT(3.4, _VI(2))], 5.6), s = _LT(7.8)
         bd = Cerberus.BranchingDecision(f, s)
         Cerberus.apply_branching!(node, bd)
-        @inferred Cerberus.apply_branchings!(model, state, node)
+        @inferred Cerberus.apply_branchings!(state, node)
         @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_LT}()) == 2
         @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_GT}()) == 0
+        @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_ET}()) == 1
         cis = MOI.get(model, MOI.ListOfConstraintIndices{_SAF,_LT}())
         # NOTE: cis[1] should be the constraint from the "base" formulation.
         ci = cis[2]
@@ -76,11 +77,12 @@ end
     let f = _SAF([_SAT(2.4, _VI(3)), _SAT(6.4, _VI(1))], 0.0), s = _GT(3.5)
         bd = Cerberus.BranchingDecision(f, s)
         Cerberus.apply_branching!(node, bd)
-        @inferred Cerberus.apply_branchings!(model, state, node)
+        @inferred Cerberus.apply_branchings!(state, node)
         # NOTE: We are testing here that the _LT general branching constraint
         # only gets added to the model once.
         @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_LT}()) == 2
         @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_GT}()) == 1
+        @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_ET}()) == 1
         cis = MOI.get(model, MOI.ListOfConstraintIndices{_SAF,_GT}())
         ci = cis[1]
         f_rt = MOI.get(model, MOI.ConstraintFunction(), ci)
@@ -88,6 +90,71 @@ end
         _test_equal(f_rt, f)
         @test s_rt == s
     end
+end
+
+@testset "reset_formulation_upon_backtracking!" begin
+    form = _build_dmip_formulation()
+    state = Cerberus.CurrentState(form, CONFIG)
+    node = Cerberus.Node()
+    Cerberus.populate_base_model!(state, form, node, CONFIG)
+    f_lt = _SAF([_SAT(1.2, _VI(1)), _SAT(3.4, _VI(2))], 0.0)
+    s_lt = _LT(7.8)
+    f_gt = _SAF([_SAT(2.4, _VI(3)), _SAT(6.4, _VI(1))], 0.0)
+    s_gt = _GT(3.5)
+    node_1 = Cerberus.Node(
+        Cerberus.BoundDiff(_VI(3) => 1),
+        Cerberus.BoundDiff(_VI(1) => 0),
+        [Cerberus.AffineConstraint{_LT}(f_lt, s_lt)],
+        [Cerberus.AffineConstraint{_GT}(f_gt, s_gt)],
+        4,
+    )
+    Cerberus.apply_branchings!(state, node_1)
+
+    model = state.gurobi_model
+    @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
+    @test MOI.Utilities.get_bounds(model, Float64, _VI(1)) == (0.5, 0.0)
+    @test MOI.Utilities.get_bounds(model, Float64, _VI(2)) == (-1.3, 2.3)
+    @test MOI.Utilities.get_bounds(model, Float64, _VI(3)) == (1.0, 1.0)
+    @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_LT}()) == 2
+    let lt_cis = MOI.get(model, MOI.ListOfConstraintIndices{_SAF,_LT}())
+        lt_ci = lt_cis[2]
+        f_lt_rt = MOI.get(model, MOI.ConstraintFunction(), lt_ci)
+        s_lt_rt = MOI.get(model, MOI.ConstraintSet(), lt_ci)
+        _test_equal(f_lt_rt, f_lt)
+        @test s_lt_rt == s_lt
+    end
+    @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_GT}()) == 1
+    let gt_cis = MOI.get(model, MOI.ListOfConstraintIndices{_SAF,_GT}())
+        gt_ci = gt_cis[1]
+        f_gt_rt = MOI.get(model, MOI.ConstraintFunction(), gt_ci)
+        s_gt_rt = MOI.get(model, MOI.ConstraintSet(), gt_ci)
+        _test_equal(f_gt_rt, f_gt)
+        @test s_gt_rt == s_gt
+    end
+    @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_ET}()) == 1
+
+    node_2 = Cerberus.Node(
+        Cerberus.BoundDiff(),
+        Cerberus.BoundDiff(_VI(1) => 0),
+        Cerberus.AffineConstraint{_LT}[],
+        [Cerberus.AffineConstraint{_GT}(f_gt, s_gt)],
+        2,
+    )
+    Cerberus.reset_formulation_upon_backtracking!(state, form, node_2)
+    @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
+    @test MOI.Utilities.get_bounds(model, Float64, _VI(1)) == (0.5, 0.0)
+    @test MOI.Utilities.get_bounds(model, Float64, _VI(2)) == (-1.3, 2.3)
+    @test MOI.Utilities.get_bounds(model, Float64, _VI(3)) == (0.0, 1.0)
+    @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_LT}()) == 1
+    @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_GT}()) == 1
+    let gt_cis = MOI.get(model, MOI.ListOfConstraintIndices{_SAF,_GT}())
+        gt_ci = gt_cis[1]
+        f_gt_rt = MOI.get(model, MOI.ConstraintFunction(), gt_ci)
+        s_gt_rt = MOI.get(model, MOI.ConstraintSet(), gt_ci)
+        _test_equal(f_gt_rt, f_gt)
+        @test s_gt_rt == s_gt
+    end
+    @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_ET}()) == 1
 end
 
 @testset "MOI.optimize!" begin
@@ -154,9 +221,9 @@ function _set_basis_model(basis::Cerberus.Basis)
         -Inf,
     )
     Cerberus.populate_base_model!(state, form, node, CONFIG)
-    model = state.gurobi_model
-    Cerberus._set_basis!(model, state.constraint_state, basis)
-    return model
+    state.warm_starts[node] = basis
+    Cerberus.set_basis_if_available!(state, node)
+    return state.gurobi_model
 end
 
 @testset "set_basis_if_available!" begin
