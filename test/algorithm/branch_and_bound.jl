@@ -30,7 +30,8 @@ end
     let
         fm = _build_dmip_formulation()
         no_inc_config = Cerberus.AlgorithmConfig(
-            incrementalism = Cerberus.NO_INCREMENTALISM,
+            warm_start = false,
+            model_reuse_strategy = Cerberus.NO_REUSE,
         )
         state = _CurrentState(fm, no_inc_config)
         node = Cerberus.Node()
@@ -108,20 +109,28 @@ end
     )
     cost = 12.3
     result = Cerberus.NodeResult(cost, [1.2, 2.3, 3.4], 1492, 12, 13)
-    let no_inc_config = Cerberus.AlgorithmConfig(
-            incrementalism = Cerberus.NO_INCREMENTALISM,
+    let no_incrementalism_config = Cerberus.AlgorithmConfig(
+            warm_start = false,
+            model_reuse_strategy = Cerberus.NO_REUSE,
         )
         @inferred Cerberus._store_basis_if_desired!(
             state,
             fc,
             oc,
-            no_inc_config,
+            no_incrementalism_config,
         )
         @test isempty(state.warm_starts)
     end
-    let ws_config =
-            Cerberus.AlgorithmConfig(incrementalism = Cerberus.WARM_START)
-        @inferred Cerberus._store_basis_if_desired!(state, fc, oc, ws_config)
+    let warm_start_only_config = Cerberus.AlgorithmConfig(
+            warm_start = true,
+            model_reuse_strategy = Cerberus.NO_REUSE,
+        )
+        @inferred Cerberus._store_basis_if_desired!(
+            state,
+            fc,
+            oc,
+            warm_start_only_config,
+        )
         @test length(state.warm_starts) == 2
         @test haskey(state.warm_starts, fc)
         fc_basis = state.warm_starts[fc]
@@ -131,9 +140,16 @@ end
         _test_is_equal_to_dmip_basis(oc_basis)
     end
     empty!(state.warm_starts)
-    let hs_config =
-            Cerberus.AlgorithmConfig(incrementalism = Cerberus.HOT_START)
-        @inferred Cerberus._store_basis_if_desired!(state, fc, oc, hs_config)
+    let warm_start_off_dives_config = Cerberus.AlgorithmConfig(
+            warm_start = true,
+            model_reuse_strategy = Cerberus.REUSE_ON_DIVES,
+        )
+        @inferred Cerberus._store_basis_if_desired!(
+            state,
+            fc,
+            oc,
+            warm_start_off_dives_config,
+        )
         @test length(state.warm_starts) == 1
         @test haskey(state.warm_starts, oc)
         oc_basis = state.warm_starts[oc]
@@ -167,6 +183,8 @@ end
         @test cs.total_simplex_iters == simplex_iters_per
         @test isempty(cs.warm_starts)
     end
+    cs.backtracking = false
+    cs.rebuild_model = true
 
     # 2. Prune by bound
     let nr = Cerberus.NodeResult()
@@ -187,6 +205,8 @@ end
         @test cs.total_simplex_iters == 2 * simplex_iters_per
         @test isempty(cs.warm_starts)
     end
+    cs.backtracking = false
+    cs.rebuild_model = true
 
     # 3. Prune by integrality
     new_pb = 11.1
@@ -207,6 +227,8 @@ end
         @test cs.total_simplex_iters == 3 * simplex_iters_per
         @test isempty(cs.warm_starts)
     end
+    cs.backtracking = false
+    cs.rebuild_model = true
 
     # 4. Branch
     let nr = Cerberus.process_node!(cs, fm, node, CONFIG)

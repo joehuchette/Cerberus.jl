@@ -1,10 +1,58 @@
+# TODO: Unit test
+function reset_formulation_upon_backtracking!(
+    state::CurrentState,
+    form::DMIPFormulation,
+    node::Node,
+    config::AlgorithmConfig,
+)
+    model = state.gurobi_model
+    for i in 1:num_variables(form)
+        bound = form.feasible_region.bounds[i]
+        l, u = bound.lower, bound.upper
+        if form.integrality[i] isa ZO
+            l = max(0, l)
+            u = min(1, u)
+        end
+        vi = VI(i)
+        if haskey(node.lb_diff, vi)
+            l = max(l, node.lb_diff[vi])
+        end
+        if haskey(node.ub_diff, vi)
+            u = min(u, node.ub_diff[vi])
+        end
+        ci = CI{SV,IN}(i)
+        MOI.set(model, MOI.ConstraintSet(), ci, IN(l, u))
+    end
+    # TODO: Can potentially be smarter about not deleting all of these
+    # constraints on a backtrack.
+    MOI.delete(model, state.constraint_state.branch_lt_constrs)
+    empty!(state.constraint_state.branch_lt_constrs)
+    MOI.delete(model, state.constraint_state.branch_gt_constrs)
+    empty!(state.constraint_state.branch_gt_constrs)
+    for (i, ac) in enumerate(node.lt_constrs)
+        # Invariant: constraint was normalized via MOIU.normalize_constant.
+        ci = MOI.add_constraint(model, ac.f, ac.s)
+        push!(state.constraint_state.branch_lt_constrs, ci)
+    end
+    for (i, ac) in enumerate(node.gt_constrs)
+        # Invariant: constraint was normalized via MOIU.normalize_constant.
+        ci = MOI.add_constraint(model, ac.f, ac.s)
+        push!(state.constraint_state.branch_gt_constrs, ci)
+    end
+end
+
 function populate_base_model!(
     state::CurrentState,
     form::DMIPFormulation,
     node::Node,
     config::AlgorithmConfig,
 )
-    if !state.model_invalidated
+    if !state.rebuild_model
+        if state.backtracking
+            # Upon backtracking, need to reset bounds and reapply (or reset)
+            # disjunctive formulations.
+            reset_formulation_upon_backtracking!(state, form, node, config)
+        end
         return nothing
     end
     empty!(state.constraint_state)
@@ -43,7 +91,7 @@ function populate_base_model!(
     MOI.set(model, MOI.ObjectiveFunction{SAF}(), form.obj)
     MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
     state.gurobi_model = model
-    state.model_invalidated = false
+    state.rebuild_model = false
     state.total_model_builds += 1
     return nothing
 end

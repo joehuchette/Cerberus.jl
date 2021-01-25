@@ -28,31 +28,49 @@ const INSTANCES = Dict(
 const TIME_LIMIT_SEC = 60.0
 
 const APPROACHES = Dict(
-    "cerberus-no-ws" => Justitia.MOIBasedApproach{Cerberus.Optimizer}(
-        () -> begin
-            model = Cerberus.Optimizer(
-                Cerberus.AlgorithmConfig(incrementalism = Cerberus.WARM_START),
-            )
-            MOI.set(model, MOI.TimeLimitSec(), TIME_LIMIT_SEC)
-            return model
-        end,
-    ),
-    "cerberus-ws" => Justitia.MOIBasedApproach{Cerberus.Optimizer}(
-        () -> begin
-            model = Cerberus.Optimizer()
-            MOI.set(model, MOI.TimeLimitSec(), TIME_LIMIT_SEC)
-            return model
-        end,
-    ),
-    "cerberus-hs" => Justitia.MOIBasedApproach{Cerberus.Optimizer}(
-        () -> begin
-            model = Cerberus.Optimizer(
-                Cerberus.AlgorithmConfig(incrementalism = Cerberus.HOT_START),
-            )
-            MOI.set(model, MOI.TimeLimitSec(), TIME_LIMIT_SEC)
-            return model
-        end,
-    ),
+    "cerberus-no-incrementalism" =>
+        Justitia.MOIBasedApproach{Cerberus.Optimizer}(
+            () -> begin
+                model = Cerberus.Optimizer(
+                    Cerberus.AlgorithmConfig(
+                        Cerberus.AlgorithmConfig(
+                            warm_start = false,
+                            model_reuse_strategy = Cerberus.NO_REUSE,
+                        ),
+                    ),
+                )
+                MOI.set(model, MOI.TimeLimitSec(), TIME_LIMIT_SEC)
+                return model
+            end,
+        ),
+    "cerberus-only-warm-start" =>
+        Justitia.MOIBasedApproach{Cerberus.Optimizer}(
+            () -> begin
+                model = Cerberus.Optimizer(
+                    Cerberus.AlgorithmConfig(
+                        warm_start = true,
+                        model_reuse_strategy = Cerberus.NO_REUSE,
+                    ),
+                )
+                MOI.set(model, MOI.TimeLimitSec(), TIME_LIMIT_SEC)
+                return model
+            end,
+        ),
+    "cerberus-full-incrementalism" =>
+        Justitia.MOIBasedApproach{Cerberus.Optimizer}(
+            () -> begin
+                model = Cerberus.Optimizer(
+                    Cerberus.AlgorithmConfig(
+                        Cerberus.AlgorithmConfig(
+                            warm_start = true,
+                            model_reuse_strategy = Cerberus.USE_SINGLE_MODEL,
+                        ),
+                    ),
+                )
+                MOI.set(model, MOI.TimeLimitSec(), TIME_LIMIT_SEC)
+                return model
+            end,
+        ),
     "gurobi" => Justitia.MOIBasedApproach{Gurobi.Optimizer}(
         () -> begin
             model = Gurobi.Optimizer()

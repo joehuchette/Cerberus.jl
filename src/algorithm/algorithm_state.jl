@@ -62,8 +62,9 @@ end
 mutable struct CurrentState
     gurobi_env::Gurobi.Env
     gurobi_model::Gurobi.Optimizer
-    model_invalidated::Bool
+    rebuild_model::Bool
     tree::Tree
+    backtracking::Bool
     warm_starts::Dict{Node,Basis}
     primal_bound::Float64
     dual_bound::Float64
@@ -85,8 +86,9 @@ mutable struct CurrentState
         nvars = num_variables(fm)
         state = new()
         state.gurobi_env = Gurobi.Env()
+        state.backtracking = false
         # Don't set gurobi_model, just mark it as invalidated to force build.
-        state.model_invalidated = true
+        state.rebuild_model = true
         state.tree = Tree()
         push_node!(state.tree, Node())
         state.warm_starts = Dict{Node,Basis}()

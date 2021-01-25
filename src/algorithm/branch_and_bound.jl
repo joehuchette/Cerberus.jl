@@ -139,7 +139,7 @@ function update_state!(
     state.total_simplex_iters += node_result.simplex_iters
     state.polling_state.period_node_count += 1
     state.polling_state.period_simplex_iters += node_result.simplex_iters
-    state.model_invalidated = true
+    state.backtracking = true
     # 1. Prune by infeasibility
     if node_result.cost == Inf
         # Do nothing
@@ -173,10 +173,15 @@ function update_state!(
         # throughout the tree. However, we currently update bounds based on a
         # diff with the root. So, after backtracking we will need to reset all
         # bounds, but can otherwise reuse the same model.
-        state.model_invalidated = config.incrementalism != Cerberus.HOT_START
+        state.backtracking = false
         # TODO: Add a check in this branch to ensure we don't have a "funny" return
         #       status. This is a little kludgy since we don't necessarily store the
         #       MOI model in node_result. Maybe need to add termination status as a field...
+    end
+    state.rebuild_model = if state.backtracking
+        (config.model_reuse_strategy != USE_SINGLE_MODEL)
+    else
+        (config.model_reuse_strategy == NO_REUSE)
     end
     state.total_elapsed_time_sec = time() - state.starting_time
     delete!(state.warm_starts, node)
@@ -189,14 +194,15 @@ function _store_basis_if_desired!(
     other_child::Node,
     config::AlgorithmConfig,
 )
-    if config.incrementalism == NO_INCREMENTALISM
+    if !config.warm_start
         # Do nothing
-    elseif config.incrementalism == WARM_START
+    elseif config.model_reuse_strategy == NO_REUSE
         basis = get_basis(state)
         state.warm_starts[favorite_child] = basis
         state.warm_starts[other_child] = copy(basis)
     else
-        @assert config.incrementalism == HOT_START
+        @assert config.model_reuse_strategy in
+                (REUSE_ON_DIVES, USE_SINGLE_MODEL)
         state.warm_starts[other_child] = get_basis(state)
     end
     return nothing

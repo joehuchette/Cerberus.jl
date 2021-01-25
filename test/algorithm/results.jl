@@ -24,13 +24,16 @@
 end
 
 @testset "End-to-end" begin
-    for (incrementalism, model_builds, warm_starts) in [
-        (Cerberus.NO_INCREMENTALISM, 3, 0),
-        (Cerberus.WARM_START, 3, 2),
-        (Cerberus.HOT_START, 2, 1),
+    for (warm_start, model_reuse_strategy, model_builds, warm_starts) in [
+        (false, Cerberus.NO_REUSE, 3, 0),
+        (false, Cerberus.REUSE_ON_DIVES, 2, 0),
+        (true, Cerberus.NO_REUSE, 3, 2),
+        (true, Cerberus.REUSE_ON_DIVES, 2, 1),
+        (true, Cerberus.USE_SINGLE_MODEL, 1, 1),
     ]
         config = Cerberus.AlgorithmConfig(
-            incrementalism = incrementalism,
+            warm_start = warm_start,
+            model_reuse_strategy = model_reuse_strategy,
             silent = true,
         )
         fm = _build_dmip_formulation()
