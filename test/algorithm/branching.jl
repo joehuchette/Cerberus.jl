@@ -66,9 +66,10 @@ end
         @test node.lb_diff == Cerberus.BoundDiff(_VI(4) => 3)
         @test node.ub_diff == Cerberus.BoundDiff(_VI(2) => 1)
         @test length(node.lt_constrs) == 1
-        @test node.lt_constrs[1].f.terms ==
-              [_SAT(1.2, _VI(1)), _SAT(3.4, _VI(3))]
-        @test node.lt_constrs[1].f.constant == 5.6
+        _test_equal(
+            node.lt_constrs[1].f,
+            1.2 * _SV(_VI(1)) + 3.4 * _SV(_VI(3)) + 5.6,
+        )
         @test node.lt_constrs[1].s == _LT(7.8)
         @test node.gt_constrs == [Cerberus.AffineConstraint(f, s)]
         @test node.depth == 4

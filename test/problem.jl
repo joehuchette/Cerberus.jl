@@ -1,13 +1,7 @@
 @testset "AffineConstraint" begin
     v = [_SV(_VI(i)) for i in 1:3]
     ac = Cerberus.AffineConstraint(v[1] + 2.0 * v[2] + 3.0 * v[3], _ET(3.0))
-    @test typeof(ac.f) == _SAF
-    @test ac.f.terms == [
-        MOI.ScalarAffineTerm{Float64}(2.0, _VI(2)),
-        MOI.ScalarAffineTerm{Float64}(1.0, _VI(1)),
-        MOI.ScalarAffineTerm{Float64}(3.0, _VI(3)),
-    ]
-    @test ac.f.constant == 0.0
+    _test_equal(ac.f, 1.0 * _SV(_VI(1)) + 2.0 * _SV(_VI(2)) + 3.0 * _SV(_VI(3)))
     @test ac.s == _ET(3.0)
 end
 
@@ -18,21 +12,15 @@ function _test_polyhedron(p::Cerberus.Polyhedron)
     @test Cerberus.num_constraints(p, _ET) == length(p.et_constrs) == 1
     et_constr = @inferred Cerberus.get_constraint(p, _ET, 1)
     @test et_constr === p.et_constrs[1]
-    @test et_constr.f.terms == [
-        MOI.ScalarAffineTerm{Float64}(2.1, _VI(2)),
-        MOI.ScalarAffineTerm{Float64}(1.0, _VI(1)),
-        MOI.ScalarAffineTerm{Float64}(3.0, _VI(3)),
-    ]
-    @test et_constr.f.constant == 0.0
+    _test_equal(
+        et_constr.f,
+        1.0 * _SV(_VI(1)) + 2.1 * _SV(_VI(2)) + 3.0 * _SV(_VI(3)),
+    )
     @test et_constr.s == _ET(3.0)
 
     lt_constr = @inferred Cerberus.get_constraint(p, _LT, 1)
     @test lt_constr === p.lt_constrs[1]
-    @test lt_constr.f.terms == [
-        MOI.ScalarAffineTerm{Float64}(-3.5, _VI(1)),
-        MOI.ScalarAffineTerm{Float64}(1.2, _VI(2)),
-    ]
-    @test lt_constr.f.constant == 0.0
+    _test_equal(lt_constr.f, -3.5 * _SV(_VI(1)) + 1.2 * _SV(_VI(2)))
     @test lt_constr.s == _LT(4.0)
 
     @test p.bounds == [_IN(0.5, 1.0), _IN(-1.3, 2.3), _IN(0.0, 1.0)]
@@ -74,12 +62,7 @@ end
 @testset "DMIPFormulation" begin
     fm = @inferred _build_dmip_formulation()
     _test_polyhedron(fm.feasible_region)
-    @test typeof(fm.obj) == _SAF
-    @test fm.obj.terms == [
-        MOI.ScalarAffineTerm{Float64}(1.0, _VI(1)),
-        MOI.ScalarAffineTerm{Float64}(-1.0, _VI(2)),
-    ]
-    @test fm.obj.constant == 0.0
+    _test_equal(fm.obj, 1.0 * _SV(_VI(1)) - 1.0 * _SV(_VI(2)))
     @test isempty(fm.disjunction_formulaters)
     @test fm.integrality == [_ZO(), nothing, _ZO()]
 
@@ -88,8 +71,7 @@ end
         @test Cerberus.num_variables(fm) == 0
         @test Cerberus.ambient_dim(fm.feasible_region) == 0
         @test Cerberus.num_constraints(fm.feasible_region) == 0
-        @test isempty(fm.obj.terms)
-        @test fm.obj.constant == 0.0
+        _test_equal(fm.obj, convert(_SAF, 0.0))
         @test isempty(fm.disjunction_formulaters)
         @test isempty(fm.integrality)
     end
@@ -104,11 +86,10 @@ function _test_gi_polyhedron(p::Cerberus.Polyhedron)
     @test Cerberus.num_constraints(p, _ET) == 0
     lt_constr = @inferred Cerberus.get_constraint(p, _LT, 1)
     @test lt_constr === p.lt_constrs[1]
-    @test lt_constr.f.terms == [
-        MOI.ScalarAffineTerm{Float64}(1.3, _VI(1)),
-        MOI.ScalarAffineTerm{Float64}(3.7, _VI(2)),
-        MOI.ScalarAffineTerm{Float64}(2.4, _VI(3)),
-    ]
+    _test_equal(
+        lt_constr.f,
+        1.3 * _SV(_VI(1)) + 3.7 * _SV(_VI(2)) + 2.4 * _SV(_VI(3)),
+    )
     @test lt_constr.f.constant == 0.0
     @test lt_constr.s == _LT(5.5)
 

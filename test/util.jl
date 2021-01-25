@@ -71,3 +71,16 @@ function _test_is_equal_to_dmip_basis(basis::Cerberus.Basis)
     @test basis.branch_lt_constrs == DMIP_BASIS.branch_lt_constrs
     @test basis.branch_gt_constrs == DMIP_BASIS.branch_gt_constrs
 end
+
+function _test_equal(u::_SAF, v::_SAF)
+    u_t = sort(
+        u.terms,
+        lt = (x, y) -> x.variable_index.value < y.variable_index.value,
+    )
+    v_t = sort(
+        v.terms,
+        lt = (x, y) -> x.variable_index.value < y.variable_index.value,
+    )
+    @test u_t == v_t
+    @test u.constant == v.constant
+end
