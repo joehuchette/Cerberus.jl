@@ -29,6 +29,8 @@ end
 
 function apply_branching!(node::Node, bd::BranchingDecision{SAF,LT})
     node.depth += 1
+    # NOTE: Can potentially modify bd in-place; would need to note this in the
+    # contract, though.
     f, s = MOIU.normalize_constant(bd.f, bd.s)
     push!(node.lt_constrs, AffineConstraint(f, s))
     return nothing
@@ -36,6 +38,8 @@ end
 
 function apply_branching!(node::Node, bd::BranchingDecision{SAF,GT})
     node.depth += 1
+    # NOTE: Can potentially modify bd in-place; would need to note this in the
+    # contract, though.
     f, s = MOIU.normalize_constant(bd.f, bd.s)
     push!(node.gt_constrs, AffineConstraint(f, s))
     return nothing

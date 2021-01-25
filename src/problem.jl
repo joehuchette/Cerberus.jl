@@ -69,6 +69,8 @@ function add_constraint(
 ) where {S<:_C_SETS}
     n = ambient_dim(p)
     @assert _max_var_index(_aff_constr) <= n
+    # NOTE: Can potentially modify bd in-place; would need to note this in the
+    # contract, though.
     f, s = MOIU.normalize_constant(_aff_constr.f, _aff_constr.s)
     aff_constr = AffineConstraint{S}(f, s)
     if S == LT
