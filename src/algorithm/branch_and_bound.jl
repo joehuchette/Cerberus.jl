@@ -69,12 +69,12 @@ function process_node!(
 )::NodeResult
     # 1. Build model
     populate_base_model!(state, form, node, config)
-    model = state.gurobi_model
     # Update bounds on binary variables at the current node
-    apply_branchings!(model, state, node)
-    set_basis_if_available!(model, state, node)
+    apply_branchings!(state, node)
+    set_basis_if_available!(state, node)
 
     # 2. Solve model
+    model = state.gurobi_model
     MOI.optimize!(model)
 
     # 3. Grab solution data and bundle it into a NodeResult

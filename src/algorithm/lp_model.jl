@@ -3,7 +3,6 @@ function reset_formulation_upon_backtracking!(
     state::CurrentState,
     form::DMIPFormulation,
     node::Node,
-    config::AlgorithmConfig,
 )
     model = state.gurobi_model
     for i in 1:num_variables(form)
@@ -29,12 +28,12 @@ function reset_formulation_upon_backtracking!(
     empty!(state.constraint_state.branch_lt_constrs)
     MOI.delete(model, state.constraint_state.branch_gt_constrs)
     empty!(state.constraint_state.branch_gt_constrs)
-    for (i, ac) in enumerate(node.lt_constrs)
+    for ac in node.lt_constrs
         # Invariant: constraint was normalized via MOIU.normalize_constant.
         ci = MOI.add_constraint(model, ac.f, ac.s)
         push!(state.constraint_state.branch_lt_constrs, ci)
     end
-    for (i, ac) in enumerate(node.gt_constrs)
+    for ac in node.gt_constrs
         # Invariant: constraint was normalized via MOIU.normalize_constant.
         ci = MOI.add_constraint(model, ac.f, ac.s)
         push!(state.constraint_state.branch_gt_constrs, ci)
@@ -51,7 +50,7 @@ function populate_base_model!(
         if state.backtracking
             # Upon backtracking, need to reset bounds and reapply (or reset)
             # disjunctive formulations.
-            reset_formulation_upon_backtracking!(state, form, node, config)
+            reset_formulation_upon_backtracking!(state, form, node)
         end
         return nothing
     end
@@ -97,10 +96,10 @@ function populate_base_model!(
 end
 
 function apply_branchings!(
-    model::MOI.AbstractOptimizer,
     state::CurrentState,
     node::Node,
 )
+    model = state.gurobi_model
     for (vi, lb) in node.lb_diff
         ci = CI{SV,IN}(vi.value)
         interval = MOI.get(model, MOI.ConstraintSet(), ci)
@@ -191,12 +190,11 @@ function get_basis(state::CurrentState)::Basis
 end
 
 function set_basis_if_available!(
-    model::MOI.AbstractOptimizer,
     state::CurrentState,
     node::Node,
 )
     if haskey(state.warm_starts, node)
-        _set_basis!(model, state.constraint_state, state.warm_starts[node])
+        _set_basis!(state.gurobi_model, state.constraint_state, state.warm_starts[node])
         state.total_warm_starts += 1
     end
     return nothing
