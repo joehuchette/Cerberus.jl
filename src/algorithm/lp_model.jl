@@ -7,7 +7,7 @@ function reset_formulation_upon_backtracking!(
     for i in 1:num_variables(form)
         bound = form.feasible_region.bounds[i]
         l, u = bound.lower, bound.upper
-        if form.integrality[i] isa ZO
+        if form.variable_kind[i] isa ZO
             l = max(0, l)
             u = min(1, u)
         end
@@ -39,6 +39,11 @@ function reset_formulation_upon_backtracking!(
     end
 end
 
+# NOTE: At all times, the first `num_variables(form)` variables in the model
+# will correspond to those registered with `form`. The disjunctive formulaters
+# may add additional continuous variables, but they must come after this chunk.
+# This means that these variables will present, in the same order, in every
+# node LP.
 function populate_base_model!(
     state::CurrentState,
     form::DMIPFormulation,
@@ -55,18 +60,19 @@ function populate_base_model!(
         end
         return nothing
     end
-    empty!(state.constraint_state)
+    reset_formulation_state!(state)
     model = config.lp_solver_factory(state, config)::Gurobi.Optimizer
     for i in 1:num_variables(form)
         bound = form.feasible_region.bounds[i]
         l, u = bound.lower, bound.upper
-        if form.integrality[i] isa ZO
+        if form.variable_kind[i] isa ZO
             l = max(0, l)
             u = min(1, u)
         end
         # Cache the above updates in formulation. Even better,
         # batch add variables.
         vi, ci = MOI.add_constrained_variable(model, IN(l, u))
+        push!(state.variable_indices, vi)
         push!(state.constraint_state.base_var_constrs, ci)
     end
     for lt_constr in form.feasible_region.lt_constrs
@@ -85,8 +91,14 @@ function populate_base_model!(
         push!(state.constraint_state.base_et_constrs, ci)
     end
     # TODO: Test this once it does something...
-    for formulater in form.disjunction_formulaters
-        apply!(model, formulator, node)
+    for (formulater, raw_indices) in form.disjunction_formulaters
+        disjunction_state = formulate!(
+            model,
+            formulator,
+            state.variable_indices[raw_indices],
+            node,
+        )
+        state.constraint_state[formulater] = disjunction_state
     end
     MOI.set(model, MOI.ObjectiveFunction{SAF}(), form.obj)
     MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)

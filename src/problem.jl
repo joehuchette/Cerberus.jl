@@ -124,37 +124,31 @@ abstract type AbstractFormulater end
 
 mutable struct DMIPFormulation
     feasible_region::Polyhedron
-    disjunction_formulaters::Vector{AbstractFormulater}
-    integrality::Vector{_V_INT_SETS}
+    disjunction_formulaters::Dict{AbstractFormulater,Vector{Int}}
+    variable_kind::Vector{_V_INT_SETS}
     obj::SAF
 
     function DMIPFormulation(
         feasible_region::Polyhedron,
-        disjunction_formulaters::Vector{AbstractFormulater},
-        integrality::Vector,
+        variable_kind::Vector,
         obj::SAF,
     )
         n = ambient_dim(feasible_region)
-        @assert length(integrality) == n
+        @assert length(variable_kind) == n
         @assert _max_var_index(obj) <= n
-        return new(feasible_region, disjunction_formulaters, integrality, obj)
+        return new(feasible_region, Dict(), variable_kind, obj)
     end
 end
 
 function DMIPFormulation()
-    return DMIPFormulation(
-        Polyhedron(),
-        AbstractFormulater[],
-        _V_INT_SETS[],
-        SAF([], 0.0),
-    )
+    return DMIPFormulation(Polyhedron(), _V_INT_SETS[], convert(SAF, 0.0))
 end
 
 num_variables(fm::DMIPFormulation) = ambient_dim(fm.feasible_region)
 
-function add_variable(fm::DMIPFormulation)
+function add_variable(fm::DMIPFormulation, kind::_V_INT_SETS = nothing)
     add_variable(fm.feasible_region)
-    push!(fm.integrality, nothing)
+    push!(fm.variable_kind, kind)
     return nothing
 end
 
@@ -162,5 +156,18 @@ end
 function Base.isempty(form::DMIPFormulation)
     return Base.isempty(form.feasible_region) &&
            Base.isempty(form.disjunction_formulaters) &&
-           Base.isempty(form.integrality)
+           Base.isempty(form.variable_kind)
+end
+
+function attach_formulater!(
+    form::DMIPFormulation,
+    formulater::AbstractFormulater,
+)
+    start_index = num_variables(form) + 1
+    for var_kind in new_variables_to_attach(formulater)
+        add_variable(form, kind)
+    end
+    raw_indices = collect(start_index:num_variables(form))
+    form.disjunction_formulaters[formulater] = raw_indices
+    return nothing
 end

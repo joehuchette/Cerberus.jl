@@ -95,12 +95,12 @@ function MOI.add_constraint(
 ) where {S<:_V_INT_SETS}
     vi = f.variable
     MOI.throw_if_not_valid(opt, vi)
-    if opt.form.integrality[vi.value] !== nothing
+    if opt.form.variable_kind[vi.value] !== nothing
         error(
-            "Already set variable integrality of $(opt.form.integrality[vi.value]) for $(vi); cannot overwrite to $set.",
+            "Already set variable integrality of $(opt.form.variable_kind[vi.value]) for $(vi); cannot overwrite to $set.",
         )
     end
-    opt.form.integrality[vi.value] = set
+    opt.form.variable_kind[vi.value] = set
     return CI{SV,S}(vi.value)
 end
 

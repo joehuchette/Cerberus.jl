@@ -49,15 +49,7 @@ function ConstraintState(fm::DMIPFormulation)
     )
 end
 
-function Base.empty!(cs::ConstraintState)
-    empty!(cs.base_var_constrs)
-    empty!(cs.base_lt_constrs)
-    empty!(cs.base_gt_constrs)
-    empty!(cs.base_et_constrs)
-    empty!(cs.branch_lt_constrs)
-    empty!(cs.branch_gt_constrs)
-    return nothing
-end
+abstract type AbstractDisjunctionState end
 
 mutable struct CurrentState
     gurobi_env::Gurobi.Env
@@ -77,7 +69,9 @@ mutable struct CurrentState
     total_simplex_iters::Int
     total_model_builds::Int
     total_warm_starts::Int
+    variable_indices::Vector{VI}
     constraint_state::ConstraintState
+    disjunction_state::Dict{AbstractFormulater,AbstractDisjunctionState}
     polling_state::PollingState
 
     function CurrentState(
@@ -103,10 +97,24 @@ mutable struct CurrentState
         state.total_simplex_iters = 0
         state.total_model_builds = 0
         state.total_warm_starts = 0
+        state.variable_indices = VI[]
         state.constraint_state = ConstraintState(fm)
+        state.disjunction_state = Dict()
         state.polling_state = PollingState()
         return state
     end
+end
+
+function reset_formulation_state!(state::CurrentState)
+    empty!(state.variable_indices)
+    empty!(state.constraint_state.base_var_constrs)
+    empty!(state.constraint_state.base_lt_constrs)
+    empty!(state.constraint_state.base_gt_constrs)
+    empty!(state.constraint_state.base_et_constrs)
+    empty!(state.constraint_state.branch_lt_constrs)
+    empty!(state.constraint_state.branch_gt_constrs)
+    empty!(state.disjunction_state)
+    return nothing
 end
 
 function update_dual_bound!(state::CurrentState)

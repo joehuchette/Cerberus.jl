@@ -1,6 +1,12 @@
 module Cerberus
 
-import DataStructures, Gurobi, Logging, MathOptInterface, Printf, SparseArrays
+import DataStructures,
+    DisjunctiveConstraints,
+    Gurobi,
+    Logging,
+    MathOptInterface,
+    Printf,
+    SparseArrays
 const MOI = MathOptInterface
 const MOIU = MOI.Utilities
 
@@ -38,6 +44,9 @@ include("algorithm/util.jl")
 include("algorithm/branch_and_bound.jl")
 include("algorithm/branching.jl")
 include("algorithm/logging.jl")
+
+include("algorithm/formulaters/disjunctive-formulaters.jl")
+include("algorithm/formulaters/naive-big-m.jl")
 
 include("MOI/optimizer.jl")
 include("MOI/variable.jl")

@@ -64,7 +64,7 @@ end
     _test_polyhedron(fm.feasible_region)
     _test_equal(fm.obj, 1.0 * _SV(_VI(1)) - 1.0 * _SV(_VI(2)))
     @test isempty(fm.disjunction_formulaters)
-    @test fm.integrality == [_ZO(), nothing, _ZO()]
+    @test fm.variable_kind == [_ZO(), nothing, _ZO()]
 
     @testset "empty constructor" begin
         fm = @inferred Cerberus.DMIPFormulation()
@@ -73,7 +73,7 @@ end
         @test Cerberus.num_constraints(fm.feasible_region) == 0
         _test_equal(fm.obj, convert(_SAF, 0.0))
         @test isempty(fm.disjunction_formulaters)
-        @test isempty(fm.integrality)
+        @test isempty(fm.variable_kind)
     end
 
     # TODO: Test throws on malformed DMIPFormulation
@@ -103,5 +103,5 @@ end
     fm = @inferred _build_gi_dmip_formulation()
     _test_gi_polyhedron(fm.feasible_region)
     @test isempty(fm.disjunction_formulaters)
-    @test fm.integrality == [nothing, _ZO(), _GI()]
+    @test fm.variable_kind == [nothing, _ZO(), _GI()]
 end

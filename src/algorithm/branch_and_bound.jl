@@ -8,22 +8,6 @@ function _is_time_to_terminate(state::CurrentState, config::AlgorithmConfig)
     end
 end
 
-# NOTE: Almost all of the time inside this functions is spent in process_node!.
-# Roughly 1/3 is in build_base_model, 1/3 in optimize!(::Gurobi.Optimizer), and
-# 1/5 in _update_basis!. Some ideas of how to improve performance in the future:
-#   1. Use only one model throughout the algorithm, even on backtracks. This
-#      means that either we keep all the cuts we (will eventually) add, or
-#      purge them somehow.
-#   2. Roughly 1/5 of the time in build_base_model is spent individually
-#      setting the variable bounds. We could try to back this or, even better,
-#      pass the bounds upon creating the variable via GRBaddvar. Maybe the
-#      cleverest way to do this would be to add to Gurobi.jl a method
-#      MOI.add_constrained_variable(::Gurobi.Optimizer, set).
-#   3. I think that Gurobi.VariableInfo introduces typestability issues in,
-#      e.g. Gurobi._update_if_necessary. An "easy" fix is to have a fastpath
-#      in that method that skips over updating the entries in the case where
-#      no columns are deleted. But it's likely worth addressing the type
-#      instability directly.
 function optimize!(
     form::DMIPFormulation,
     config::AlgorithmConfig,
@@ -105,7 +89,7 @@ function _num_int_infeasible(
 )::Int
     cnt = 0
     for i in 1:num_variables(form)
-        v_set = form.integrality[i]
+        v_set = form.variable_kind[i]
         if v_set === nothing
             continue
         end
@@ -174,9 +158,10 @@ function update_state!(
         # diff with the root. So, after backtracking we will need to reset all
         # bounds, but can otherwise reuse the same model.
         state.backtracking = false
-        # TODO: Add a check in this branch to ensure we don't have a "funny" return
-        #       status. This is a little kludgy since we don't necessarily store the
-        #       MOI model in node_result. Maybe need to add termination status as a field...
+        # TODO: Add a check in this branch to ensure we don't have a "funny"
+        # return status. This is a little kludgy since we don't necessarily
+        # store the MOI model in node_result. Maybe need to add termination
+        # status as a field...
     end
     state.rebuild_model = if state.backtracking
         (config.model_reuse_strategy != USE_SINGLE_MODEL)
