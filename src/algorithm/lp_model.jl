@@ -1,16 +1,23 @@
-function reset_formulation_upon_backtracking!(
+# TODO: Unit test
+function _get_formulation_bounds(form::DMIPFormulation, i::Int)
+    bound = form.feasible_region.bounds[i]
+    l, u = bound.lower, bound.upper
+    if form.variable_kind[i] isa ZO
+        l = max(0, l)
+        u = min(1, u)
+    end
+    return l, u
+end
+
+# NOTE: This does NOT touch the disjunctive formulations
+function reset_base_formulation_upon_backtracking!(
     state::CurrentState,
     form::DMIPFormulation,
     node::Node,
 )
     model = state.gurobi_model
     for i in 1:num_variables(form)
-        bound = form.feasible_region.bounds[i]
-        l, u = bound.lower, bound.upper
-        if form.variable_kind[i] isa ZO
-            l = max(0, l)
-            u = min(1, u)
-        end
+        l, u = _get_formulation_bounds(form, i)
         vi = VI(i)
         if haskey(node.lb_diff, vi)
             l = max(l, node.lb_diff[vi])
@@ -39,6 +46,13 @@ function reset_formulation_upon_backtracking!(
     end
 end
 
+function tighten_formulations!(state::CurrentState, node::Node)
+    for (formulater, disj_state) in state.disjunction_state
+        tighten_formulation!(state, formulater, disj_state, node)
+    end
+    return nothing
+end
+
 # NOTE: At all times, the first `num_variables(form)` variables in the model
 # will correspond to those registered with `form`. The disjunctive formulaters
 # may add additional continuous variables, but they must come after this chunk.
@@ -56,19 +70,17 @@ function populate_base_model!(
         if state.backtracking
             # ...however, upon backtracking we need to reset bounds and reapply
             # (or reset) disjunctive formulations.
-            reset_formulation_upon_backtracking!(state, form, node)
+            reset_base_formulation_upon_backtracking!(state, form, node)
+        end
+        if config.disjunction_strategy == TIGHTEN_WHENEVER_POSSIBLE
+            tighten_formulations!(state, node)
         end
         return nothing
     end
     reset_formulation_state!(state)
     model = config.lp_solver_factory(state, config)::Gurobi.Optimizer
     for i in 1:num_variables(form)
-        bound = form.feasible_region.bounds[i]
-        l, u = bound.lower, bound.upper
-        if form.variable_kind[i] isa ZO
-            l = max(0, l)
-            u = min(1, u)
-        end
+        l, u = _get_formulation_bounds(form, i)
         # Cache the above updates in formulation. Even better,
         # batch add variables.
         vi, ci = MOI.add_constrained_variable(model, IN(l, u))
@@ -90,13 +102,19 @@ function populate_base_model!(
         ci = MOI.add_constraint(model, et_constr.f, et_constr.s)
         push!(state.constraint_state.base_et_constrs, ci)
     end
-    # TODO: Test this once it does something...
     for (formulater, raw_indices) in form.disjunction_formulaters
         disjunction_state = formulate!(
             model,
             formulator,
+            form,
             state.variable_indices[raw_indices],
-            node,
+            # If we use a static formulation, it must be valid at the root. In
+            # a bit of a hack, in this case we will just pass in an empty Node.
+            if config.disjunction_strategy == STATIC_FORMULATION
+                Node()
+            else
+                node
+            end,
         )
         state.constraint_state[formulater] = disjunction_state
     end

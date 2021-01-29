@@ -1,14 +1,7 @@
-const Disjunction = Vector{Polyhedron}
+const Disjunction = DisjunctiveConstraints.Disjunction
+const DisjunctiveSet = DisjunctiveConstraints.DisjunctiveSet
 
 abstract type AbstractBigMFormulater <: AbstractFormulater end
-
-mutable struct BigMState <: AbstractDisjunctionState
-    z_vis::Vector{VI}
-    lt_constrs::Vector{CI{SAF,LT}}
-    gt_constrs::Vector{CI{SAF,GT}}
-    et_constrs::Vector{CI{SAF,ET}}
-end
-BigMState(z_vis::Vector{VI} = []) = BigMState(z_vis, [], [], [])
 
 """
     new_variables_to_attach(formulater::AbstractFormulater)::Vector{Int}

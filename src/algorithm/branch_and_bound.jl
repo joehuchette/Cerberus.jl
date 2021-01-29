@@ -166,7 +166,7 @@ function update_state!(
     state.rebuild_model = if state.backtracking
         (config.model_reuse_strategy != USE_SINGLE_MODEL)
     else
-        (config.model_reuse_strategy == NO_REUSE)
+        (config.model_reuse_strategy == NO_MODEL_REUSE)
     end
     state.total_elapsed_time_sec = time() - state.starting_time
     delete!(state.warm_starts, node)
@@ -183,10 +183,10 @@ function _store_basis_if_desired!(
         # Do nothing
     else
         basis = get_basis(state)
-        if config.warm_start_strategy == WHEN_BACKTRACKING
+        if config.warm_start_strategy == WARM_START_WHEN_BACKTRACKING
             state.warm_starts[other_child] = basis
         else
-            @assert config.warm_start_strategy == WHENEVER_POSSIBLE
+            @assert config.warm_start_strategy == WARM_START_WHENEVER_POSSIBLE
             state.warm_starts[favorite_child] = copy(basis)
             state.warm_starts[other_child] = basis
         end

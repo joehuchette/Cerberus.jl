@@ -92,7 +92,7 @@ end
     end
 end
 
-@testset "reset_formulation_upon_backtracking!" begin
+@testset "reset_base_formulation_upon_backtracking!" begin
     form = _build_dmip_formulation()
     state = Cerberus.CurrentState(form, CONFIG)
     node = Cerberus.Node()
@@ -140,7 +140,7 @@ end
         [Cerberus.AffineConstraint{_GT}(f_gt, s_gt)],
         2,
     )
-    Cerberus.reset_formulation_upon_backtracking!(state, form, node_2)
+    Cerberus.reset_base_formulation_upon_backtracking!(state, form, node_2)
     @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
     @test MOI.Utilities.get_bounds(model, Float64, _VI(1)) == (0.5, 0.0)
     @test MOI.Utilities.get_bounds(model, Float64, _VI(2)) == (-1.3, 2.3)

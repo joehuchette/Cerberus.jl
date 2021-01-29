@@ -35,7 +35,7 @@ const APPROACHES = Dict(
                     Cerberus.AlgorithmConfig(
                         Cerberus.AlgorithmConfig(
                             warm_start_strategy = Cerberus.NO_WARM_STARTS,
-                            model_reuse_strategy = Cerberus.NO_REUSE,
+                            model_reuse_strategy = Cerberus.NO_MODEL_REUSE,
                         ),
                     ),
                 )
@@ -49,7 +49,7 @@ const APPROACHES = Dict(
                 model = Cerberus.Optimizer(
                     Cerberus.AlgorithmConfig(
                         warm_start_strategy = Cerberus.WHENEVER_POSSIBLE,
-                        model_reuse_strategy = Cerberus.NO_REUSE,
+                        model_reuse_strategy = Cerberus.NO_MODEL_REUSE,
                     ),
                 )
                 MOI.set(model, MOI.TimeLimitSec(), TIME_LIMIT_SEC)

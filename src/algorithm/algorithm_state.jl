@@ -49,7 +49,7 @@ function ConstraintState(fm::DMIPFormulation)
     )
 end
 
-abstract type AbstractDisjunctionState end
+abstract type AbstractFormulaterState end
 
 mutable struct CurrentState
     gurobi_env::Gurobi.Env
@@ -71,7 +71,7 @@ mutable struct CurrentState
     total_warm_starts::Int
     variable_indices::Vector{VI}
     constraint_state::ConstraintState
-    disjunction_state::Dict{AbstractFormulater,AbstractDisjunctionState}
+    disjunction_state::Dict{AbstractFormulater,AbstractFormulaterState}
     polling_state::PollingState
 
     function CurrentState(
@@ -83,7 +83,7 @@ mutable struct CurrentState
         state = new()
         state.gurobi_env = Gurobi.Env()
         state.backtracking = false
-        # Model is undefined here in constructor; build it before accessing.
+        # gurobi_model is left undefined; build it before accessing.
         state.rebuild_model = true
         state.tree = Tree()
         push_node!(state.tree, Node())
@@ -105,6 +105,7 @@ mutable struct CurrentState
     end
 end
 
+# TODO: Unit test
 function reset_formulation_state!(state::CurrentState)
     empty!(state.variable_indices)
     empty!(state.constraint_state.base_var_constrs)

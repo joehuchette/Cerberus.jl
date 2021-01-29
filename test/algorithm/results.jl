@@ -30,15 +30,35 @@ end
         model_builds,
         warm_starts,
     ) in [
-        (Cerberus.NO_WARM_STARTS, Cerberus.NO_REUSE, 3, 0),
-        (Cerberus.NO_WARM_STARTS, Cerberus.REUSE_ON_DIVES, 2, 0),
+        (Cerberus.NO_WARM_STARTS, Cerberus.NO_MODEL_REUSE, 3, 0),
+        (Cerberus.NO_WARM_STARTS, Cerberus.REUSE_MODEL_ON_DIVES, 2, 0),
         (Cerberus.NO_WARM_STARTS, Cerberus.USE_SINGLE_MODEL, 1, 0),
-        (Cerberus.WHEN_BACKTRACKING, Cerberus.NO_REUSE, 3, 1),
-        (Cerberus.WHEN_BACKTRACKING, Cerberus.REUSE_ON_DIVES, 2, 1),
-        (Cerberus.WHEN_BACKTRACKING, Cerberus.USE_SINGLE_MODEL, 1, 1),
-        (Cerberus.WHENEVER_POSSIBLE, Cerberus.NO_REUSE, 3, 2),
-        (Cerberus.WHENEVER_POSSIBLE, Cerberus.REUSE_ON_DIVES, 2, 2),
-        (Cerberus.WHENEVER_POSSIBLE, Cerberus.USE_SINGLE_MODEL, 1, 2),
+        (Cerberus.WARM_START_WHEN_BACKTRACKING, Cerberus.NO_MODEL_REUSE, 3, 1),
+        (
+            Cerberus.WARM_START_WHEN_BACKTRACKING,
+            Cerberus.REUSE_MODEL_ON_DIVES,
+            2,
+            1,
+        ),
+        (
+            Cerberus.WARM_START_WHEN_BACKTRACKING,
+            Cerberus.USE_SINGLE_MODEL,
+            1,
+            1,
+        ),
+        (Cerberus.WARM_START_WHENEVER_POSSIBLE, Cerberus.NO_MODEL_REUSE, 3, 2),
+        (
+            Cerberus.WARM_START_WHENEVER_POSSIBLE,
+            Cerberus.REUSE_MODEL_ON_DIVES,
+            2,
+            2,
+        ),
+        (
+            Cerberus.WARM_START_WHENEVER_POSSIBLE,
+            Cerberus.USE_SINGLE_MODEL,
+            1,
+            2,
+        ),
     ]
         config = Cerberus.AlgorithmConfig(
             warm_start_strategy = warm_start_strategy,
