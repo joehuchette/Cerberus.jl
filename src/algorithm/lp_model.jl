@@ -107,7 +107,6 @@ function populate_base_model!(
             model,
             formulator,
             form,
-            state.variable_indices[raw_indices],
             # If we use a static formulation, it must be valid at the root. In
             # a bit of a hack, in this case we will just pass in an empty Node.
             if config.disjunction_strategy == STATIC_FORMULATION

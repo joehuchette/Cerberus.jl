@@ -58,7 +58,7 @@ end
         _f, _s = MOIU.normalize_constant(f, s)
         @test length(node.lt_constrs) == 1
         lt_constr = node.lt_constrs[1]
-        _test_equal(lt_constr.f, _f)
+        _is_equal(lt_constr.f, _f)
         @test lt_constr.s == _s
         @test isempty(node.gt_constrs)
         @test node.depth == 3
@@ -70,12 +70,12 @@ end
         @test node.lb_diff == Cerberus.BoundDiff(_VI(4) => 3)
         @test node.ub_diff == Cerberus.BoundDiff(_VI(2) => 1)
         @test length(node.lt_constrs) == 1
-        _test_equal(node.lt_constrs[1].f, 1.2 * _SV(_VI(1)) + 3.4 * _SV(_VI(3)))
+        _is_equal(node.lt_constrs[1].f, 1.2 * _SV(_VI(1)) + 3.4 * _SV(_VI(3)))
         @test node.lt_constrs[1].s == _LT(7.8 - 5.6)
         @test length(node.gt_constrs) == 1
         gt_constr = node.gt_constrs[1]
         _f, _s = MOIU.normalize_constant(f, s)
-        _test_equal(gt_constr.f, _f)
+        _is_equal(gt_constr.f, _f)
         @test gt_constr.s == _s
         @test node.depth == 4
         @test node.dual_bound == -Inf

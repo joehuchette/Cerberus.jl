@@ -25,3 +25,33 @@ appropriately). But any integer variables that you wish to branch on _must_ be
  registered in this manner.
 """
 function new_variables_to_attach end
+
+# TODO: Unit test
+function _copy_with_new_variable_indices(f::VOV, new_vis::Vector{VI})
+    return VOV([new_vis[vi.value] for vi in f.variables])
+end
+
+# TODO: Unit test
+function _copy_with_new_variable_indices(f::VAF, new_vis::Vector{VI})
+    terms = [
+        VAT(
+            term.output_index,
+            SAT(term.scalar_term.coefficient, new_vis[term.scalar_term.variable_index.value]),
+        ) for term in f.terms
+    ]
+    return VAF(terms, copy(f.constants))
+end
+
+# TODO: Unit test
+function mask_and_update_variable_indices(
+    model_disj::Disjunction,
+    new_vis::Vector{VI},
+    mask::Vector{Bool},
+)
+    return Disjunction(
+        _copy_with_new_variable_indices(model_disj.f, new_vis),
+        DisjunctiveConstraints.DisjunctiveSet(model_disj.s.lbs[:, mask], model_disj.s.ubs[:, mask]),
+    )
+end
+
+function compute_disjunction_activity end

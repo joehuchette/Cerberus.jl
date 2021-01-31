@@ -9,14 +9,14 @@
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_ET}()) == 1
     c1 = MOI.get(model, MOI.ListOfConstraintIndices{_SAF,_ET}())[1]
     f1 = MOI.get(model, MOI.ConstraintFunction(), c1)
-    _test_equal(f1, 1.0 * _SV(_VI(1)) + 2.1 * _SV(_VI(2)) + 3.0 * _SV(_VI(3)))
+    _is_equal(f1, 1.0 * _SV(_VI(1)) + 2.1 * _SV(_VI(2)) + 3.0 * _SV(_VI(3)))
     s1 = MOI.get(model, MOI.ConstraintSet(), c1)
     @test s1 == _ET(3.0)
 
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_LT}()) == 1
     c2 = MOI.get(model, MOI.ListOfConstraintIndices{_SAF,_LT}())[1]
     f2 = MOI.get(model, MOI.ConstraintFunction(), c2)
-    _test_equal(f2, -3.5 * _SV(_VI(1)) + 1.2 * _SV(_VI(2)))
+    _is_equal(f2, -3.5 * _SV(_VI(1)) + 1.2 * _SV(_VI(2)))
     s2 = MOI.get(model, MOI.ConstraintSet(), c2)
     @test s2 == _LT(4.0)
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_GT}()) == 0
@@ -29,7 +29,7 @@
     # TODO: Test obj, objsense
     @test MOI.get(model, MOI.ObjectiveSense()) == MOI.MIN_SENSE
     obj = MOI.get(model, MOI.ObjectiveFunction{_SAF}())
-    _test_equal(obj, 1.0 * _SV(_VI(1)) - 1.0 * _SV(_VI(2)))
+    _is_equal(obj, 1.0 * _SV(_VI(1)) - 1.0 * _SV(_VI(2)))
 end
 
 @testset "update_node_bounds!" begin
@@ -70,7 +70,7 @@ end
         s_rt = MOI.get(model, MOI.ConstraintSet(), ci)
         # Constraint added with MOIU.normalize_and_add_constraint, which shifts
         # constant over to set.
-        _test_equal(f_rt, f - 5.6)
+        _is_equal(f_rt, f - 5.6)
         @test s_rt == _LT(7.8 - 5.6)
     end
 
@@ -87,7 +87,7 @@ end
         ci = cis[1]
         f_rt = MOI.get(model, MOI.ConstraintFunction(), ci)
         s_rt = MOI.get(model, MOI.ConstraintSet(), ci)
-        _test_equal(f_rt, f)
+        _is_equal(f_rt, f)
         @test s_rt == s
     end
 end
@@ -120,7 +120,7 @@ end
         lt_ci = lt_cis[2]
         f_lt_rt = MOI.get(model, MOI.ConstraintFunction(), lt_ci)
         s_lt_rt = MOI.get(model, MOI.ConstraintSet(), lt_ci)
-        _test_equal(f_lt_rt, f_lt)
+        _is_equal(f_lt_rt, f_lt)
         @test s_lt_rt == s_lt
     end
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_GT}()) == 1
@@ -128,7 +128,7 @@ end
         gt_ci = gt_cis[1]
         f_gt_rt = MOI.get(model, MOI.ConstraintFunction(), gt_ci)
         s_gt_rt = MOI.get(model, MOI.ConstraintSet(), gt_ci)
-        _test_equal(f_gt_rt, f_gt)
+        _is_equal(f_gt_rt, f_gt)
         @test s_gt_rt == s_gt
     end
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_ET}()) == 1
@@ -151,7 +151,7 @@ end
         gt_ci = gt_cis[1]
         f_gt_rt = MOI.get(model, MOI.ConstraintFunction(), gt_ci)
         s_gt_rt = MOI.get(model, MOI.ConstraintSet(), gt_ci)
-        _test_equal(f_gt_rt, f_gt)
+        _is_equal(f_gt_rt, f_gt)
         @test s_gt_rt == s_gt
     end
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_ET}()) == 1

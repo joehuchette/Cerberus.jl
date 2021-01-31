@@ -36,6 +36,7 @@ function Node()
         -Inf,
     )
 end
+Node(lb_diff::BoundDiff, ub_diff::BoundDiff, depth::Int, dual_bound::Float64 = -Inf) = Node(lb_diff, ub_diff, AffineConstraint{LT}[], AffineConstraint{GT}[], depth, dual_bound)
 
 function Base.copy(node::Node)
     return Node(

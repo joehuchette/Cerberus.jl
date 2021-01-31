@@ -1,5 +1,6 @@
 const _VI = MOI.VariableIndex
 const _SV = MOI.SingleVariable
+const _VOV = MOI.VectorOfVariables
 const _SAT = MOI.ScalarAffineTerm{Float64}
 const _SAF = MOI.ScalarAffineFunction{Float64}
 const _ET = MOI.EqualTo{Float64}
@@ -70,7 +71,7 @@ function _test_is_equal_to_dmip_basis(basis::Cerberus.Basis)
     @test basis.branch_gt_constrs == DMIP_BASIS.branch_gt_constrs
 end
 
-function _test_equal(u::_SAF, v::_SAF)
+function _is_equal(u::_SAF, v::_SAF)
     u_t = sort(
         u.terms,
         lt = (x, y) -> x.variable_index.value < y.variable_index.value,
@@ -79,6 +80,21 @@ function _test_equal(u::_SAF, v::_SAF)
         v.terms,
         lt = (x, y) -> x.variable_index.value < y.variable_index.value,
     )
-    @test u_t == v_t
-    @test u.constant == v.constant
+    if !(u.constant ≈ v.constant)
+        return false
+    end
+    u_vars = [term.variable_index for term in u_t]
+    v_vars = [term.variable_index for term in v_t]
+    if u_vars != v_vars
+        return false
+    end
+    u_coeffs = [term.coefficient for term in u_t]
+    v_coeffs = [term.coefficient for term in v_t]
+    @assert length(u_coeffs) == length(v_coeffs)
+    for i in 1:length(u_coeffs)
+        if !(u_coeffs[i] ≈ v_coeffs[i])
+            return false
+        end
+    end
+    return true
 end

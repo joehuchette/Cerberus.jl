@@ -49,8 +49,8 @@ include("algorithm/branch_and_bound.jl")
 include("algorithm/branching.jl")
 include("algorithm/logging.jl")
 
-include("algorithm/formulaters/disjunctive-formulaters.jl")
-include("algorithm/formulaters/naive-big-m.jl")
+include("algorithm/formulaters/disjunctive_formulaters.jl")
+include("algorithm/formulaters/naive_big_m.jl")
 
 include("MOI/optimizer.jl")
 include("MOI/variable.jl")
