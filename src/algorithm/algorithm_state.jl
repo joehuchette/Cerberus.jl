@@ -75,11 +75,10 @@ mutable struct CurrentState
     polling_state::PollingState
 
     function CurrentState(
-        fm::DMIPFormulation,
-        config::AlgorithmConfig;
+        form::DMIPFormulation;
         primal_bound::Real = Inf,
     )
-        nvars = num_variables(fm)
+        nvars = num_variables(form)
         state = new()
         state.gurobi_env = Gurobi.Env()
         state.backtracking = false
@@ -98,7 +97,7 @@ mutable struct CurrentState
         state.total_model_builds = 0
         state.total_warm_starts = 0
         state.variable_indices = VI[]
-        state.constraint_state = ConstraintState(fm)
+        state.constraint_state = ConstraintState(form)
         state.disjunction_state = Dict()
         state.polling_state = PollingState()
         return state

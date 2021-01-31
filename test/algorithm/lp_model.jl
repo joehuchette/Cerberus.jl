@@ -1,6 +1,6 @@
 @testset "build_base_model" begin
     form = _build_dmip_formulation()
-    state = Cerberus.CurrentState(form, CONFIG)
+    state = Cerberus.CurrentState(form)
     node = Cerberus.Node()
     @inferred Cerberus.populate_base_model!(state, form, node, CONFIG)
     model = state.gurobi_model
@@ -34,7 +34,7 @@ end
 
 @testset "update_node_bounds!" begin
     form = _build_dmip_formulation()
-    state = _CurrentState(form, CONFIG)
+    state = _CurrentState(form)
     node = Cerberus.Node()
     @inferred Cerberus.populate_base_model!(state, form, node, CONFIG)
     model = state.gurobi_model
@@ -94,7 +94,7 @@ end
 
 @testset "reset_base_formulation_upon_backtracking!" begin
     form = _build_dmip_formulation()
-    state = Cerberus.CurrentState(form, CONFIG)
+    state = Cerberus.CurrentState(form)
     node = Cerberus.Node()
     Cerberus.populate_base_model!(state, form, node, CONFIG)
     f_lt = _SAF([_SAT(1.2, _VI(1)), _SAT(3.4, _VI(2))], 0.0)
@@ -159,7 +159,7 @@ end
 
 @testset "MOI.optimize!" begin
     form = _build_dmip_formulation()
-    state = _CurrentState(form, CONFIG)
+    state = _CurrentState(form)
     node = Cerberus.Node()
     Cerberus.populate_base_model!(state, form, node, CONFIG)
     model = state.gurobi_model
@@ -173,7 +173,7 @@ end
 
 @testset "_fill_solution!" begin
     form = _build_dmip_formulation()
-    state = _CurrentState(form, CONFIG)
+    state = _CurrentState(form)
     node = Cerberus.Node()
     Cerberus.populate_base_model!(state, form, node, CONFIG)
     model = state.gurobi_model
@@ -186,7 +186,7 @@ end
 
 @testset "get_basis" begin
     form = _build_dmip_formulation()
-    state = _CurrentState(form, CONFIG)
+    state = _CurrentState(form)
     node = Cerberus.Node()
     Cerberus.populate_base_model!(state, form, node, CONFIG)
     model = state.gurobi_model
@@ -211,7 +211,7 @@ end
 
 function _set_basis_model(basis::Cerberus.Basis)
     form = _build_dmip_formulation()
-    state = _CurrentState(form, CONFIG)
+    state = _CurrentState(form)
     node = Cerberus.Node(
         Cerberus.BoundDiff(),
         Cerberus.BoundDiff(),

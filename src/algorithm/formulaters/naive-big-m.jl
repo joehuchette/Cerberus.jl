@@ -21,9 +21,10 @@ struct NaiveBigMFormulater{S<:DisjunctiveConstraints.AbstractActivityMethod} <:
 end
 
 struct NaiveBigMState <: AbstractFormulaterState
+    z_vis::Vector{VI}
     sum_ci::CI{SAF,ET}
-    lt_cis::Matrix{CI{SAF,LT}}
-    gt_cis::Matrix{CI{SAF,GT}}
+    lt_cis::Matrix{Union{Nothing,CI{SAF,LT}}}
+    gt_cis::Matrix{Union{Nothing,CI{SAF,GT}}}
 end
 
 function new_variables_to_attach(formulater::NaiveBigMFormulater)
@@ -108,5 +109,5 @@ function formulate!(
         z_vis,
     )
 
-    return NaiveBigMState(sum_ci, lt_cis, gt_cis)
+    return NaiveBigMState(z_vis, sum_ci, lt_cis, gt_cis)
 end

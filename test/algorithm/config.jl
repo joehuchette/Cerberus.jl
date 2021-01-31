@@ -21,10 +21,9 @@
         nl = 10.0,
         gt = 10,
         it = 1e-6,
-        ws = Cerberus.NO_WARM_STARTS
-
-        mr = Cerberus.NO_MODEL_REUSE
-        ds = Cerberus.STATIC_FORMULATION
+        ws = Cerberus.NO_WARM_STARTS,
+        mr = Cerberus.NO_MODEL_REUSE,
+        ds = Cerberus.STATIC_FORMULATION,
 
         config = Cerberus.AlgorithmConfig(
             lp_solver_factory = lp,

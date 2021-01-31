@@ -26,9 +26,9 @@ end
     pb_float = 12.4
     pb_int = 12
 
-    cs1 = @inferred _CurrentState(fm, CONFIG)
-    cs2 = @inferred _CurrentState(fm, CONFIG, primal_bound = pb_float)
-    cs3 = @inferred _CurrentState(fm, CONFIG, primal_bound = pb_int)
+    cs1 = @inferred _CurrentState(fm)
+    cs2 = @inferred _CurrentState(fm, primal_bound = pb_float)
+    cs3 = @inferred _CurrentState(fm, primal_bound = pb_int)
 
     @test length(cs1.tree) == 1
     @test length(cs2.tree) == 1

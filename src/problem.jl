@@ -152,7 +152,6 @@ function add_variable(fm::DMIPFormulation, kind::_V_INT_SETS = nothing)
     return nothing
 end
 
-# TODO: Unit test
 function Base.isempty(form::DMIPFormulation)
     return Base.isempty(form.feasible_region) &&
            Base.isempty(form.disjunction_formulaters) &&
@@ -163,9 +162,12 @@ function attach_formulater!(
     form::DMIPFormulation,
     formulater::AbstractFormulater,
 )
+    if haskey(form.disjunction_formulaters, formulater)
+        throw(ArgumentError("Formulater cannot be attached twice to a model."))
+    end
     start_index = num_variables(form) + 1
     for var_kind in new_variables_to_attach(formulater)
-        add_variable(form, kind)
+        add_variable(form, var_kind)
     end
     raw_indices = collect(start_index:num_variables(form))
     form.disjunction_formulaters[formulater] = raw_indices

@@ -16,7 +16,7 @@ function optimize!(
     result = Result()
     # TODO: Model presolve. Must happen before initial state is built.
     # Initialize search tree with LP relaxation
-    state = CurrentState(form, config, primal_bound = primal_bound)
+    state = CurrentState(form, primal_bound = primal_bound)
     _log_preamble(form, primal_bound, config)
     while !isempty(state.tree)
         node = pop_node!(state.tree)

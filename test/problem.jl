@@ -105,3 +105,28 @@ end
     @test isempty(fm.disjunction_formulaters)
     @test fm.variable_kind == [nothing, _ZO(), _GI()]
 end
+
+struct DummyFormulater <: Cerberus.AbstractFormulater end
+Cerberus.new_variables_to_attach(::DummyFormulater) = [_ZO(), _GI(), nothing, nothing, nothing, nothing]
+
+@testset "isempty(::DMIPFormulation)" begin
+    form = Cerberus.DMIPFormulation()
+    @test isempty(form)
+    Cerberus.attach_formulater!(form, DummyFormulater())
+    @test !isempty(form)
+    form = _build_dmip_formulation()
+    @test !isempty(form)
+end
+
+@testset "attach_formulater!" begin
+    form = _build_dmip_formulation()
+    @assert Cerberus.num_variables(form) == 3
+    formulater = DummyFormulater()
+    @inferred Cerberus.attach_formulater!(form, formulater)
+    @test Cerberus.num_variables(form) == 3 + 6
+    @test length(form.disjunction_formulaters) == 1
+    @test haskey(form.disjunction_formulaters, formulater)
+    @test form.disjunction_formulaters[formulater] == collect(4:(3+6))
+
+    @test_throws ArgumentError Cerberus.attach_formulater!(form, formulater)
+end

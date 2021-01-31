@@ -14,7 +14,7 @@ end
     # A feasible model
     let
         fm = _build_dmip_formulation()
-        state = _CurrentState(fm, CONFIG)
+        state = _CurrentState(fm)
         node = Cerberus.Node()
         result = @inferred Cerberus.process_node!(state, fm, node, CONFIG)
         @test result.cost ≈ 0.5 - 2.5 / 2.1
@@ -33,7 +33,7 @@ end
             warm_start_strategy = Cerberus.NO_WARM_STARTS,
             model_reuse_strategy = Cerberus.NO_MODEL_REUSE,
         )
-        state = _CurrentState(fm, no_inc_config)
+        state = _CurrentState(fm)
         node = Cerberus.Node()
         result =
             @inferred Cerberus.process_node!(state, fm, node, no_inc_config)
@@ -46,7 +46,7 @@ end
     # An infeasible model
     let
         fm = _build_dmip_formulation()
-        state = _CurrentState(fm, CONFIG)
+        state = _CurrentState(fm)
         # A bit hacky, but force infeasibility by branching both up and down.
         node = Cerberus.Node(
             Cerberus.BoundDiff(_VI(1) => 1),
@@ -90,7 +90,7 @@ end
 
 @testset "_store_basis_if_desired!" begin
     fm = _build_dmip_formulation()
-    state = Cerberus.CurrentState(fm, CONFIG)
+    state = Cerberus.CurrentState(fm)
     node = Cerberus.Node()
     Cerberus.process_node!(state, fm, node, CONFIG)
     fc = Cerberus.Node(
@@ -162,7 +162,7 @@ end
     starting_pb = 12.3
     simplex_iters_per = 18
     depth = 7
-    cs = _CurrentState(fm, CONFIG, primal_bound = starting_pb)
+    cs = _CurrentState(fm, primal_bound = starting_pb)
     @test _is_root_node(Cerberus.pop_node!(cs.tree))
     node = Cerberus.Node()
 
