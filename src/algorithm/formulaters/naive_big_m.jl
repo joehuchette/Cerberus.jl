@@ -14,10 +14,7 @@ struct NaiveBigMState <: AbstractFormulaterState
 end
 
 function new_variables_to_attach(formulater::NaiveBigMFormulater)
-    return [
-        ZO() for
-        i in 1:DisjunctiveConstraints.num_alternatives(formulater.disjunction.s)
-    ]
+    return fill(ZO(), DisjunctiveConstraints.num_alternatives(formulater.disjunction.s)
 end
 
 # TODO: Unit test
@@ -26,6 +23,7 @@ function compute_disjunction_activity(
     form::DMIPFormulation,
     z_vis::Vector{Int},
     node::Node,
+    ϵ_int::Float64,
 )
     proven_active = Bool[]
     not_inactive = Bool[]
@@ -38,8 +36,11 @@ function compute_disjunction_activity(
         if haskey(node.ub_diff, cvi)
             u = min(u, node.ub_diff[cvi])
         end
-        push!(proven_active, l == u == 1)
+        # Approximate version of: l == 1 == u
+        push!(proven_active, (abs(l - 1) ≤ ϵ_int) & (abs(u - 1) ≤ ϵ_int)
         push!(not_inactive, l <= 1 <= u)
+        # Approximate version of: l <= 1 <= u
+        push!(not_inactive, (l ≤ 1 + ϵ_int) & (1 <= u + ϵ_int))
     end
     return proven_active, not_inactive
 end
@@ -51,15 +52,17 @@ function formulate!(
     form::DMIPFormulation,
     formulater::NaiveBigMFormulater,
     node::Node,
+    config::AlgorithmConfig,
 )
-    z_vis = state.variable_indices[form.disjunction_formulaters[formulater]]
+    cvis = form.disjunction_formulaters[formulater]
+    z_vis = instantiate.(cvis, state)
     # TODO: If proven_active is all falses, can bail out as infeasible. If
     # there is exactly one true, no need to write a disjunctive formulation.
     # The tricky thing in that second case is that we need to cache that info
     # somehow in the Basis, so that when/if we backtrack we can figure out
     # which constraints to use.
     proven_active, not_inactive =
-        compute_disjunction_activity(form, z_vis, node)
+        compute_disjunction_activity(form, z_vis, node, config.int_tol)
     disjunction = mask_and_update_variable_indices(
         formulater.disjunction,
         state.variable_indices,

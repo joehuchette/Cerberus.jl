@@ -68,7 +68,7 @@ mutable struct CurrentState
     total_simplex_iters::Int
     total_model_builds::Int
     total_warm_starts::Int
-    variable_indices::Vector{VI}
+    _variable_indices::Vector{VI}
     constraint_state::ConstraintState
     disjunction_state::Dict{AbstractFormulater,AbstractFormulaterState}
     polling_state::PollingState
@@ -92,7 +92,7 @@ mutable struct CurrentState
         state.total_simplex_iters = 0
         state.total_model_builds = 0
         state.total_warm_starts = 0
-        state.variable_indices = VI[]
+        state._variable_indices = VI[]
         state.constraint_state = ConstraintState()
         state.disjunction_state = Dict()
         state.polling_state = PollingState()
@@ -102,7 +102,7 @@ end
 
 # TODO: Unit test
 function reset_formulation_state!(state::CurrentState)
-    empty!(state.variable_indices)
+    empty!(state._variable_indices)
     empty!(state.constraint_state.base_var_constrs)
     empty!(state.constraint_state.base_lt_constrs)
     empty!(state.constraint_state.base_gt_constrs)
@@ -124,10 +124,16 @@ function update_dual_bound!(state::CurrentState)
     return nothing
 end
 
+# TODO: Unit test
+function instantiate(cvi::CVI, state::CurrentState)
+    return VI(state._variable_indices[index(cvi)])
+end
+
+# TODO: Unit test
 function instantiate(csaf::CSAF, state::CurrentState)
     return SAF(
         [
-            SAT(coeff, state.variable_indices[index(cvi)]) for
+            SAT(coeff, instantiate(cvi, state)) for
             (coeff, cvi) in zip(csaf.coeffs, csaf.indices)
         ],
         csaf.constant,
