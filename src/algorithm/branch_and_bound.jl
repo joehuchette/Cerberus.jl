@@ -105,7 +105,7 @@ function _num_int_infeasible(
 )::Int
     cnt = 0
     for i in 1:num_variables(form)
-        v_set = form.integrality[i]
+        v_set = form.variable_kind[i]
         if v_set === nothing
             continue
         end

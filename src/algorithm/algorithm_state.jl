@@ -77,6 +77,7 @@ mutable struct CurrentState
     total_simplex_iters::Int
     total_model_builds::Int
     total_warm_starts::Int
+    variable_indices::Vector{VI}
     constraint_state::ConstraintState
     polling_state::PollingState
 
@@ -103,6 +104,7 @@ mutable struct CurrentState
         state.total_simplex_iters = 0
         state.total_model_builds = 0
         state.total_warm_starts = 0
+        state.variable_indices = VI[]
         state.constraint_state = ConstraintState(fm)
         state.polling_state = PollingState()
         return state
@@ -118,4 +120,14 @@ function update_dual_bound!(state::CurrentState)
             minimum(node.dual_bound for node in state.tree.open_nodes)
     end
     return nothing
+end
+
+function instantiate(csaf::CSAF, state::CurrentState)
+    return SAF(
+        [
+            SAT(coeff, state.variable_indices[index(cvi)]) for
+            (coeff, cvi) in zip(csaf.coeffs, csaf.indices)
+        ],
+        csaf.constant,
+    )
 end

@@ -15,9 +15,10 @@ function MOI.set(
     ::MOI.ObjectiveFunction{F},
     obj::F,
 ) where {F<:_O_FUNCS}
-    opt.form.obj = convert(SAF, obj)
+    opt.form.obj = convert(CSAF, obj)
     return nothing
 end
 function MOI.get(opt::Optimizer, ::MOI.ObjectiveFunction{F}) where {F<:_O_FUNCS}
+    convert(SAF, opt.obj)
     return convert(F, opt.form.obj)
 end

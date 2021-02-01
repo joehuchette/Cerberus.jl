@@ -40,9 +40,14 @@ function MOI.get(
     ci::CI{SAF,S},
 ) where {S<:_C_SETS}
     MOI.throw_if_not_valid(opt, ci)
-    idx = ci.value
-    aff = get_constraint(opt.form.feasible_region, S, idx)
-    return MOIU.eval_variables(aff.f) do vi
-        return MOI.get(opt, MOI.VariablePrimal(), vi)
+    if opt.result === nothing
+        error("Model does not have a solution available.")
     end
+    idx = ci.value
+    ac = get_constraint(opt.form.feasible_region, S, idx)
+    val = 0.0
+    for (coeff, cvi) in zip(ac.f.coeffs, ac.f.indices)
+        val += coeff * opt.result.best_solution[index(cvi)]
+    end
+    return val
 end
