@@ -42,7 +42,7 @@ function MOI.get(
         error("Model does not have a solution available.")
     end
     idx = ci.value
-    ac = get_constraint(opt.form, S, CVI(idx))
+    ac = get_constraint(opt.form, S, idx)
     val = 0.0
     for (coeff, cvi) in zip(ac.f.coeffs, ac.f.indices)
         val += coeff * opt.result.best_solution[index(cvi)]

@@ -220,8 +220,8 @@ function num_constraints(form::DMIPFormulation, T::Type)
     return num_constraints(form._feasible_region, T)
 end
 
-function get_constraint(form::DMIPFormulation, T::Type, cvi::CVI)
-    return get_constraint(form._feasible_region, T, index(cvi))
+function get_constraint(form::DMIPFormulation, T::Type, i::Int)
+    return get_constraint(form._feasible_region, T, i)
 end
 function get_constraints(form::DMIPFormulation, T::Type)
     return get_constraints(form._feasible_region, T)
@@ -232,7 +232,6 @@ function add_constraint(fm::DMIPFormulation, aff_constr::AffineConstraint)
     return nothing
 end
 
-# TODO: Unit test
 function Base.isempty(form::DMIPFormulation)
     return isempty(form._feasible_region) &&
            isempty(form.disjunction_formulaters) &&
@@ -241,7 +240,6 @@ function Base.isempty(form::DMIPFormulation)
            form.obj.constant == 0
 end
 
-# TODO: Unit test
 function get_bounds(form::DMIPFormulation, cvi::CVI)
     bound = form._feasible_region.bounds[index(cvi)]
     l, u = bound.lower, bound.upper
