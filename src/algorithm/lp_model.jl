@@ -60,7 +60,7 @@ function populate_base_model!(
         push!(state.variable_indices, vi)
         push!(state.constraint_state.base_var_constrs, ci)
     end
-    for lt_constr in get_constraints(form, LT)
+    for lt_constr in get_constraints(form, CCI{LT})
         # Invariant: constraint was normalized via MOIU.normalize_constant.
         ci = MOI.add_constraint(
             model,
@@ -69,7 +69,7 @@ function populate_base_model!(
         )
         push!(state.constraint_state.base_lt_constrs, ci)
     end
-    for gt_constr in get_constraints(form, GT)
+    for gt_constr in get_constraints(form, CCI{GT})
         # Invariant: constraint was normalized via MOIU.normalize_constant.
         ci = MOI.add_constraint(
             model,
@@ -78,7 +78,7 @@ function populate_base_model!(
         )
         push!(state.constraint_state.base_gt_constrs, ci)
     end
-    for et_constr in get_constraints(form, ET)
+    for et_constr in get_constraints(form, CCI{ET})
         # Invariant: constraint was normalized via MOIU.normalize_constant.
         ci = MOI.add_constraint(
             model,

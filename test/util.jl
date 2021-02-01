@@ -11,6 +11,7 @@ const _ZO = MOI.ZeroOne
 const _GI = MOI.Integer
 
 const _CVI = Cerberus.VariableIndex
+const _CCI = Cerberus.ConstraintIndex
 const _CSAF = Cerberus.ScalarAffineFunction
 
 function _build_polyhedron()

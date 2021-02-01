@@ -6,6 +6,15 @@ const CVI = VariableIndex
 index(cvi::CVI) = cvi._value
 Base.convert(::Type{CVI}, vi::VI) = CVI(vi.value)
 
+struct ConstraintIndex{S<:_C_SETS}
+    _value::Int
+end
+const CCI = ConstraintIndex
+index(cci::CCI) = cci._value
+function Base.convert(::Type{CCI{S}}, ci::CI{SAF,S}) where {S<:_C_SETS}
+    return CCI{S}(ci.value)
+end
+
 struct ScalarAffineFunction
     coeffs::Vector{Float64}
     indices::Vector{CVI}
@@ -216,15 +225,21 @@ function set_variable_kind!(form::DMIPFormulation, cvi::CVI, kind::_V_INT_SETS)
 end
 
 num_constraints(form::DMIPFormulation) = num_constraints(form._feasible_region)
-function num_constraints(form::DMIPFormulation, T::Type)
-    return num_constraints(form._feasible_region, T)
+function num_constraints(
+    form::DMIPFormulation,
+    ::Type{CCI{S}},
+) where {S<:_C_SETS}
+    return num_constraints(form._feasible_region, S)
 end
 
-function get_constraint(form::DMIPFormulation, T::Type, i::Int)
-    return get_constraint(form._feasible_region, T, i)
+function get_constraint(form::DMIPFormulation, cci::CCI{S}) where {S<:_C_SETS}
+    return get_constraint(form._feasible_region, S, index(cci))
 end
-function get_constraints(form::DMIPFormulation, T::Type)
-    return get_constraints(form._feasible_region, T)
+function get_constraints(
+    form::DMIPFormulation,
+    ::Type{CCI{S}},
+) where {S<:_C_SETS}
+    return get_constraints(form._feasible_region, S)
 end
 
 function add_constraint(fm::DMIPFormulation, aff_constr::AffineConstraint)
