@@ -45,12 +45,14 @@ function MOI.empty!(opt::Optimizer)
 end
 
 function MOI.optimize!(opt::Optimizer)
+    orig_obj = opt.form.obj
     if _is_max_sense(opt)
-        opt.form.obj *= -1.0
+        opt.form.obj =
+            CSAF(-orig_obj.coeffs, copy(orig_obj.indices), -orig_obj.constant)
     end
     opt.result = optimize!(opt.form, opt.config, _get_primal_bound(opt))
     if _is_max_sense(opt)
-        opt.form.obj *= -1.0
+        opt.form.obj = orig_obj
     end
     return nothing
 end

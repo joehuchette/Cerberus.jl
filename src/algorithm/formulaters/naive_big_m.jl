@@ -14,7 +14,10 @@ struct NaiveBigMState <: AbstractFormulaterState
 end
 
 function new_variables_to_attach(formulater::NaiveBigMFormulater)
-    return [ZO() for i in 1:DisjunctiveConstraints.num_alternatives(formulater.disjunction.s)]
+    return [
+        ZO() for
+        i in 1:DisjunctiveConstraints.num_alternatives(formulater.disjunction.s)
+    ]
 end
 
 # TODO: Unit test
@@ -27,13 +30,13 @@ function compute_disjunction_activity(
     proven_active = Bool[]
     not_inactive = Bool[]
     for idx in z_vis
-        vi = VI(idx)
-        l, u = _get_formulation_bounds(form, idx)
-        if haskey(node.lb_diff, vi)
-            l = max(l, node.lb_diff[vi])
+        cvi = CVI(idx)
+        l, u = get_bounds(form, cvi)
+        if haskey(node.lb_diff, cvi)
+            l = max(l, node.lb_diff[cvi])
         end
-        if haskey(node.ub_diff, vi)
-            u = min(u, node.ub_diff[vi])
+        if haskey(node.ub_diff, cvi)
+            u = min(u, node.ub_diff[cvi])
         end
         push!(proven_active, l == u == 1)
         push!(not_inactive, l <= 1 <= u)

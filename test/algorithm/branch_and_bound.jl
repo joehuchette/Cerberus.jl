@@ -49,8 +49,8 @@ end
         state = _CurrentState(fm)
         # A bit hacky, but force infeasibility by branching both up and down.
         node = Cerberus.Node(
-            Cerberus.BoundDiff(_VI(1) => 1),
-            Cerberus.BoundDiff(_VI(1) => 0),
+            Cerberus.BoundDiff(_CVI(1) => 1),
+            Cerberus.BoundDiff(_CVI(1) => 0),
             Cerberus.AffineConstraint{_LT}[],
             Cerberus.AffineConstraint{_GT}[],
             2,
@@ -94,7 +94,7 @@ end
     node = Cerberus.Node()
     Cerberus.process_node!(state, fm, node, CONFIG)
     fc = Cerberus.Node(
-        Cerberus.BoundDiff(_VI(1) => 1),
+        Cerberus.BoundDiff(_CVI(1) => 1),
         Cerberus.BoundDiff(),
         Cerberus.AffineConstraint{_LT}[],
         Cerberus.AffineConstraint{_GT}[],
@@ -102,7 +102,7 @@ end
     )
     oc = Cerberus.Node(
         Cerberus.BoundDiff(),
-        Cerberus.BoundDiff(_VI(1) => 0),
+        Cerberus.BoundDiff(_CVI(1) => 0),
         Cerberus.AffineConstraint{_LT}[],
         Cerberus.AffineConstraint{_GT}[],
         2,
@@ -249,14 +249,14 @@ end
         @inferred Cerberus.update_dual_bound!(cs)
         @test cs.dual_bound == db
         fc = Cerberus.pop_node!(cs.tree)
-        @test fc.lb_diff == Cerberus.BoundDiff(_VI(3) => 1)
+        @test fc.lb_diff == Cerberus.BoundDiff(_CVI(3) => 1)
         @test fc.ub_diff == Cerberus.BoundDiff()
         @test fc.dual_bound == db
         @test length(cs.warm_starts) == 1
         @test !haskey(cs.warm_starts, fc)
         oc = Cerberus.pop_node!(cs.tree)
         @test oc.lb_diff == Cerberus.BoundDiff()
-        @test oc.ub_diff == Cerberus.BoundDiff(_VI(3) => 0)
+        @test oc.ub_diff == Cerberus.BoundDiff(_CVI(3) => 0)
         @test oc.dual_bound == db
         @test haskey(cs.warm_starts, oc)
         oc_basis = cs.warm_starts[oc]

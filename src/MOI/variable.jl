@@ -27,9 +27,8 @@ end
 # TODO: This might "lie" to you: For example, if you set
 # both a GT and LT constraint, this will report it as an
 # IN constraint.
-function _get_scalar_set(p::Polyhedron, i::Int)
-    bound = p.bounds[i]
-    l, u = bound.lower, bound.upper
+function _get_scalar_set(form::DMIPFormulation, cvi::CVI)
+    l, u = get_bounds(form, cvi)
     if -Inf < l == u < Inf
         return ET
     elseif -Inf < l && u == Inf
@@ -46,8 +45,8 @@ end
 
 function MOI.is_valid(opt::Optimizer, c::CI{SV,S}) where {S<:_V_BOUND_SETS}
     MOI.is_valid(opt, VI(c.value)) || return false
-    p = opt.form.feasible_region
-    return S == _get_scalar_set(p, c.value)
+    cvi = CVI(c.value)
+    return S == _get_scalar_set(opt.form, cvi)
 end
 
 function MOI.get(
@@ -62,29 +61,30 @@ end
 # TODO: Do we need to throw if bounds are already set?
 function MOI.add_constraint(opt::Optimizer, f::SV, s::ET)
     MOI.throw_if_not_valid(opt, f.variable)
-    idx = f.variable.value
-    opt.form.feasible_region.bounds[idx] = IN(s.value, s.value)
-    return CI{SV,ET}(idx)
+    cvi = convert(CVI, f.variable)
+    set_bounds!(opt.form, cvi, IN(s.value, s.value))
+    return CI{SV,ET}(index(cvi))
 end
 function MOI.add_constraint(opt::Optimizer, f::SV, s::GT)
     MOI.throw_if_not_valid(opt, f.variable)
-    idx = f.variable.value
-    prev_int = opt.form.feasible_region.bounds[idx]
-    opt.form.feasible_region.bounds[idx] = IN(s.lower, prev_int.upper)
-    return CI{SV,GT}(idx)
+    cvi = convert(CVI, f.variable)
+    l, u = get_bounds(opt.form, cvi)
+    set_bounds!(opt.form, cvi, IN(s.lower, u))
+    return CI{SV,GT}(index(cvi))
 end
 function MOI.add_constraint(opt::Optimizer, f::SV, s::LT)
     MOI.throw_if_not_valid(opt, f.variable)
-    idx = f.variable.value
-    prev_int = opt.form.feasible_region.bounds[idx]
-    opt.form.feasible_region.bounds[idx] = IN(prev_int.lower, s.upper)
-    return CI{SV,LT}(idx)
+    cvi = convert(CVI, f.variable)
+    l, u = get_bounds(opt.form, cvi)
+    set_bounds!(opt.form, cvi, IN(l, s.upper))
+    return CI{SV,LT}(index(cvi))
 end
 function MOI.add_constraint(opt::Optimizer, f::SV, s::IN)
     MOI.throw_if_not_valid(opt, f.variable)
-    idx = f.variable.value
-    opt.form.feasible_region.bounds[idx] = IN(s.lower, s.upper)
-    return CI{SV,IN}(idx)
+    cvi = convert(CVI, f.variable)
+    l, u = get_bounds(opt.form, cvi)
+    set_bounds!(opt.form, cvi, IN(s.lower, s.upper))
+    return CI{SV,IN}(index(cvi))
 end
 
 MOI.supports_constraint(::Optimizer, ::Type{SV}, ::Type{<:_V_INT_SETS}) = true
@@ -95,13 +95,14 @@ function MOI.add_constraint(
 ) where {S<:_V_INT_SETS}
     vi = f.variable
     MOI.throw_if_not_valid(opt, vi)
-    if opt.form.variable_kind[vi.value] !== nothing
+    cvi = convert(CVI, vi)
+    if get_variable_kind(opt.form, cvi) !== nothing
         error(
-            "Already set variable integrality of $(opt.form.variable_kind[vi.value]) for $(vi); cannot overwrite to $set.",
+            "Already set variable integrality of $(get_variable_kind(opt.form, cvi)) for $(vi); cannot overwrite to $set.",
         )
     end
-    opt.form.variable_kind[vi.value] = set
-    return CI{SV,S}(vi.value)
+    set_variable_kind!(opt.form, cvi, set)
+    return CI{SV,S}(index(cvi))
 end
 
 function MOI.get(opt::Optimizer, ::MOI.NumberOfVariables)
@@ -118,8 +119,7 @@ function MOI.get(
 ) where {S<:_V_BOUND_SETS}
     cnt = 0
     for i in 1:num_variables(opt.form)
-        p = opt.form.feasible_region
-        if S == _get_scalar_set(p, i)
+        if S == _get_scalar_set(opt.form, CVI(i))
             cnt += 1
         end
     end
@@ -132,8 +132,7 @@ function MOI.get(
 ) where {S<:_V_BOUND_SETS}
     indices = CI{SV,S}[]
     for i in 1:num_variables(opt.form)
-        p = opt.form.feasible_region
-        if S == _get_scalar_set(p, i)
+        if S == _get_scalar_set(opt.form, CVI(i))
             push!(indices, CI{SV,S}(i))
         end
     end

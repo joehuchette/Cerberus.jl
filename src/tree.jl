@@ -1,4 +1,4 @@
-const BoundDiff = Dict{VI,Int}
+const BoundDiff = Dict{CVI,Int}
 
 mutable struct Node
     lb_diff::BoundDiff
@@ -36,7 +36,21 @@ function Node()
         -Inf,
     )
 end
-Node(lb_diff::BoundDiff, ub_diff::BoundDiff, depth::Int, dual_bound::Float64 = -Inf) = Node(lb_diff, ub_diff, AffineConstraint{LT}[], AffineConstraint{GT}[], depth, dual_bound)
+function Node(
+    lb_diff::BoundDiff,
+    ub_diff::BoundDiff,
+    depth::Int,
+    dual_bound::Float64 = -Inf,
+)
+    return Node(
+        lb_diff,
+        ub_diff,
+        AffineConstraint{LT}[],
+        AffineConstraint{GT}[],
+        depth,
+        dual_bound,
+    )
+end
 
 function Base.copy(node::Node)
     return Node(

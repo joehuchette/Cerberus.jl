@@ -2,10 +2,23 @@ function _build_disjunction()
     form = Cerberus.DMIPFormulation()
     Cerberus.add_variable(form)
     Cerberus.add_variable(form)
-    form.feasible_region.bounds = [_IN(-1.1, 1.1), _IN(-1.1, 1.1)]
+    Cerberus.set_bounds!(form, _CVI(1), _IN(-1.1, 1.1))
+    Cerberus.set_bounds!(form, _CVI(2), _IN(-1.1, 1.1))
     x = [_SV(_VI(1)), _SV(_VI(2))]
-    Cerberus.add_constraint(form.feasible_region, Cerberus.AffineConstraint(1.0 * x[1] + 1.0 * x[2], _LT(0.5)))
-    Cerberus.add_constraint(form.feasible_region, Cerberus.AffineConstraint(1.0 * x[1] - 1.0 * x[2], _LT(0.6)))
+    Cerberus.add_constraint(
+        form,
+        Cerberus.AffineConstraint(
+            _CSAF([1.0, 1.0], [_CVI(1), _CVI(2)], 0.0),
+            _LT(0.5),
+        ),
+    )
+    Cerberus.add_constraint(
+        form,
+        Cerberus.AffineConstraint(
+            _CSAF([1.0, -1.0], [_CVI(1), _CVI(2)], 0.0),
+            _LT(0.6),
+        ),
+    )
 
     f_1 = 1.0 * x[1] + 1.0 * x[2]
     f_2 = 1.0 * x[1] - 1.0 * x[2]
@@ -43,12 +56,18 @@ end
     end
     @testset "compute_disjunction_activity" begin
         let node = Cerberus.Node()
-            pa, ni = Cerberus.compute_disjunction_activity(form, [3,4,5], node)
+            pa, ni =
+                Cerberus.compute_disjunction_activity(form, [3, 4, 5], node)
             @test pa == [false, false, false]
             @test ni == [true, true, true]
         end
-        let node = Cerberus.Node(Cerberus.BoundDiff(_VI(3) => 1.0), Cerberus.BoundDiff(_VI(5) => 0.0), 2)
-            pa, ni = Cerberus.compute_disjunction_activity(form, [3,4,5], node)
+        let node = Cerberus.Node(
+                Cerberus.BoundDiff(_CVI(3) => 1.0),
+                Cerberus.BoundDiff(_CVI(5) => 0.0),
+                2,
+            )
+            pa, ni =
+                Cerberus.compute_disjunction_activity(form, [3, 4, 5], node)
             @test pa == [true, false, false]
             @test ni == [true, true, false]
         end

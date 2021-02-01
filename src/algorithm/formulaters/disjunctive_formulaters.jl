@@ -36,7 +36,10 @@ function _copy_with_new_variable_indices(f::VAF, new_vis::Vector{VI})
     terms = [
         VAT(
             term.output_index,
-            SAT(term.scalar_term.coefficient, new_vis[term.scalar_term.variable_index.value]),
+            SAT(
+                term.scalar_term.coefficient,
+                new_vis[term.scalar_term.variable_index.value],
+            ),
         ) for term in f.terms
     ]
     return VAF(terms, copy(f.constants))
@@ -50,7 +53,10 @@ function mask_and_update_variable_indices(
 )
     return Disjunction(
         _copy_with_new_variable_indices(model_disj.f, new_vis),
-        DisjunctiveConstraints.DisjunctiveSet(model_disj.s.lbs[:, mask], model_disj.s.ubs[:, mask]),
+        DisjunctiveConstraints.DisjunctiveSet(
+            model_disj.s.lbs[:, mask],
+            model_disj.s.ubs[:, mask],
+        ),
     )
 end
 

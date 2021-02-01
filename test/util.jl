@@ -11,32 +11,39 @@ const _CI = MOI.ConstraintIndex
 const _ZO = MOI.ZeroOne
 const _GI = MOI.Integer
 
+const _CVI = Cerberus.VariableIndex
+const _CCI = Cerberus.ConstraintIndex
+const _CSAF = Cerberus.ScalarAffineFunction
+
 function _build_polyhedron()
-    v = [_SV(_VI(i)) for i in 1:3]
     return Cerberus.Polyhedron(
         [
-            Cerberus.AffineConstraint(v[1] + 2.1 * v[2] + 3.0 * v[3], _ET(3.0)),
-            Cerberus.AffineConstraint(-3.5 * v[1] + 1.2 * v[2], _LT(4.0)),
+            Cerberus.AffineConstraint(
+                _CSAF([1.0, 2.1, 3.0], [_CVI(1), _CVI(2), _CVI(3)], 0.0),
+                _ET(3.0),
+            ),
+            Cerberus.AffineConstraint(
+                _CSAF([-3.5, 1.2], [_CVI(1), _CVI(2)], 0.0),
+                _LT(4.0),
+            ),
         ],
         [_IN(0.5, 1.0), _IN(-1.3, 2.3), _IN(0.0, 1.0)],
     )
 end
 
 function _build_dmip_formulation()
-    v = [_SV(_VI(i)) for i in 1:3]
     return Cerberus.DMIPFormulation(
         _build_polyhedron(),
         [_ZO(), nothing, _ZO()],
-        1.0 * v[1] - 1.0 * v[2],
+        _CSAF([1.0, -1.0], [_CVI(1), _CVI(2)], 0.0),
     )
 end
 
 function _build_gi_polyhedron()
-    v = [_SV(_VI(i)) for i in 1:3]
     return Cerberus.Polyhedron(
         [
             Cerberus.AffineConstraint(
-                1.3 * v[1] + 3.7 * v[2] + 2.4 * v[3],
+                _CSAF([1.3, 3.7, 2.4], [_CVI(1), _CVI(2), _CVI(3)], 0.0),
                 _LT(5.5),
             ),
         ],
@@ -48,7 +55,7 @@ function _build_gi_dmip_formulation()
     return Cerberus.DMIPFormulation(
         _build_gi_polyhedron(),
         [nothing, _ZO(), _GI()],
-        convert(_SAF, 0.0),
+        _CSAF(),
     )
 end
 
@@ -71,25 +78,23 @@ function _test_is_equal_to_dmip_basis(basis::Cerberus.Basis)
     @test basis.branch_gt_constrs == DMIP_BASIS.branch_gt_constrs
 end
 
-function _is_equal(u::_SAF, v::_SAF)
-    u_t = sort(
-        u.terms,
-        lt = (x, y) -> x.variable_index.value < y.variable_index.value,
-    )
-    v_t = sort(
-        v.terms,
-        lt = (x, y) -> x.variable_index.value < y.variable_index.value,
-    )
+function _is_equal(u::_CSAF, v::_CSAF)
+    u_terms = [Cerberus.index(u.indices[i]) => u.coeffs[i] for
+     i in 1:length(u.indices)]
+    v_terms = [Cerberus.index(v.indices[i]) => v.coeffs[i] for
+     i in 1:length(v.indices)]
+    u_t = sort(u_terms, lt = (x, y) -> x[1] < y[1])
+    v_t = sort(v_terms, lt = (x, y) -> x[1] < y[1])
     if !(u.constant ≈ v.constant)
         return false
     end
-    u_vars = [term.variable_index for term in u_t]
-    v_vars = [term.variable_index for term in v_t]
-    if u_vars != v_vars
+    u_idx = [t[1] for t in u_t]
+    v_idx = [t[1] for t in v_t]
+    if u_idx != v_idx
         return false
     end
-    u_coeffs = [term.coefficient for term in u_t]
-    v_coeffs = [term.coefficient for term in v_t]
+    u_coeffs = [t[2] for t in u_t]
+    v_coeffs = [t[2] for t in v_t]
     @assert length(u_coeffs) == length(v_coeffs)
     for i in 1:length(u_coeffs)
         if !(u_coeffs[i] ≈ v_coeffs[i])
@@ -97,4 +102,8 @@ function _is_equal(u::_SAF, v::_SAF)
         end
     end
     return true
+end
+
+function _is_equal(u::_SAF, v::_SAF)
+    return _is_equal(convert(Cerberus.CSAF, u), convert(Cerberus.CSAF, v))
 end

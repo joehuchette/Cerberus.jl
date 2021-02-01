@@ -37,8 +37,7 @@ mutable struct ConstraintState
     branch_lt_constrs::Vector{CI{SAF,LT}}
     branch_gt_constrs::Vector{CI{SAF,GT}}
 end
-function ConstraintState(fm::DMIPFormulation)
-    p = fm.feasible_region
+function ConstraintState()
     return ConstraintState(
         Vector{CI{SV,IN}}[],
         Vector{CI{SAF,LT}}[],
@@ -74,10 +73,7 @@ mutable struct CurrentState
     disjunction_state::Dict{AbstractFormulater,AbstractFormulaterState}
     polling_state::PollingState
 
-    function CurrentState(
-        form::DMIPFormulation;
-        primal_bound::Real = Inf,
-    )
+    function CurrentState(form::DMIPFormulation; primal_bound::Real = Inf)
         nvars = num_variables(form)
         state = new()
         state.gurobi_env = Gurobi.Env()
@@ -97,7 +93,7 @@ mutable struct CurrentState
         state.total_model_builds = 0
         state.total_warm_starts = 0
         state.variable_indices = VI[]
-        state.constraint_state = ConstraintState(form)
+        state.constraint_state = ConstraintState()
         state.disjunction_state = Dict()
         state.polling_state = PollingState()
         return state
@@ -126,4 +122,14 @@ function update_dual_bound!(state::CurrentState)
             minimum(node.dual_bound for node in state.tree.open_nodes)
     end
     return nothing
+end
+
+function instantiate(csaf::CSAF, state::CurrentState)
+    return SAF(
+        [
+            SAT(coeff, state.variable_indices[index(cvi)]) for
+            (coeff, cvi) in zip(csaf.coeffs, csaf.indices)
+        ],
+        csaf.constant,
+    )
 end
