@@ -24,7 +24,7 @@ function MOI.get(
     opt::Optimizer,
     ::MOI.ListOfConstraintIndices{SAF,S},
 ) where {S<:_C_SETS}
-    return CI{SAF,S}[CI{SAF,S}(i) for i in 1:num_constraints(opt.form, CCI{S})]
+    return [CI{SAF,S}(i) for i in 1:num_constraints(opt.form, CCI{S})]
 end
 
 function MOI.get(opt::Optimizer, ::MOI.ListOfConstraints)

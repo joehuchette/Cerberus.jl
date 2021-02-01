@@ -18,7 +18,3 @@ function MOI.set(
     opt.form.obj = convert(CSAF, obj)
     return nothing
 end
-function MOI.get(opt::Optimizer, ::MOI.ObjectiveFunction{F}) where {F<:_O_FUNCS}
-    convert(SAF, opt.obj)
-    return convert(F, opt.form.obj)
-end

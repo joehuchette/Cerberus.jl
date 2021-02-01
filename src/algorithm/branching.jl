@@ -59,10 +59,10 @@ function up_branch(node::Node, branch_cvi::CVI, val::Float64)
     return _branch(node, branch_cvi, GT(ceil(Int, val)))
 end
 
-function _branch(node::Node, branch_vi::CVI, set::S) where {S<:Union{LT,GT}}
+function _branch(node::Node, branch_cvi::CVI, set::S) where {S<:Union{LT,GT}}
     # TODO: Can likely reuse this memory instead of copying
     new_node = copy(node)
-    apply_branching!(new_node, VariableBranchingDecision(branch_vi, set))
+    apply_branching!(new_node, VariableBranchingDecision(branch_cvi, set))
     return new_node
 end
 
@@ -96,11 +96,11 @@ function branch(
         end
     end
     @assert t > 0
-    vt = CVI(t)
+    cvi = CVI(t)
     xt = parent_result.x[t]
-    down_node = down_branch(parent_node, vt, xt)
-    up_node = up_branch(parent_node, vt, xt)
-    @debug "Branching on $vt, whose current LP value is $xt."
+    down_node = down_branch(parent_node, cvi, xt)
+    up_node = up_branch(parent_node, cvi, xt)
+    @debug "Branching on $cvi, whose current LP value is $xt."
     # TODO: This dives on child that is closest to integrality. Is this right?
     if xt - floor(xt) > ceil(xt) - xt
         return (up_node, down_node)

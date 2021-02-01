@@ -55,10 +55,11 @@ struct AffineConstraint{S<:_C_SETS}
     s::S
 end
 
+# TODO: Unit test
 function AffineConstraint(_f::SAF, _s::S) where {S<:_C_SETS}
     f, s = MOIU.normalize_constant(_f, _s)
     @assert f.constant == 0
-    return AffineConstraint{S}(f, s)
+    return AffineConstraint{S}(convert(CSAF, f), s)
 end
 
 # TODO: Unit test

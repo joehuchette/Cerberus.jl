@@ -27,9 +27,8 @@ end
 # TODO: This might "lie" to you: For example, if you set
 # both a GT and LT constraint, this will report it as an
 # IN constraint.
-function _get_scalar_set(form::DMIPFormulation, i::Int)
-    bound = get_bounds(form, CVI(i))
-    l, u = bound.lower, bound.upper
+function _get_scalar_set(form::DMIPFormulation, cvi::CVI)
+    l, u = get_bounds(form, cvi)
     if -Inf < l == u < Inf
         return ET
     elseif -Inf < l && u == Inf
@@ -46,7 +45,8 @@ end
 
 function MOI.is_valid(opt::Optimizer, c::CI{SV,S}) where {S<:_V_BOUND_SETS}
     MOI.is_valid(opt, VI(c.value)) || return false
-    return S == _get_scalar_set(opt.form, c.value)
+    cvi = CVI(c.value)
+    return S == _get_scalar_set(opt.form, cvi)
 end
 
 function MOI.get(
@@ -119,7 +119,7 @@ function MOI.get(
 ) where {S<:_V_BOUND_SETS}
     cnt = 0
     for i in 1:num_variables(opt.form)
-        if S == _get_scalar_set(opt.form, i)
+        if S == _get_scalar_set(opt.form, CVI(i))
             cnt += 1
         end
     end
@@ -132,7 +132,7 @@ function MOI.get(
 ) where {S<:_V_BOUND_SETS}
     indices = CI{SV,S}[]
     for i in 1:num_variables(opt.form)
-        if S == _get_scalar_set(opt.form, i)
+        if S == _get_scalar_set(opt.form, CVI(i))
             push!(indices, CI{SV,S}(i))
         end
     end
