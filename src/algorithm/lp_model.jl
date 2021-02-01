@@ -6,7 +6,7 @@ function reset_formulation_upon_backtracking!(
     model = state.gurobi_model
     for i in 1:num_variables(form)
         cvi = CVI(i)
-        l, u = get_formulation_bounds(form, cvi)
+        l, u = get_bounds(form, cvi)
         if haskey(node.lb_diff, cvi)
             l = max(l, node.lb_diff[cvi])
         end
@@ -53,14 +53,14 @@ function populate_base_model!(
     empty!(state.constraint_state)
     model = config.lp_solver_factory(state, config)::Gurobi.Optimizer
     for i in 1:num_variables(form)
-        l, u = get_formulation_bounds(form, CVI(i))
+        l, u = get_bounds(form, CVI(i))
         # Cache the above updates in formulation. Even better,
         # batch add variables.
         vi, ci = MOI.add_constrained_variable(model, IN(l, u))
         push!(state.variable_indices, vi)
         push!(state.constraint_state.base_var_constrs, ci)
     end
-    for lt_constr in form.feasible_region.lt_constrs
+    for lt_constr in get_constraints(form, LT)
         # Invariant: constraint was normalized via MOIU.normalize_constant.
         ci = MOI.add_constraint(
             model,
@@ -69,7 +69,7 @@ function populate_base_model!(
         )
         push!(state.constraint_state.base_lt_constrs, ci)
     end
-    for gt_constr in form.feasible_region.gt_constrs
+    for gt_constr in get_constraints(form, GT)
         # Invariant: constraint was normalized via MOIU.normalize_constant.
         ci = MOI.add_constraint(
             model,
@@ -78,7 +78,7 @@ function populate_base_model!(
         )
         push!(state.constraint_state.base_gt_constrs, ci)
     end
-    for et_constr in form.feasible_region.et_constrs
+    for et_constr in get_constraints(form, ET)
         # Invariant: constraint was normalized via MOIU.normalize_constant.
         ci = MOI.add_constraint(
             model,

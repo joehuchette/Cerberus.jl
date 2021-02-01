@@ -27,8 +27,8 @@ end
 # TODO: This might "lie" to you: For example, if you set
 # both a GT and LT constraint, this will report it as an
 # IN constraint.
-function _get_scalar_set(p::Polyhedron, i::Int)
-    bound = p.bounds[i]
+function _get_scalar_set(form::DMIPFormulation, i::Int)
+    bound = get_bounds(form, CVI(i))
     l, u = bound.lower, bound.upper
     if -Inf < l == u < Inf
         return ET
@@ -46,8 +46,7 @@ end
 
 function MOI.is_valid(opt::Optimizer, c::CI{SV,S}) where {S<:_V_BOUND_SETS}
     MOI.is_valid(opt, VI(c.value)) || return false
-    p = opt.form.feasible_region
-    return S == _get_scalar_set(p, c.value)
+    return S == _get_scalar_set(opt.form, c.value)
 end
 
 function MOI.get(
@@ -63,27 +62,31 @@ end
 function MOI.add_constraint(opt::Optimizer, f::SV, s::ET)
     MOI.throw_if_not_valid(opt, f.variable)
     idx = f.variable.value
-    opt.form.feasible_region.bounds[idx] = IN(s.value, s.value)
+    set_bounds!(opt.form, CVI(idx), IN(s.value, s.value))
     return CI{SV,ET}(idx)
 end
 function MOI.add_constraint(opt::Optimizer, f::SV, s::GT)
     MOI.throw_if_not_valid(opt, f.variable)
     idx = f.variable.value
-    prev_int = opt.form.feasible_region.bounds[idx]
-    opt.form.feasible_region.bounds[idx] = IN(s.lower, prev_int.upper)
+    cvi = CVI(idx)
+    l, u = get_bounds(opt.form, cvi)
+    set_bounds!(opt.form, cvi, IN(s.lower, u))
     return CI{SV,GT}(idx)
 end
 function MOI.add_constraint(opt::Optimizer, f::SV, s::LT)
     MOI.throw_if_not_valid(opt, f.variable)
     idx = f.variable.value
-    prev_int = opt.form.feasible_region.bounds[idx]
-    opt.form.feasible_region.bounds[idx] = IN(prev_int.lower, s.upper)
+    cvi = CVI(idx)
+    l, u = get_bounds(opt.form, cvi)
+    set_bounds!(opt.form, cvi, IN(l, s.upper))
     return CI{SV,LT}(idx)
 end
 function MOI.add_constraint(opt::Optimizer, f::SV, s::IN)
     MOI.throw_if_not_valid(opt, f.variable)
     idx = f.variable.value
-    opt.form.feasible_region.bounds[idx] = IN(s.lower, s.upper)
+    cvi = CVI(idx)
+    l, u = get_bounds(opt.form, cvi)
+    set_bounds!(opt.form, cvi, IN(s.lower, s.upper))
     return CI{SV,IN}(idx)
 end
 
@@ -118,8 +121,7 @@ function MOI.get(
 ) where {S<:_V_BOUND_SETS}
     cnt = 0
     for i in 1:num_variables(opt.form)
-        p = opt.form.feasible_region
-        if S == _get_scalar_set(p, i)
+        if S == _get_scalar_set(opt.form, i)
             cnt += 1
         end
     end
@@ -132,8 +134,7 @@ function MOI.get(
 ) where {S<:_V_BOUND_SETS}
     indices = CI{SV,S}[]
     for i in 1:num_variables(opt.form)
-        p = opt.form.feasible_region
-        if S == _get_scalar_set(p, i)
+        if S == _get_scalar_set(opt.form, i)
             push!(indices, CI{SV,S}(i))
         end
     end

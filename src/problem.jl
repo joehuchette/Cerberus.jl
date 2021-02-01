@@ -1,3 +1,4 @@
+# NOTE: Should always be accessed through index(::CVI)
 struct VariableIndex
     _value::Int
 end
@@ -22,6 +23,9 @@ const CSAF = ScalarAffineFunction
 CSAF() = CSAF(Float64[], CVI[], 0.0)
 
 # TODO: Unit test
+# NOTE: WE can convert this way (SAF --> CSAF). This is useful for the MOI
+# wrapper. However, we are NOT allowed to go the other way: you must use the
+# `instantiate` function to make sure that the MOI indices are proper.
 function Base.convert(::Type{CSAF}, saf::SAF)
     return CSAF(
         [term.coefficient for term in saf.terms],
@@ -127,6 +131,9 @@ constraint with "sense" set `T` added to `p`.
 get_constraint(p::Polyhedron, T::Type{LT}, i::Int) = p.lt_constrs[i]
 get_constraint(p::Polyhedron, T::Type{GT}, i::Int) = p.gt_constrs[i]
 get_constraint(p::Polyhedron, T::Type{ET}, i::Int) = p.et_constrs[i]
+get_constraints(p::Polyhedron, T::Type{LT}) = p.lt_constrs
+get_constraints(p::Polyhedron, T::Type{GT}) = p.gt_constrs
+get_constraints(p::Polyhedron, T::Type{ET}) = p.et_constrs
 
 """
 Reports the total number of linear constraints describing a polyhedron. Does
@@ -159,21 +166,26 @@ end
 abstract type AbstractFormulater end
 
 mutable struct DMIPFormulation
-    feasible_region::Polyhedron
+    _feasible_region::Polyhedron
     disjunction_formulaters::Vector{AbstractFormulater}
     variable_kind::Vector{_V_INT_SETS}
     obj::CSAF
 
     function DMIPFormulation(
-        feasible_region::Polyhedron,
+        _feasible_region::Polyhedron,
         disjunction_formulaters::Vector{AbstractFormulater},
         variable_kind::Vector,
         obj::CSAF,
     )
-        n = ambient_dim(feasible_region)
+        n = ambient_dim(_feasible_region)
         @assert length(variable_kind) == n
         @assert _max_var_index(obj) <= n
-        return new(feasible_region, disjunction_formulaters, variable_kind, obj)
+        return new(
+            _feasible_region,
+            disjunction_formulaters,
+            variable_kind,
+            obj,
+        )
     end
 end
 
@@ -186,17 +198,34 @@ function DMIPFormulation()
     )
 end
 
-num_variables(fm::DMIPFormulation) = ambient_dim(fm.feasible_region)
+num_variables(fm::DMIPFormulation) = ambient_dim(fm._feasible_region)
 
 function add_variable(fm::DMIPFormulation)
-    add_variable(fm.feasible_region)
+    add_variable(fm._feasible_region)
     push!(fm.variable_kind, nothing)
+    return nothing
+end
+
+num_constraints(form::DMIPFormulation) = num_constraints(form._feasible_region)
+function num_constraints(form::DMIPFormulation, T::Type)
+    return num_constraints(form._feasible_region, T)
+end
+
+function get_constraint(form::DMIPFormulation, T::Type, cvi::CVI)
+    return get_constraint(form._feasible_region, T, index(cvi))
+end
+function get_constraints(form::DMIPFormulation, T::Type)
+    return get_constraints(form._feasible_region, T)
+end
+
+function add_constraint(fm::DMIPFormulation, aff_constr::AffineConstraint)
+    add_constraint(fm._feasible_region, aff_constr)
     return nothing
 end
 
 # TODO: Unit test
 function Base.isempty(form::DMIPFormulation)
-    return isempty(form.feasible_region) &&
+    return isempty(form._feasible_region) &&
            isempty(form.disjunction_formulaters) &&
            isempty(form.variable_kind) &&
            isempty(form.obj.indices) &&
@@ -204,12 +233,17 @@ function Base.isempty(form::DMIPFormulation)
 end
 
 # TODO: Unit test
-function get_formulation_bounds(form::DMIPFormulation, cvi::CVI)
-    bound = form.feasible_region.bounds[index(cvi)]
+function get_bounds(form::DMIPFormulation, cvi::CVI)
+    bound = form._feasible_region.bounds[index(cvi)]
     l, u = bound.lower, bound.upper
     if form.variable_kind[index(cvi)] isa ZO
         l = max(0, l)
         u = min(1, u)
     end
     return l, u
+end
+
+function set_bounds!(form::DMIPFormulation, cvi::CVI, bounds::IN)
+    form._feasible_region.bounds[index(cvi)] = bounds
+    return nothing
 end

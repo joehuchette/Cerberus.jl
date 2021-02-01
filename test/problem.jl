@@ -61,7 +61,7 @@ end
 
 @testset "DMIPFormulation" begin
     fm = @inferred _build_dmip_formulation()
-    _test_polyhedron(fm.feasible_region)
+    _test_polyhedron(fm._feasible_region)
     _test_equal(fm.obj, _CSAF([1.0, -1.0], [_CVI(1), _CVI(2)], 0.0))
     @test isempty(fm.disjunction_formulaters)
     @test fm.variable_kind == [_ZO(), nothing, _ZO()]
@@ -69,8 +69,8 @@ end
     @testset "empty constructor" begin
         fm = @inferred Cerberus.DMIPFormulation()
         @test Cerberus.num_variables(fm) == 0
-        @test Cerberus.ambient_dim(fm.feasible_region) == 0
-        @test Cerberus.num_constraints(fm.feasible_region) == 0
+        @test Cerberus.ambient_dim(fm._feasible_region) == 0
+        @test Cerberus.num_constraints(fm._feasible_region) == 0
         _test_equal(fm.obj, _CSAF())
         @test isempty(fm.disjunction_formulaters)
         @test isempty(fm.variable_kind)
@@ -101,7 +101,7 @@ end
     _test_gi_polyhedron(p)
 
     fm = @inferred _build_gi_dmip_formulation()
-    _test_gi_polyhedron(fm.feasible_region)
+    _test_gi_polyhedron(fm._feasible_region)
     @test isempty(fm.disjunction_formulaters)
     @test fm.variable_kind == [nothing, _ZO(), _GI()]
 end

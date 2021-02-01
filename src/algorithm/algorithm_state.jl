@@ -37,8 +37,7 @@ mutable struct ConstraintState
     branch_lt_constrs::Vector{CI{SAF,LT}}
     branch_gt_constrs::Vector{CI{SAF,GT}}
 end
-function ConstraintState(fm::DMIPFormulation)
-    p = fm.feasible_region
+function ConstraintState()
     return ConstraintState(
         Vector{CI{SV,IN}}[],
         Vector{CI{SAF,LT}}[],
@@ -105,7 +104,7 @@ mutable struct CurrentState
         state.total_model_builds = 0
         state.total_warm_starts = 0
         state.variable_indices = VI[]
-        state.constraint_state = ConstraintState(fm)
+        state.constraint_state = ConstraintState()
         state.polling_state = PollingState()
         return state
     end
