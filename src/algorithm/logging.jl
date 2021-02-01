@@ -4,14 +4,15 @@ function _log_preamble(
     config::AlgorithmConfig,
 )
     config.silent && return nothing
-    m = num_constraints(fm.feasible_region)
+    m = num_constraints(fm)
     n = num_variables(fm)
     d = length(fm.disjunction_formulaters)
     @info "Cerberus: An (experimental) solver for disjunctive mixed-integer programming."
     @info "Optimizing a model with $m rows, $n columns, and $d disjunctive constraints."
-    n_c = count(v -> v === nothing, fm.integrality)
-    n_i = count(v -> v !== nothing, fm.integrality)
-    n_b = count(v -> v isa ZO, fm.integrality)
+    kinds = [get_variable_kind(fm, CVI(i)) for i in 1:n]
+    n_c = count(v -> v === nothing, kinds)
+    n_i = count(v -> v !== nothing, kinds)
+    n_b = count(v -> v isa ZO, kinds)
     @assert n_i + n_c == n
     @info "Variables: $n_c continuous, $n_i integer ($n_b binary)."
     # TODO: Log problem size after formulation of disjunctions

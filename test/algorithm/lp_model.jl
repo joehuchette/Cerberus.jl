@@ -44,8 +44,8 @@ end
     @test MOI.Utilities.get_bounds(model, Float64, _VI(3)) == (0.0, 1.0)
 
     node = Cerberus.Node(
-        Cerberus.BoundDiff(_VI(3) => 1),
-        Cerberus.BoundDiff(_VI(1) => 0),
+        Cerberus.BoundDiff(_CVI(3) => 1),
+        Cerberus.BoundDiff(_CVI(1) => 0),
         Cerberus.AffineConstraint{_LT}[],
         Cerberus.AffineConstraint{_GT}[],
         2,
@@ -56,8 +56,8 @@ end
     @test MOI.Utilities.get_bounds(model, Float64, _VI(2)) == (-1.3, 2.3)
     @test MOI.Utilities.get_bounds(model, Float64, _VI(3)) == (1.0, 1.0)
 
-    let f = _SAF([_SAT(1.2, _VI(1)), _SAT(3.4, _VI(2))], 5.6), s = _LT(7.8)
-        bd = Cerberus.BranchingDecision(f, s)
+    let f = _CSAF([1.2, 3.4], [_CVI(1), _CVI(2)], 5.6), s = _LT(7.8)
+        bd = Cerberus.GeneralBranchingDecision(Cerberus.AffineConstraint(f, s))
         Cerberus.apply_branching!(node, bd)
         @inferred Cerberus.apply_branchings!(state, node)
         @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_LT}()) == 2
@@ -70,12 +70,12 @@ end
         s_rt = MOI.get(model, MOI.ConstraintSet(), ci)
         # Constraint added with MOIU.normalize_and_add_constraint, which shifts
         # constant over to set.
-        _test_equal(f_rt, f - 5.6)
+        _test_equal(f_rt, Cerberus.instantiate(f, state) - 5.6)
         @test s_rt == _LT(7.8 - 5.6)
     end
 
-    let f = _SAF([_SAT(2.4, _VI(3)), _SAT(6.4, _VI(1))], 0.0), s = _GT(3.5)
-        bd = Cerberus.BranchingDecision(f, s)
+    let f = _CSAF([2.4, 6.4], [_CVI(3), _CVI(1)], 0.0), s = _GT(3.5)
+        bd = Cerberus.GeneralBranchingDecision(Cerberus.AffineConstraint(f, s))
         Cerberus.apply_branching!(node, bd)
         @inferred Cerberus.apply_branchings!(state, node)
         # NOTE: We are testing here that the _LT general branching constraint
@@ -87,7 +87,7 @@ end
         ci = cis[1]
         f_rt = MOI.get(model, MOI.ConstraintFunction(), ci)
         s_rt = MOI.get(model, MOI.ConstraintSet(), ci)
-        _test_equal(f_rt, f)
+        _test_equal(f_rt, Cerberus.instantiate(f, state))
         @test s_rt == s
     end
 end
@@ -97,13 +97,13 @@ end
     state = Cerberus.CurrentState(form, CONFIG)
     node = Cerberus.Node()
     Cerberus.populate_base_model!(state, form, node, CONFIG)
-    f_lt = _SAF([_SAT(1.2, _VI(1)), _SAT(3.4, _VI(2))], 0.0)
+    f_lt = _CSAF([1.2, 3.4], [_CVI(1), _CVI(2)], 0.0)
     s_lt = _LT(7.8)
-    f_gt = _SAF([_SAT(2.4, _VI(3)), _SAT(6.4, _VI(1))], 0.0)
+    f_gt = _CSAF([2.4, 6.4], [_CVI(3), _CVI(1)], 0.0)
     s_gt = _GT(3.5)
     node_1 = Cerberus.Node(
-        Cerberus.BoundDiff(_VI(3) => 1),
-        Cerberus.BoundDiff(_VI(1) => 0),
+        Cerberus.BoundDiff(_CVI(3) => 1),
+        Cerberus.BoundDiff(_CVI(1) => 0),
         [Cerberus.AffineConstraint{_LT}(f_lt, s_lt)],
         [Cerberus.AffineConstraint{_GT}(f_gt, s_gt)],
         4,
@@ -120,7 +120,7 @@ end
         lt_ci = lt_cis[2]
         f_lt_rt = MOI.get(model, MOI.ConstraintFunction(), lt_ci)
         s_lt_rt = MOI.get(model, MOI.ConstraintSet(), lt_ci)
-        _test_equal(f_lt_rt, f_lt)
+        _test_equal(f_lt_rt, Cerberus.instantiate(f_lt, state))
         @test s_lt_rt == s_lt
     end
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_GT}()) == 1
@@ -128,14 +128,14 @@ end
         gt_ci = gt_cis[1]
         f_gt_rt = MOI.get(model, MOI.ConstraintFunction(), gt_ci)
         s_gt_rt = MOI.get(model, MOI.ConstraintSet(), gt_ci)
-        _test_equal(f_gt_rt, f_gt)
+        _test_equal(f_gt_rt, Cerberus.instantiate(f_gt, state))
         @test s_gt_rt == s_gt
     end
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_ET}()) == 1
 
     node_2 = Cerberus.Node(
         Cerberus.BoundDiff(),
-        Cerberus.BoundDiff(_VI(1) => 0),
+        Cerberus.BoundDiff(_CVI(1) => 0),
         Cerberus.AffineConstraint{_LT}[],
         [Cerberus.AffineConstraint{_GT}(f_gt, s_gt)],
         2,
@@ -151,7 +151,7 @@ end
         gt_ci = gt_cis[1]
         f_gt_rt = MOI.get(model, MOI.ConstraintFunction(), gt_ci)
         s_gt_rt = MOI.get(model, MOI.ConstraintSet(), gt_ci)
-        _test_equal(f_gt_rt, f_gt)
+        _test_equal(f_gt_rt, Cerberus.instantiate(f_gt, state))
         @test s_gt_rt == s_gt
     end
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_ET}()) == 1

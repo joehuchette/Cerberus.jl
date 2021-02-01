@@ -1,4 +1,4 @@
-const BoundDiff = Dict{VI,Int}
+const BoundDiff = Dict{CVI,Int}
 
 mutable struct Node
     lb_diff::BoundDiff

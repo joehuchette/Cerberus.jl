@@ -2,31 +2,29 @@
 MOI.supports_constraint(::Optimizer, ::Type{SAF}, ::Type{<:_C_SETS}) = true
 
 function MOI.is_valid(opt::Optimizer, c::CI{SAF,T}) where {T<:_C_SETS}
-    return 1 <= c.value <= num_constraints(opt.form.feasible_region, T)
+    return 1 <= c.value <= num_constraints(opt.form, CCI{T})
 end
 
 function MOI.add_constraint(opt::Optimizer, f::SAF, s::T) where {T<:_C_SETS}
     if !iszero(f.constant)
         throw(MOI.ScalarFunctionConstantNotZero{Float64,SAF,T}(f.constant))
     end
-    p = opt.form.feasible_region
-    add_constraint(p, AffineConstraint(f, s))
-    return CI{SAF,T}(num_constraints(p, T))
+    add_constraint(opt.form, AffineConstraint(f, s))
+    return CI{SAF,T}(num_constraints(opt.form, CCI{T}))
 end
 
 function MOI.get(
     opt::Optimizer,
     ::MOI.NumberOfConstraints{SAF,S},
 ) where {S<:_C_SETS}
-    return num_constraints(opt.form.feasible_region, S)
+    return num_constraints(opt.form, CCI{S})
 end
 
 function MOI.get(
     opt::Optimizer,
     ::MOI.ListOfConstraintIndices{SAF,S},
 ) where {S<:_C_SETS}
-    p = opt.form.feasible_region
-    return CI{SAF,S}[CI{SAF,S}(i) for i in 1:num_constraints(p, S)]
+    return [CI{SAF,S}(i) for i in 1:num_constraints(opt.form, CCI{S})]
 end
 
 function MOI.get(opt::Optimizer, ::MOI.ListOfConstraints)
@@ -40,9 +38,14 @@ function MOI.get(
     ci::CI{SAF,S},
 ) where {S<:_C_SETS}
     MOI.throw_if_not_valid(opt, ci)
-    idx = ci.value
-    aff = get_constraint(opt.form.feasible_region, S, idx)
-    return MOIU.eval_variables(aff.f) do vi
-        return MOI.get(opt, MOI.VariablePrimal(), vi)
+    if opt.result === nothing
+        error("Model does not have a solution available.")
     end
+    cci = convert(CCI{S}, ci)
+    ac = get_constraint(opt.form, cci)
+    val = 0.0
+    for (coeff, cvi) in zip(ac.f.coeffs, ac.f.indices)
+        val += coeff * opt.result.best_solution[index(cvi)]
+    end
+    return val
 end

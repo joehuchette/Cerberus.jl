@@ -105,11 +105,11 @@ function _num_int_infeasible(
 )::Int
     cnt = 0
     for i in 1:num_variables(form)
-        v_set = form.integrality[i]
+        cvi = CVI(i)
+        v_set = get_variable_kind(form, cvi)
         if v_set === nothing
             continue
         end
-        vi = VI(i)
         xi = x[i]
         ϵ = config.int_tol
         xi_f = _approx_floor(xi, ϵ)

@@ -5,18 +5,13 @@ function reset_formulation_upon_backtracking!(
 )
     model = state.gurobi_model
     for i in 1:num_variables(form)
-        bound = form.feasible_region.bounds[i]
-        l, u = bound.lower, bound.upper
-        if form.integrality[i] isa ZO
-            l = max(0, l)
-            u = min(1, u)
+        cvi = CVI(i)
+        l, u = get_bounds(form, cvi)
+        if haskey(node.lb_diff, cvi)
+            l = max(l, node.lb_diff[cvi])
         end
-        vi = VI(i)
-        if haskey(node.lb_diff, vi)
-            l = max(l, node.lb_diff[vi])
-        end
-        if haskey(node.ub_diff, vi)
-            u = min(u, node.ub_diff[vi])
+        if haskey(node.ub_diff, cvi)
+            u = min(u, node.ub_diff[cvi])
         end
         ci = CI{SV,IN}(i)
         MOI.set(model, MOI.ConstraintSet(), ci, IN(l, u))
@@ -29,12 +24,12 @@ function reset_formulation_upon_backtracking!(
     empty!(state.constraint_state.branch_gt_constrs)
     for ac in node.lt_constrs
         # Invariant: constraint was normalized via MOIU.normalize_constant.
-        ci = MOI.add_constraint(model, ac.f, ac.s)
+        ci = MOI.add_constraint(model, instantiate(ac.f, state), ac.s)
         push!(state.constraint_state.branch_lt_constrs, ci)
     end
     for ac in node.gt_constrs
         # Invariant: constraint was normalized via MOIU.normalize_constant.
-        ci = MOI.add_constraint(model, ac.f, ac.s)
+        ci = MOI.add_constraint(model, instantiate(ac.f, state), ac.s)
         push!(state.constraint_state.branch_gt_constrs, ci)
     end
 end
@@ -58,37 +53,45 @@ function populate_base_model!(
     empty!(state.constraint_state)
     model = config.lp_solver_factory(state, config)::Gurobi.Optimizer
     for i in 1:num_variables(form)
-        bound = form.feasible_region.bounds[i]
-        l, u = bound.lower, bound.upper
-        if form.integrality[i] isa ZO
-            l = max(0, l)
-            u = min(1, u)
-        end
+        l, u = get_bounds(form, CVI(i))
         # Cache the above updates in formulation. Even better,
         # batch add variables.
         vi, ci = MOI.add_constrained_variable(model, IN(l, u))
+        push!(state.variable_indices, vi)
         push!(state.constraint_state.base_var_constrs, ci)
     end
-    for lt_constr in form.feasible_region.lt_constrs
+    for lt_constr in get_constraints(form, CCI{LT})
         # Invariant: constraint was normalized via MOIU.normalize_constant.
-        ci = MOI.add_constraint(model, lt_constr.f, lt_constr.s)
+        ci = MOI.add_constraint(
+            model,
+            instantiate(lt_constr.f, state),
+            lt_constr.s,
+        )
         push!(state.constraint_state.base_lt_constrs, ci)
     end
-    for gt_constr in form.feasible_region.gt_constrs
+    for gt_constr in get_constraints(form, CCI{GT})
         # Invariant: constraint was normalized via MOIU.normalize_constant.
-        ci = MOI.add_constraint(model, gt_constr.f, gt_constr.s)
+        ci = MOI.add_constraint(
+            model,
+            instantiate(gt_constr.f, state),
+            gt_constr.s,
+        )
         push!(state.constraint_state.base_gt_constrs, ci)
     end
-    for et_constr in form.feasible_region.et_constrs
+    for et_constr in get_constraints(form, CCI{ET})
         # Invariant: constraint was normalized via MOIU.normalize_constant.
-        ci = MOI.add_constraint(model, et_constr.f, et_constr.s)
+        ci = MOI.add_constraint(
+            model,
+            instantiate(et_constr.f, state),
+            et_constr.s,
+        )
         push!(state.constraint_state.base_et_constrs, ci)
     end
     # TODO: Test this once it does something...
     for formulater in form.disjunction_formulaters
         apply!(model, formulator, node)
     end
-    MOI.set(model, MOI.ObjectiveFunction{SAF}(), form.obj)
+    MOI.set(model, MOI.ObjectiveFunction{SAF}(), instantiate(form.obj, state))
     MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
     state.gurobi_model = model
     state.rebuild_model = false
@@ -98,14 +101,16 @@ end
 
 function apply_branchings!(state::CurrentState, node::Node)
     model = state.gurobi_model
-    for (vi, lb) in node.lb_diff
+    for (cvi, lb) in node.lb_diff
+        vi = state.variable_indices[index(cvi)]
         ci = CI{SV,IN}(vi.value)
         interval = MOI.get(model, MOI.ConstraintSet(), ci)
         # @assert lb >= interval.upper
         new_interval = IN(lb, interval.upper)
         MOI.set(model, MOI.ConstraintSet(), ci, new_interval)
     end
-    for (vi, ub) in node.ub_diff
+    for (cvi, ub) in node.ub_diff
+        vi = state.variable_indices[index(cvi)]
         ci = CI{SV,IN}(vi.value)
         interval = MOI.get(model, MOI.ConstraintSet(), ci)
         # @assert ub <= interval.upper
@@ -119,7 +124,7 @@ function apply_branchings!(state::CurrentState, node::Node)
         #  is no less than i, then we've already added it, so can skip.
         # Invariant: constraint was normalized via MOIU.normalize_constant.
         if i > num_branch_lt_constrs
-            ci = MOI.add_constraint(model, ac.f, ac.s)
+            ci = MOI.add_constraint(model, instantiate(ac.f, state), ac.s)
             push!(state.constraint_state.branch_lt_constrs, ci)
         end
     end
@@ -130,7 +135,7 @@ function apply_branchings!(state::CurrentState, node::Node)
         #  is no less than i, then we've already added it, so can skip.
         # Invariant: constraint was normalized via MOIU.normalize_constant.
         if i > num_branch_gt_constrs
-            ci = MOI.add_constraint(model, ac.f, ac.s)
+            ci = MOI.add_constraint(model, instantiate(ac.f, state), ac.s)
             push!(state.constraint_state.branch_gt_constrs, ci)
         end
     end
