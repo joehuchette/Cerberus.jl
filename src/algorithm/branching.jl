@@ -76,7 +76,7 @@ function branch(
     t = 0
     most_frac_val = 0.0
     for i in 1:num_variables(form)
-        var_set = form.variable_kind[i]
+        var_set = get_variable_kind(form, CVI(i))
         # continuous variable, don't branch on it
         if var_set === nothing
             continue

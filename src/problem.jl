@@ -4,6 +4,7 @@ struct VariableIndex
 end
 const CVI = VariableIndex
 index(cvi::CVI) = cvi._value
+Base.convert(::Type{CVI}, vi::VI) = CVI(vi.value)
 
 struct ScalarAffineFunction
     coeffs::Vector{Float64}
@@ -29,12 +30,12 @@ CSAF() = CSAF(Float64[], CVI[], 0.0)
 function Base.convert(::Type{CSAF}, saf::SAF)
     return CSAF(
         [term.coefficient for term in saf.terms],
-        [CVI(term.variable_index.value) for term in saf.terms],
+        [convert(CVI, term.variable_index) for term in saf.terms],
         saf.constant,
     )
 end
 function Base.convert(::Type{CSAF}, sv::SV)
-    return CSAF([1.0], [CVI(sv.variable.value)], 0.0)
+    return CSAF([1.0], [convert(CVI, sv.variable)], 0.0)
 end
 
 """
@@ -168,22 +169,22 @@ abstract type AbstractFormulater end
 mutable struct DMIPFormulation
     _feasible_region::Polyhedron
     disjunction_formulaters::Vector{AbstractFormulater}
-    variable_kind::Vector{_V_INT_SETS}
+    _variable_kind::Vector{_V_INT_SETS}
     obj::CSAF
 
     function DMIPFormulation(
         _feasible_region::Polyhedron,
         disjunction_formulaters::Vector{AbstractFormulater},
-        variable_kind::Vector,
+        _variable_kind::Vector,
         obj::CSAF,
     )
         n = ambient_dim(_feasible_region)
-        @assert length(variable_kind) == n
+        @assert length(_variable_kind) == n
         @assert _max_var_index(obj) <= n
         return new(
             _feasible_region,
             disjunction_formulaters,
-            variable_kind,
+            _variable_kind,
             obj,
         )
     end
@@ -202,7 +203,15 @@ num_variables(fm::DMIPFormulation) = ambient_dim(fm._feasible_region)
 
 function add_variable(fm::DMIPFormulation)
     add_variable(fm._feasible_region)
-    push!(fm.variable_kind, nothing)
+    push!(fm._variable_kind, nothing)
+    return nothing
+end
+
+function get_variable_kind(form::DMIPFormulation, cvi::CVI)
+    return form._variable_kind[index(cvi)]
+end
+function set_variable_kind!(form::DMIPFormulation, cvi::CVI, kind::_V_INT_SETS)
+    form._variable_kind[index(cvi)] = kind
     return nothing
 end
 
@@ -227,7 +236,7 @@ end
 function Base.isempty(form::DMIPFormulation)
     return isempty(form._feasible_region) &&
            isempty(form.disjunction_formulaters) &&
-           isempty(form.variable_kind) &&
+           isempty(form._variable_kind) &&
            isempty(form.obj.indices) &&
            form.obj.constant == 0
 end
@@ -236,7 +245,7 @@ end
 function get_bounds(form::DMIPFormulation, cvi::CVI)
     bound = form._feasible_region.bounds[index(cvi)]
     l, u = bound.lower, bound.upper
-    if form.variable_kind[index(cvi)] isa ZO
+    if get_variable_kind(form, cvi) isa ZO
         l = max(0, l)
         u = min(1, u)
     end

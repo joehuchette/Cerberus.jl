@@ -61,33 +61,30 @@ end
 # TODO: Do we need to throw if bounds are already set?
 function MOI.add_constraint(opt::Optimizer, f::SV, s::ET)
     MOI.throw_if_not_valid(opt, f.variable)
-    idx = f.variable.value
-    set_bounds!(opt.form, CVI(idx), IN(s.value, s.value))
-    return CI{SV,ET}(idx)
+    cvi = convert(CVI, f.variable)
+    set_bounds!(opt.form, cvi, IN(s.value, s.value))
+    return CI{SV,ET}(index(cvi))
 end
 function MOI.add_constraint(opt::Optimizer, f::SV, s::GT)
     MOI.throw_if_not_valid(opt, f.variable)
-    idx = f.variable.value
-    cvi = CVI(idx)
+    cvi = convert(CVI, f.variable)
     l, u = get_bounds(opt.form, cvi)
     set_bounds!(opt.form, cvi, IN(s.lower, u))
-    return CI{SV,GT}(idx)
+    return CI{SV,GT}(index(cvi))
 end
 function MOI.add_constraint(opt::Optimizer, f::SV, s::LT)
     MOI.throw_if_not_valid(opt, f.variable)
-    idx = f.variable.value
-    cvi = CVI(idx)
+    cvi = convert(CVI, f.variable)
     l, u = get_bounds(opt.form, cvi)
     set_bounds!(opt.form, cvi, IN(l, s.upper))
-    return CI{SV,LT}(idx)
+    return CI{SV,LT}(index(cvi))
 end
 function MOI.add_constraint(opt::Optimizer, f::SV, s::IN)
     MOI.throw_if_not_valid(opt, f.variable)
-    idx = f.variable.value
-    cvi = CVI(idx)
+    cvi = convert(CVI, f.variable)
     l, u = get_bounds(opt.form, cvi)
     set_bounds!(opt.form, cvi, IN(s.lower, s.upper))
-    return CI{SV,IN}(idx)
+    return CI{SV,IN}(index(cvi))
 end
 
 MOI.supports_constraint(::Optimizer, ::Type{SV}, ::Type{<:_V_INT_SETS}) = true
@@ -98,13 +95,14 @@ function MOI.add_constraint(
 ) where {S<:_V_INT_SETS}
     vi = f.variable
     MOI.throw_if_not_valid(opt, vi)
-    if opt.form.variable_kind[vi.value] !== nothing
+    cvi = convert(CVI, vi)
+    if get_variable_kind(opt.form, cvi) !== nothing
         error(
-            "Already set variable integrality of $(opt.form.variable_kind[vi.value]) for $(vi); cannot overwrite to $set.",
+            "Already set variable integrality of $(get_variable_kind(opt.form, cvi)) for $(vi); cannot overwrite to $set.",
         )
     end
-    opt.form.variable_kind[vi.value] = set
-    return CI{SV,S}(vi.value)
+    set_variable_kind!(opt.form, cvi, set)
+    return CI{SV,S}(index(cvi))
 end
 
 function MOI.get(opt::Optimizer, ::MOI.NumberOfVariables)
