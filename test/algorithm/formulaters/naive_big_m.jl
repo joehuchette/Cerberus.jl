@@ -24,7 +24,7 @@ function _build_disjunction()
     f_2 = 1.0 * x[1] - 1.0 * x[2]
     f_3 = 1.0 * x[1] + 0.5 * x[2]
     f_4 = 1.0 * x[1] - 0.5 * x[2]
-    f = MOIU.vectorize([f_1, f_2, f_3, f_4])
+    f = [convert(_CSAF, _f) for _f in (f_1, f_2, f_3, f_4)]
 
     lbs = [
         -Inf -Inf -Inf
@@ -39,7 +39,7 @@ function _build_disjunction()
         Inf Inf Inf
     ]
     s = DisjunctiveConstraints.DisjunctiveSet(lbs, ubs)
-    return form, DisjunctiveConstraints.Disjunction(f, s)
+    return form, Cerberus.Disjunction(f, s)
 end
 
 @testset "NaiveBigMFormulater" begin
@@ -56,8 +56,12 @@ end
     end
     @testset "compute_disjunction_activity" begin
         let node = Cerberus.Node()
-            pa, ni =
-                Cerberus.compute_disjunction_activity(form, [3, 4, 5], node)
+            pa, ni = Cerberus.compute_disjunction_activity(
+                form,
+                [3, 4, 5],
+                node,
+                CONFIG.int_tol,
+            )
             @test pa == [false, false, false]
             @test ni == [true, true, true]
         end
@@ -66,8 +70,12 @@ end
                 Cerberus.BoundDiff(_CVI(5) => 0.0),
                 2,
             )
-            pa, ni =
-                Cerberus.compute_disjunction_activity(form, [3, 4, 5], node)
+            pa, ni = Cerberus.compute_disjunction_activity(
+                form,
+                [3, 4, 5],
+                node,
+                CONFIG.int_tol,
+            )
             @test pa == [true, false, false]
             @test ni == [true, true, false]
         end

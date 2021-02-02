@@ -73,7 +73,7 @@ function populate_base_model!(
         # Cache the above updates in formulation. Even better,
         # batch add variables.
         vi, ci = MOI.add_constrained_variable(model, IN(l, u))
-        push!(state.variable_indices, vi)
+        attach_index!(state, vi)
         push!(state.constraint_state.base_var_constrs, ci)
     end
     for lt_constr in get_constraints(form, CCI{LT})
@@ -129,7 +129,7 @@ end
 function apply_branchings!(state::CurrentState, node::Node)
     model = state.gurobi_model
     for (cvi, lb) in node.lb_diff
-        vi = state.variable_indices[index(cvi)]
+        vi = get_index(state, cvi)
         ci = CI{SV,IN}(vi.value)
         interval = MOI.get(model, MOI.ConstraintSet(), ci)
         # @assert lb >= interval.upper
@@ -137,7 +137,7 @@ function apply_branchings!(state::CurrentState, node::Node)
         MOI.set(model, MOI.ConstraintSet(), ci, new_interval)
     end
     for (cvi, ub) in node.ub_diff
-        vi = state.variable_indices[index(cvi)]
+        vi = get_index(state, cvi)
         ci = CI{SV,IN}(vi.value)
         interval = MOI.get(model, MOI.ConstraintSet(), ci)
         # @assert ub <= interval.upper

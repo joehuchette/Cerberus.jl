@@ -14,7 +14,10 @@ struct NaiveBigMState <: AbstractFormulaterState
 end
 
 function new_variables_to_attach(formulater::NaiveBigMFormulater)
-    return fill(ZO(), DisjunctiveConstraints.num_alternatives(formulater.disjunction.s)
+    return fill(
+        ZO(),
+        DisjunctiveConstraints.num_alternatives(formulater.disjunction.s),
+    )
 end
 
 # TODO: Unit test
@@ -37,8 +40,7 @@ function compute_disjunction_activity(
             u = min(u, node.ub_diff[cvi])
         end
         # Approximate version of: l == 1 == u
-        push!(proven_active, (abs(l - 1) ≤ ϵ_int) & (abs(u - 1) ≤ ϵ_int)
-        push!(not_inactive, l <= 1 <= u)
+        push!(proven_active, (abs(l - 1) ≤ ϵ_int) & (abs(u - 1) ≤ ϵ_int))
         # Approximate version of: l <= 1 <= u
         push!(not_inactive, (l ≤ 1 + ϵ_int) & (1 <= u + ϵ_int))
     end
@@ -63,16 +65,16 @@ function formulate!(
     # which constraints to use.
     proven_active, not_inactive =
         compute_disjunction_activity(form, z_vis, node, config.int_tol)
-    disjunction = mask_and_update_variable_indices(
-        formulater.disjunction,
-        state.variable_indices,
-        not_inactive,
-    )
+    _f = instantiate.(formulater.disjunction.f, state)
+    f = MOI.vectorize(_f)
+    masked_lbs = formulater.disjunctions.s.lbs[:, not_inactive]
+    masked_ubs = formulater.disjunctions.s.ubs[:, not_inactive]
+    s = DisjunctiveConstraints.DisjunctiveSet(masked_lbs, masked_ubs)
 
     disj_state = DisjunctiveConstraints.formulate!(
         state.gurobi_model,
         DisjunctiveConstraints.NaiveBigM(formulater.activity_method),
-        disjunction,
+        DisjunctiveConstraints.Disjunction(f, s),
         z_vis,
     )
     state.disjunction_state[formulater] = disj_state
