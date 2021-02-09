@@ -1,5 +1,9 @@
 function _is_root_node(node::Cerberus.Node)
-    return isempty(node.lb_diff) && isempty(node.ub_diff)
+    return isempty(node.lt_bounds) &&
+           isempty(node.gt_bounds) &&
+           isempty(node.lt_general_constrs) &&
+           isempty(node.gt_general_constrs) &&
+           node.depth == 0
 end
 
 function _NodeResult(

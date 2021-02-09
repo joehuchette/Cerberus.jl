@@ -4,34 +4,20 @@ function reset_formulation_upon_backtracking!(
     node::Node,
 )
     model = state.gurobi_model
+    cs = state.constraint_state
     for i in 1:num_variables(form)
         cvi = CVI(i)
         l, u = get_bounds(form, cvi)
-        if haskey(node.lb_diff, cvi)
-            l = max(l, node.lb_diff[cvi])
-        end
-        if haskey(node.ub_diff, cvi)
-            u = min(u, node.ub_diff[cvi])
-        end
-        ci = CI{SV,IN}(i)
+        ci = cs.base_state.var_constrs[index(cvi)]
         MOI.set(model, MOI.ConstraintSet(), ci, IN(l, u))
     end
     # TODO: Can potentially be smarter about not deleting all of these
     # constraints on a backtrack.
-    MOI.delete(model, state.constraint_state.branch_lt_constrs)
-    empty!(state.constraint_state.branch_lt_constrs)
-    MOI.delete(model, state.constraint_state.branch_gt_constrs)
-    empty!(state.constraint_state.branch_gt_constrs)
-    for ac in node.lt_constrs
-        # Invariant: constraint was normalized via MOIU.normalize_constant.
-        ci = MOI.add_constraint(model, instantiate(ac.f, state), ac.s)
-        push!(state.constraint_state.branch_lt_constrs, ci)
-    end
-    for ac in node.gt_constrs
-        # Invariant: constraint was normalized via MOIU.normalize_constant.
-        ci = MOI.add_constraint(model, instantiate(ac.f, state), ac.s)
-        push!(state.constraint_state.branch_gt_constrs, ci)
-    end
+    MOI.delete(model, cs.branch_state.lt_general_constrs)
+    MOI.delete(model, cs.branch_state.gt_general_constrs)
+    empty!(cs.branch_state)
+    apply_branchings!(state, node)
+    return nothing
 end
 
 function populate_base_model!(
@@ -58,7 +44,7 @@ function populate_base_model!(
         # batch add variables.
         vi, ci = MOI.add_constrained_variable(model, IN(l, u))
         push!(state.variable_indices, vi)
-        push!(state.constraint_state.base_var_constrs, ci)
+        push!(state.constraint_state.base_state.var_constrs, ci)
     end
     for lt_constr in get_constraints(form, CCI{LT})
         # Invariant: constraint was normalized via MOIU.normalize_constant.
@@ -67,7 +53,7 @@ function populate_base_model!(
             instantiate(lt_constr.f, state),
             lt_constr.s,
         )
-        push!(state.constraint_state.base_lt_constrs, ci)
+        push!(state.constraint_state.base_state.lt_constrs, ci)
     end
     for gt_constr in get_constraints(form, CCI{GT})
         # Invariant: constraint was normalized via MOIU.normalize_constant.
@@ -76,7 +62,7 @@ function populate_base_model!(
             instantiate(gt_constr.f, state),
             gt_constr.s,
         )
-        push!(state.constraint_state.base_gt_constrs, ci)
+        push!(state.constraint_state.base_state.gt_constrs, ci)
     end
     for et_constr in get_constraints(form, CCI{ET})
         # Invariant: constraint was normalized via MOIU.normalize_constant.
@@ -85,7 +71,7 @@ function populate_base_model!(
             instantiate(et_constr.f, state),
             et_constr.s,
         )
-        push!(state.constraint_state.base_et_constrs, ci)
+        push!(state.constraint_state.base_state.et_constrs, ci)
     end
     # TODO: Test this once it does something...
     for formulater in form.disjunction_formulaters
@@ -101,43 +87,50 @@ end
 
 function apply_branchings!(state::CurrentState, node::Node)
     model = state.gurobi_model
-    for (cvi, lb) in node.lb_diff
-        vi = state.variable_indices[index(cvi)]
+    cs = state.constraint_state
+    num_existing_lt_bounds = cs.branch_state.num_lt_branches
+    total_lt_bounds = length(node.lt_bounds)
+    for i in (num_existing_lt_bounds+1):total_lt_bounds
+        lt_bound = node.lt_bounds[i]
+        vi = state.variable_indices[index(lt_bound.cvi)]
         ci = CI{SV,IN}(vi.value)
         interval = MOI.get(model, MOI.ConstraintSet(), ci)
-        # @assert lb >= interval.upper
-        new_interval = IN(lb, interval.upper)
+        new_interval = IN(interval.lower, min(lt_bound.s.upper, interval.upper))
         MOI.set(model, MOI.ConstraintSet(), ci, new_interval)
+        cs.branch_state.num_lt_branches += 1
     end
-    for (cvi, ub) in node.ub_diff
-        vi = state.variable_indices[index(cvi)]
+    num_existing_gt_bounds = cs.branch_state.num_gt_branches
+    total_gt_bounds = length(node.gt_bounds)
+    for i in (num_existing_gt_bounds+1):total_gt_bounds
+        gt_bound = node.gt_bounds[i]
+        vi = state.variable_indices[index(gt_bound.cvi)]
         ci = CI{SV,IN}(vi.value)
         interval = MOI.get(model, MOI.ConstraintSet(), ci)
-        # @assert ub <= interval.upper
-        new_interval = IN(interval.lower, ub)
+        new_interval = IN(max(gt_bound.s.lower, interval.lower), interval.upper)
         MOI.set(model, MOI.ConstraintSet(), ci, new_interval)
+        cs.branch_state.num_gt_branches += 1
     end
-    num_branch_lt_constrs = length(state.constraint_state.branch_lt_constrs)
-    for (i, ac) in enumerate(node.lt_constrs)
+    num_existing_lt_general_constrs = length(cs.branch_state.lt_general_constrs)
+    total_lt_general_constrs = length(node.lt_general_constrs)
+    for i in (num_existing_lt_general_constrs+1):total_lt_general_constrs
+        ac = node.lt_general_constrs[i]
         # Invariant: The constraints are added in order. If we're adding
         # constraint i attached at this node, and length of branch_lt_constrs
         #  is no less than i, then we've already added it, so can skip.
         # Invariant: constraint was normalized via MOIU.normalize_constant.
-        if i > num_branch_lt_constrs
-            ci = MOI.add_constraint(model, instantiate(ac.f, state), ac.s)
-            push!(state.constraint_state.branch_lt_constrs, ci)
-        end
+        ci = MOI.add_constraint(model, instantiate(ac.f, state), ac.s)
+        push!(cs.branch_state.lt_general_constrs, ci)
     end
-    num_branch_gt_constrs = length(state.constraint_state.branch_gt_constrs)
-    for (i, ac) in enumerate(node.gt_constrs)
+    num_existing_gt_general_constrs = length(cs.branch_state.gt_general_constrs)
+    total_gt_general_constrs = length(node.gt_general_constrs)
+    for i in (num_existing_gt_general_constrs+1):total_gt_general_constrs
+        ac = node.gt_general_constrs[i]
         # Invariant: The constraints are added in order. If we're adding
-        # constraint i attached at this node, and length of branch_gt_constrs
+        # constraint i attached at this node, and length of branch_lt_constrs
         #  is no less than i, then we've already added it, so can skip.
         # Invariant: constraint was normalized via MOIU.normalize_constant.
-        if i > num_branch_gt_constrs
-            ci = MOI.add_constraint(model, instantiate(ac.f, state), ac.s)
-            push!(state.constraint_state.branch_gt_constrs, ci)
-        end
+        ci = MOI.add_constraint(model, instantiate(ac.f, state), ac.s)
+        push!(cs.branch_state.gt_general_constrs, ci)
     end
     return nothing
 end
@@ -153,37 +146,38 @@ end
 
 function get_basis(state::CurrentState)::Basis
     basis = Basis()
-    for ci in state.constraint_state.base_var_constrs
+    cs = state.constraint_state
+    for ci in cs.base_state.var_constrs
         push!(
             basis.base_var_constrs,
             MOI.get(state.gurobi_model, MOI.ConstraintBasisStatus(), ci),
         )
     end
-    for ci in state.constraint_state.base_lt_constrs
+    for ci in cs.base_state.lt_constrs
         push!(
             basis.base_lt_constrs,
             MOI.get(state.gurobi_model, MOI.ConstraintBasisStatus(), ci),
         )
     end
-    for ci in state.constraint_state.base_gt_constrs
+    for ci in cs.base_state.gt_constrs
         push!(
             basis.base_gt_constrs,
             MOI.get(state.gurobi_model, MOI.ConstraintBasisStatus(), ci),
         )
     end
-    for ci in state.constraint_state.base_et_constrs
+    for ci in cs.base_state.et_constrs
         push!(
             basis.base_et_constrs,
             MOI.get(state.gurobi_model, MOI.ConstraintBasisStatus(), ci),
         )
     end
-    for ci in state.constraint_state.branch_lt_constrs
+    for ci in cs.branch_state.lt_general_constrs
         push!(
             basis.branch_lt_constrs,
             MOI.get(state.gurobi_model, MOI.ConstraintBasisStatus(), ci),
         )
     end
-    for ci in state.constraint_state.branch_gt_constrs
+    for ci in cs.branch_state.gt_general_constrs
         push!(
             basis.branch_gt_constrs,
             MOI.get(state.gurobi_model, MOI.ConstraintBasisStatus(), ci),
@@ -206,7 +200,7 @@ end
 
 function _set_basis!(
     model::MOI.AbstractOptimizer,
-    constraint_state::ConstraintState,
+    cs::ConstraintState,
     basis::Basis,
 )::Nothing
     # TODO: Check that basis is, in fact, a basis after modification
@@ -220,27 +214,27 @@ function _set_basis!(
         throw(ArgumentError("You are attempting to set an empty basis."))
     end
     for (i, bs) in enumerate(basis.base_var_constrs)
-        ci = constraint_state.base_var_constrs[i]
+        ci = cs.base_state.var_constrs[i]
         MOI.set(model, MOI.ConstraintBasisStatus(), ci, bs)
     end
     for (i, bs) in enumerate(basis.base_lt_constrs)
-        ci = constraint_state.base_lt_constrs[i]
+        ci = cs.base_state.lt_constrs[i]
         MOI.set(model, MOI.ConstraintBasisStatus(), ci, bs)
     end
     for (i, bs) in enumerate(basis.base_gt_constrs)
-        ci = constraint_state.base_gt_constrs[i]
+        ci = cs.base_state.gt_constrs[i]
         MOI.set(model, MOI.ConstraintBasisStatus(), ci, bs)
     end
     for (i, bs) in enumerate(basis.base_et_constrs)
-        ci = constraint_state.base_et_constrs[i]
+        ci = cs.base_state.et_constrs[i]
         MOI.set(model, MOI.ConstraintBasisStatus(), ci, bs)
     end
     for (i, bs) in enumerate(basis.branch_lt_constrs)
-        ci = constraint_state.branch_lt_constrs[i]
+        ci = cs.branch_state.lt_general_constrs[i]
         MOI.set(model, MOI.ConstraintBasisStatus(), ci, bs)
     end
     for (i, bs) in enumerate(basis.branch_gt_constrs)
-        ci = constraint_state.branch_gt_constrs[i]
+        ci = cs.branch_state.gt_general_constrs[i]
         MOI.set(model, MOI.ConstraintBasisStatus(), ci, bs)
     end
     return nothing

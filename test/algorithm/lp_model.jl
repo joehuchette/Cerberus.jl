@@ -44,8 +44,8 @@ end
     @test MOI.Utilities.get_bounds(model, Float64, _VI(3)) == (0.0, 1.0)
 
     node = Cerberus.Node(
-        Cerberus.BoundDiff(_CVI(3) => 1),
-        Cerberus.BoundDiff(_CVI(1) => 0),
+        [Cerberus.BoundUpdate(_CVI(1), _LT(0.0))],
+        [Cerberus.BoundUpdate(_CVI(3), _GT(1.0))],
         Cerberus.AffineConstraint{_LT}[],
         Cerberus.AffineConstraint{_GT}[],
         2,
@@ -57,7 +57,7 @@ end
     @test MOI.Utilities.get_bounds(model, Float64, _VI(3)) == (1.0, 1.0)
 
     let f = _CSAF([1.2, 3.4], [_CVI(1), _CVI(2)], 5.6), s = _LT(7.8)
-        bd = Cerberus.GeneralBranchingDecision(Cerberus.AffineConstraint(f, s))
+        bd = Cerberus.AffineConstraint(f, s)
         Cerberus.apply_branching!(node, bd)
         @inferred Cerberus.apply_branchings!(state, node)
         @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_LT}()) == 2
@@ -75,7 +75,7 @@ end
     end
 
     let f = _CSAF([2.4, 6.4], [_CVI(3), _CVI(1)], 0.0), s = _GT(3.5)
-        bd = Cerberus.GeneralBranchingDecision(Cerberus.AffineConstraint(f, s))
+        bd = Cerberus.AffineConstraint(f, s)
         Cerberus.apply_branching!(node, bd)
         @inferred Cerberus.apply_branchings!(state, node)
         # NOTE: We are testing here that the _LT general branching constraint
@@ -102,8 +102,8 @@ end
     f_gt = _CSAF([2.4, 6.4], [_CVI(3), _CVI(1)], 0.0)
     s_gt = _GT(3.5)
     node_1 = Cerberus.Node(
-        Cerberus.BoundDiff(_CVI(3) => 1),
-        Cerberus.BoundDiff(_CVI(1) => 0),
+        [Cerberus.BoundUpdate(_CVI(1), _LT(0.0))],
+        [Cerberus.BoundUpdate(_CVI(3), _GT(1.0))],
         [Cerberus.AffineConstraint{_LT}(f_lt, s_lt)],
         [Cerberus.AffineConstraint{_GT}(f_gt, s_gt)],
         4,
@@ -134,8 +134,8 @@ end
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_ET}()) == 1
 
     node_2 = Cerberus.Node(
-        Cerberus.BoundDiff(),
-        Cerberus.BoundDiff(_CVI(1) => 0),
+        [Cerberus.BoundUpdate(_CVI(1), _LT(0.0))],
+        Cerberus.BoundUpdate{_GT}[],
         Cerberus.AffineConstraint{_LT}[],
         [Cerberus.AffineConstraint{_GT}(f_gt, s_gt)],
         2,
@@ -155,6 +155,110 @@ end
         @test s_gt_rt == s_gt
     end
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_ET}()) == 1
+end
+
+@testset "apply_branchings!" begin
+    form = _build_dmip_formulation()
+    state = Cerberus.CurrentState(form, CONFIG)
+    cs = state.constraint_state
+
+    node = Cerberus.Node()
+    Cerberus.populate_base_model!(state, form, node, CONFIG)
+    @inferred Cerberus.apply_branchings!(state, node)
+    @test cs.branch_state.num_lt_branches == 0
+    @test cs.branch_state.num_gt_branches == 0
+    @test isempty(cs.branch_state.lt_general_constrs)
+    @test isempty(cs.branch_state.gt_general_constrs)
+
+    Cerberus.populate_base_model!(state, form, node, CONFIG)
+    @test MOIU.get_bounds(
+        state.gurobi_model,
+        Float64,
+        state.variable_indices[1],
+    ) == (0.5, 1.0)
+    @test MOIU.get_bounds(
+        state.gurobi_model,
+        Float64,
+        state.variable_indices[2],
+    ) == (-1.3, 2.3)
+    @test MOIU.get_bounds(
+        state.gurobi_model,
+        Float64,
+        state.variable_indices[3],
+    ) == (0.0, 1.0)
+
+    Cerberus.apply_branching!(node, Cerberus.BoundUpdate(_CVI(1), _GT(1.0)))
+    Cerberus.apply_branchings!(state, node)
+    @test cs.branch_state.num_lt_branches == 0
+    @test cs.branch_state.num_gt_branches == 1
+    @test isempty(cs.branch_state.lt_general_constrs)
+    @test isempty(cs.branch_state.gt_general_constrs)
+    @test MOIU.get_bounds(
+        state.gurobi_model,
+        Float64,
+        state.variable_indices[1],
+    ) == (1.0, 1.0)
+    @test MOIU.get_bounds(
+        state.gurobi_model,
+        Float64,
+        state.variable_indices[2],
+    ) == (-1.3, 2.3)
+    @test MOIU.get_bounds(
+        state.gurobi_model,
+        Float64,
+        state.variable_indices[3],
+    ) == (0.0, 1.0)
+
+    Cerberus.apply_branching!(node, Cerberus.BoundUpdate(_CVI(3), _LT(0.0)))
+    Cerberus.apply_branchings!(state, node)
+    @test cs.branch_state.num_lt_branches == 1
+    @test cs.branch_state.num_gt_branches == 1
+    @test isempty(cs.branch_state.lt_general_constrs)
+    @test isempty(cs.branch_state.gt_general_constrs)
+    @test MOIU.get_bounds(
+        state.gurobi_model,
+        Float64,
+        state.variable_indices[1],
+    ) == (1.0, 1.0)
+    @test MOIU.get_bounds(
+        state.gurobi_model,
+        Float64,
+        state.variable_indices[2],
+    ) == (-1.3, 2.3)
+    @test MOIU.get_bounds(
+        state.gurobi_model,
+        Float64,
+        state.variable_indices[3],
+    ) == (0.0, 0.0)
+
+    # Now we jump across the tree to a different node at the same depth.
+    # Notably, we do not update the constraint_state. In particular, we still
+    # believe that there has only been two variable branches. Therefore, the
+    # model will still have the same bounds as above, and will NOT correspond
+    # to the bounds in node below.
+    node = Cerberus.Node()
+    Cerberus.apply_branching!(node, Cerberus.BoundUpdate(_CVI(3), _GT(1.0)))
+    Cerberus.apply_branching!(node, Cerberus.BoundUpdate(_CVI(1), _LT(0.0)))
+    Cerberus.apply_branchings!(state, node)
+    @test cs.branch_state.num_lt_branches == 1
+    @test cs.branch_state.num_gt_branches == 1
+    @test isempty(cs.branch_state.lt_general_constrs)
+    @test isempty(cs.branch_state.gt_general_constrs)
+    @test MOIU.get_bounds(
+        state.gurobi_model,
+        Float64,
+        state.variable_indices[1],
+    ) == (1.0, 1.0)
+    @test MOIU.get_bounds(
+        state.gurobi_model,
+        Float64,
+        state.variable_indices[2],
+    ) == (-1.3, 2.3)
+    @test MOIU.get_bounds(
+        state.gurobi_model,
+        Float64,
+        state.variable_indices[3],
+    ) == (0.0, 0.0)
 end
 
 @testset "MOI.optimize!" begin
@@ -213,8 +317,8 @@ function _set_basis_model(basis::Cerberus.Basis)
     form = _build_dmip_formulation()
     state = _CurrentState(form, CONFIG)
     node = Cerberus.Node(
-        Cerberus.BoundDiff(),
-        Cerberus.BoundDiff(),
+        Cerberus.BoundUpdate{_LT}[],
+        Cerberus.BoundUpdate{_GT}[],
         Cerberus.AffineConstraint{_LT}[],
         Cerberus.AffineConstraint{_GT}[],
         0,
