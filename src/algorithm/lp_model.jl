@@ -88,29 +88,31 @@ end
 function _unattached_bounds(cs::ConstraintState, node::Node, ::Type{LT})
     return view(
         node.lt_bounds,
-        (cs.branch_state.num_lt_branches+1):length(node.lt_bounds),
+        Colon()(cs.branch_state.num_lt_branches + 1, length(node.lt_bounds)),
     )
 end
 function _unattached_bounds(cs::ConstraintState, node::Node, ::Type{GT})
     return view(
         node.gt_bounds,
-        (cs.branch_state.num_gt_branches+1):length(node.gt_bounds),
+        Colon()(cs.branch_state.num_gt_branches + 1, length(node.gt_bounds)),
     )
 end
 function _unattached_constraints(cs::ConstraintState, node::Node, ::Type{LT})
     return view(
         node.lt_general_constrs,
-        (length(
-            cs.branch_state.lt_general_constrs,
-        )+1):length(node.lt_general_constrs),
+        Colon()(
+            length(cs.branch_state.lt_general_constrs) + 1,
+            length(node.lt_general_constrs),
+        ),
     )
 end
 function _unattached_constraints(cs::ConstraintState, node::Node, ::Type{GT})
     return view(
         node.gt_general_constrs,
-        (length(
-            cs.branch_state.gt_general_constrs,
-        )+1):length(node.gt_general_constrs),
+        Colon()(
+            length(cs.branch_state.gt_general_constrs) + 1,
+            length(node.gt_general_constrs),
+        ),
     )
 end
 
