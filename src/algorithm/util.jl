@@ -18,3 +18,11 @@ function _optimality_gap(primal::Float64, dual::Float64)
     primal == 0 && return Inf
     return 100 * abs(primal - dual) / abs(primal)
 end
+
+function _is_root_node(node::Cerberus.Node)
+    return isempty(node.lt_bounds) &&
+           isempty(node.gt_bounds) &&
+           isempty(node.lt_general_constrs) &&
+           isempty(node.gt_general_constrs) &&
+           node.depth == 0
+end

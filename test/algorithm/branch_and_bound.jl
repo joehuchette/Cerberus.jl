@@ -49,8 +49,8 @@ end
         state = _CurrentState(fm, CONFIG)
         # A bit hacky, but force infeasibility by branching both up and down.
         node = Cerberus.Node(
-            Cerberus.BoundDiff(_CVI(1) => 1),
-            Cerberus.BoundDiff(_CVI(1) => 0),
+            [Cerberus.BoundUpdate(_CVI(1), _LT(0.0))],
+            [Cerberus.BoundUpdate(_CVI(1), _GT(1.0))],
             Cerberus.AffineConstraint{_LT}[],
             Cerberus.AffineConstraint{_GT}[],
             2,
@@ -94,15 +94,15 @@ end
     node = Cerberus.Node()
     Cerberus.process_node!(state, fm, node, CONFIG)
     fc = Cerberus.Node(
-        Cerberus.BoundDiff(_CVI(1) => 1),
-        Cerberus.BoundDiff(),
+        Cerberus.BoundUpdate{_LT}[],
+        [Cerberus.BoundUpdate(_CVI(1), _GT(1.0))],
         Cerberus.AffineConstraint{_LT}[],
         Cerberus.AffineConstraint{_GT}[],
         2,
     )
     oc = Cerberus.Node(
-        Cerberus.BoundDiff(),
-        Cerberus.BoundDiff(_CVI(1) => 0),
+        [Cerberus.BoundUpdate(_CVI(1), _LT(0.0))],
+        Cerberus.BoundUpdate{_GT}[],
         Cerberus.AffineConstraint{_LT}[],
         Cerberus.AffineConstraint{_GT}[],
         2,
@@ -163,7 +163,7 @@ end
     simplex_iters_per = 18
     depth = 7
     cs = _CurrentState(fm, CONFIG, primal_bound = starting_pb)
-    @test _is_root_node(Cerberus.pop_node!(cs.tree))
+    @test Cerberus._is_root_node(Cerberus.pop_node!(cs.tree))
     node = Cerberus.Node()
 
     @test isempty(cs.warm_starts)
@@ -249,14 +249,14 @@ end
         @inferred Cerberus.update_dual_bound!(cs)
         @test cs.dual_bound == db
         fc = Cerberus.pop_node!(cs.tree)
-        @test fc.lb_diff == Cerberus.BoundDiff(_CVI(3) => 1)
-        @test fc.ub_diff == Cerberus.BoundDiff()
+        @test isempty(fc.lt_bounds)
+        @test fc.gt_bounds == [Cerberus.BoundUpdate(_CVI(3), _GT(1.0))]
         @test fc.dual_bound == db
         @test length(cs.warm_starts) == 1
         @test !haskey(cs.warm_starts, fc)
         oc = Cerberus.pop_node!(cs.tree)
-        @test oc.lb_diff == Cerberus.BoundDiff()
-        @test oc.ub_diff == Cerberus.BoundDiff(_CVI(3) => 0)
+        @test oc.lt_bounds == [Cerberus.BoundUpdate(_CVI(3), _LT(0.0))]
+        @test isempty(oc.gt_bounds)
         @test oc.dual_bound == db
         @test haskey(cs.warm_starts, oc)
         oc_basis = cs.warm_starts[oc]

@@ -26,35 +26,49 @@ mutable struct PollingState
 end
 PollingState() = PollingState(0.0, 0, 0)
 
-"""
+mutable struct BaseConstraintState
+    var_constrs::Vector{CI{SV,IN}}
+    lt_constrs::Vector{CI{SAF,LT}}
+    gt_constrs::Vector{CI{SAF,GT}}
+    et_constrs::Vector{CI{SAF,ET}}
+end
+BaseConstraintState() = BaseConstraintState([], [], [], [])
 
-"""
+function Base.empty!(cs::BaseConstraintState)
+    empty!(cs.var_constrs)
+    empty!(cs.lt_constrs)
+    empty!(cs.gt_constrs)
+    empty!(cs.et_constrs)
+    return nothing
+end
+
+mutable struct BranchConstraintState
+    num_lt_branches::Int
+    num_gt_branches::Int
+    lt_general_constrs::Vector{CI{SAF,LT}}
+    gt_general_constrs::Vector{CI{SAF,GT}}
+end
+BranchConstraintState() = BranchConstraintState(0, 0, [], [])
+
+function Base.empty!(cs::BranchConstraintState)
+    cs.num_lt_branches = 0
+    cs.num_gt_branches = 0
+    empty!(cs.lt_general_constrs)
+    empty!(cs.gt_general_constrs)
+    return nothing
+end
+
 mutable struct ConstraintState
-    base_var_constrs::Vector{CI{SV,IN}}
-    base_lt_constrs::Vector{CI{SAF,LT}}
-    base_gt_constrs::Vector{CI{SAF,GT}}
-    base_et_constrs::Vector{CI{SAF,ET}}
-    branch_lt_constrs::Vector{CI{SAF,LT}}
-    branch_gt_constrs::Vector{CI{SAF,GT}}
+    base_state::BaseConstraintState
+    branch_state::BranchConstraintState
 end
 function ConstraintState()
-    return ConstraintState(
-        Vector{CI{SV,IN}}[],
-        Vector{CI{SAF,LT}}[],
-        Vector{CI{SAF,GT}}[],
-        Vector{CI{SAF,ET}}[],
-        Vector{CI{SAF,LT}}[],
-        Vector{CI{SAF,GT}}[],
-    )
+    return ConstraintState(BaseConstraintState(), BranchConstraintState())
 end
 
 function Base.empty!(cs::ConstraintState)
-    empty!(cs.base_var_constrs)
-    empty!(cs.base_lt_constrs)
-    empty!(cs.base_gt_constrs)
-    empty!(cs.base_et_constrs)
-    empty!(cs.branch_lt_constrs)
-    empty!(cs.branch_gt_constrs)
+    empty!(cs.base_state)
+    empty!(cs.branch_state)
     return nothing
 end
 
