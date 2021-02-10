@@ -163,7 +163,7 @@ end
     simplex_iters_per = 18
     depth = 7
     cs = _CurrentState(fm, CONFIG, primal_bound = starting_pb)
-    @test _is_root_node(Cerberus.pop_node!(cs.tree))
+    @test Cerberus._is_root_node(Cerberus.pop_node!(cs.tree))
     node = Cerberus.Node()
 
     @test isempty(cs.warm_starts)

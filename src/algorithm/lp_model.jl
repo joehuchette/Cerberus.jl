@@ -85,49 +85,66 @@ function populate_base_model!(
     return nothing
 end
 
+function _unattached_bounds(cs::ConstraintState, node::Node, ::Type{LT})
+    return view(
+        node.lt_bounds,
+        (cs.branch_state.num_lt_branches+1):length(node.lt_bounds),
+    )
+end
+function _unattached_bounds(cs::ConstraintState, node::Node, ::Type{GT})
+    return view(
+        node.gt_bounds,
+        (cs.branch_state.num_gt_branches+1):length(node.gt_bounds),
+    )
+end
+function _unattached_constraints(cs::ConstraintState, node::Node, ::Type{LT})
+    return view(
+        node.lt_general_constrs,
+        (length(
+            cs.branch_state.lt_general_constrs,
+        )+1):length(node.lt_general_constrs),
+    )
+end
+function _unattached_constraints(cs::ConstraintState, node::Node, ::Type{GT})
+    return view(
+        node.gt_general_constrs,
+        (length(
+            cs.branch_state.gt_general_constrs,
+        )+1):length(node.gt_general_constrs),
+    )
+end
+
+# We skip any bounds or constraints that are already added to the model. Note
+# that we do this a bit dangerously--we merely count the number of
+# bounds/constraints attached (as recorded in constraint_state). Therefore,
+# this will only work on dives.
 function apply_branchings!(state::CurrentState, node::Node)
     model = state.gurobi_model
     cs = state.constraint_state
-    num_existing_lt_bounds = cs.branch_state.num_lt_branches
-    total_lt_bounds = length(node.lt_bounds)
-    for i in (num_existing_lt_bounds+1):total_lt_bounds
-        lt_bound = node.lt_bounds[i]
-        vi = state.variable_indices[index(lt_bound.cvi)]
-        ci = CI{SV,IN}(vi.value)
+    for lt_bound in _unattached_bounds(cs, node, LT)
+        cvi = lt_bound.cvi
+        vi = state.variable_indices[index(cvi)]
+        ci = cs.base_state.var_constrs[index(cvi)]
         interval = MOI.get(model, MOI.ConstraintSet(), ci)
         new_interval = IN(interval.lower, min(lt_bound.s.upper, interval.upper))
         MOI.set(model, MOI.ConstraintSet(), ci, new_interval)
         cs.branch_state.num_lt_branches += 1
     end
-    num_existing_gt_bounds = cs.branch_state.num_gt_branches
-    total_gt_bounds = length(node.gt_bounds)
-    for i in (num_existing_gt_bounds+1):total_gt_bounds
-        gt_bound = node.gt_bounds[i]
-        vi = state.variable_indices[index(gt_bound.cvi)]
-        ci = CI{SV,IN}(vi.value)
+    for gt_bound in _unattached_bounds(cs, node, GT)
+        cvi = gt_bound.cvi
+        vi = state.variable_indices[index(cvi)]
+        ci = cs.base_state.var_constrs[index(cvi)]
         interval = MOI.get(model, MOI.ConstraintSet(), ci)
         new_interval = IN(max(gt_bound.s.lower, interval.lower), interval.upper)
         MOI.set(model, MOI.ConstraintSet(), ci, new_interval)
         cs.branch_state.num_gt_branches += 1
     end
-    num_existing_lt_general_constrs = length(cs.branch_state.lt_general_constrs)
-    total_lt_general_constrs = length(node.lt_general_constrs)
-    for i in (num_existing_lt_general_constrs+1):total_lt_general_constrs
-        ac = node.lt_general_constrs[i]
-        # Invariant: The constraints are added in order. If we're adding
-        # constraint i attached at this node, and length of branch_lt_constrs
-        #  is no less than i, then we've already added it, so can skip.
+    for ac in _unattached_constraints(cs, node, LT)
         # Invariant: constraint was normalized via MOIU.normalize_constant.
         ci = MOI.add_constraint(model, instantiate(ac.f, state), ac.s)
         push!(cs.branch_state.lt_general_constrs, ci)
     end
-    num_existing_gt_general_constrs = length(cs.branch_state.gt_general_constrs)
-    total_gt_general_constrs = length(node.gt_general_constrs)
-    for i in (num_existing_gt_general_constrs+1):total_gt_general_constrs
-        ac = node.gt_general_constrs[i]
-        # Invariant: The constraints are added in order. If we're adding
-        # constraint i attached at this node, and length of branch_lt_constrs
-        #  is no less than i, then we've already added it, so can skip.
+    for ac in _unattached_constraints(cs, node, GT)
         # Invariant: constraint was normalized via MOIU.normalize_constant.
         ci = MOI.add_constraint(model, instantiate(ac.f, state), ac.s)
         push!(cs.branch_state.gt_general_constrs, ci)

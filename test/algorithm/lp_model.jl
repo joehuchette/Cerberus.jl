@@ -164,6 +164,11 @@ end
 
     node = Cerberus.Node()
     Cerberus.populate_base_model!(state, form, node, CONFIG)
+    @test isempty(Cerberus._unattached_bounds(cs, node, _LT))
+    @test isempty(Cerberus._unattached_bounds(cs, node, _GT))
+    @test isempty(Cerberus._unattached_constraints(cs, node, _LT))
+    @test isempty(Cerberus._unattached_constraints(cs, node, _GT))
+
     @inferred Cerberus.apply_branchings!(state, node)
     @test cs.branch_state.num_lt_branches == 0
     @test cs.branch_state.num_gt_branches == 0
@@ -187,7 +192,13 @@ end
         state.variable_indices[3],
     ) == (0.0, 1.0)
 
-    Cerberus.apply_branching!(node, Cerberus.BoundUpdate(_CVI(1), _GT(1.0)))
+    bd_1 = Cerberus.BoundUpdate(_CVI(1), _GT(1.0))
+    Cerberus.apply_branching!(node, bd_1)
+    @test isempty(Cerberus._unattached_bounds(cs, node, _LT))
+    @test Cerberus._unattached_bounds(cs, node, _GT) == [bd_1]
+    @test isempty(Cerberus._unattached_constraints(cs, node, _LT))
+    @test isempty(Cerberus._unattached_constraints(cs, node, _GT))
+
     Cerberus.apply_branchings!(state, node)
     @test cs.branch_state.num_lt_branches == 0
     @test cs.branch_state.num_gt_branches == 1
@@ -208,8 +219,18 @@ end
         Float64,
         state.variable_indices[3],
     ) == (0.0, 1.0)
+    @test isempty(Cerberus._unattached_bounds(cs, node, _LT))
+    @test isempty(Cerberus._unattached_bounds(cs, node, _GT))
+    @test isempty(Cerberus._unattached_constraints(cs, node, _LT))
+    @test isempty(Cerberus._unattached_constraints(cs, node, _GT))
 
-    Cerberus.apply_branching!(node, Cerberus.BoundUpdate(_CVI(3), _LT(0.0)))
+    bd_2 = Cerberus.BoundUpdate(_CVI(3), _LT(0.0))
+    Cerberus.apply_branching!(node, bd_2)
+    @test Cerberus._unattached_bounds(cs, node, _LT) == [bd_2]
+    @test isempty(Cerberus._unattached_bounds(cs, node, _GT))
+    @test isempty(Cerberus._unattached_constraints(cs, node, _LT))
+    @test isempty(Cerberus._unattached_constraints(cs, node, _GT))
+
     Cerberus.apply_branchings!(state, node)
     @test cs.branch_state.num_lt_branches == 1
     @test cs.branch_state.num_gt_branches == 1
@@ -230,6 +251,10 @@ end
         Float64,
         state.variable_indices[3],
     ) == (0.0, 0.0)
+    @test isempty(Cerberus._unattached_bounds(cs, node, _LT))
+    @test isempty(Cerberus._unattached_bounds(cs, node, _GT))
+    @test isempty(Cerberus._unattached_constraints(cs, node, _LT))
+    @test isempty(Cerberus._unattached_constraints(cs, node, _GT))
 
     # Now we jump across the tree to a different node at the same depth.
     # Notably, we do not update the constraint_state. In particular, we still
@@ -239,6 +264,11 @@ end
     node = Cerberus.Node()
     Cerberus.apply_branching!(node, Cerberus.BoundUpdate(_CVI(3), _GT(1.0)))
     Cerberus.apply_branching!(node, Cerberus.BoundUpdate(_CVI(1), _LT(0.0)))
+    @test isempty(Cerberus._unattached_bounds(cs, node, _LT))
+    @test isempty(Cerberus._unattached_bounds(cs, node, _GT))
+    @test isempty(Cerberus._unattached_constraints(cs, node, _LT))
+    @test isempty(Cerberus._unattached_constraints(cs, node, _GT))
+
     Cerberus.apply_branchings!(state, node)
     @test cs.branch_state.num_lt_branches == 1
     @test cs.branch_state.num_gt_branches == 1
@@ -259,6 +289,30 @@ end
         Float64,
         state.variable_indices[3],
     ) == (0.0, 0.0)
+    @test isempty(Cerberus._unattached_bounds(cs, node, _LT))
+    @test isempty(Cerberus._unattached_bounds(cs, node, _GT))
+    @test isempty(Cerberus._unattached_constraints(cs, node, _LT))
+    @test isempty(Cerberus._unattached_constraints(cs, node, _GT))
+
+    lt_gen_1 = Cerberus.AffineConstraint(2.3 * _SV(_VI(1)), _LT(2.3))
+    lt_gen_2 = Cerberus.AffineConstraint(2.5 * _SV(_VI(3)), _LT(2.5))
+    gt_gen = Cerberus.AffineConstraint(2.4 * _SV(_VI(2)), _GT(2.4))
+    Cerberus.apply_branching!(node, lt_gen_1)
+    Cerberus.apply_branching!(node, lt_gen_2)
+    Cerberus.apply_branching!(node, gt_gen)
+    @test isempty(Cerberus._unattached_bounds(cs, node, _LT))
+    @test isempty(Cerberus._unattached_bounds(cs, node, _GT))
+    @test Cerberus._unattached_constraints(cs, node, _LT) ==
+          [lt_gen_1, lt_gen_2]
+    @test Cerberus._unattached_constraints(cs, node, _GT) == [gt_gen]
+
+    Cerberus.apply_branchings!(state, node)
+    @test cs.branch_state.num_lt_branches == 1
+    @test cs.branch_state.num_gt_branches == 1
+    @test length(cs.branch_state.lt_general_constrs) == 2
+    @test length(cs.branch_state.gt_general_constrs) == 1
+    @test MOI.get(state.gurobi_model, MOI.NumberOfConstraints{_SAF,_LT}()) == 3
+    @test MOI.get(state.gurobi_model, MOI.NumberOfConstraints{_SAF,_GT}()) == 1
 end
 
 @testset "MOI.optimize!" begin

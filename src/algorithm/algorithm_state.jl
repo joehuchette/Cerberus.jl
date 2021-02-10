@@ -32,6 +32,7 @@ mutable struct BaseConstraintState
     gt_constrs::Vector{CI{SAF,GT}}
     et_constrs::Vector{CI{SAF,ET}}
 end
+BaseConstraintState() = BaseConstraintState([], [], [], [])
 
 function Base.empty!(cs::BaseConstraintState)
     empty!(cs.var_constrs)
@@ -47,6 +48,7 @@ mutable struct BranchConstraintState
     lt_general_constrs::Vector{CI{SAF,LT}}
     gt_general_constrs::Vector{CI{SAF,GT}}
 end
+BranchConstraintState() = BranchConstraintState(0, 0, [], [])
 
 function Base.empty!(cs::BranchConstraintState)
     cs.num_lt_branches = 0
@@ -61,15 +63,7 @@ mutable struct ConstraintState
     branch_state::BranchConstraintState
 end
 function ConstraintState()
-    return ConstraintState(
-        BaseConstraintState(
-            Vector{CI{SV,IN}}[],
-            Vector{CI{SAF,LT}}[],
-            Vector{CI{SAF,GT}}[],
-            Vector{CI{SAF,ET}}[],
-        ),
-        BranchConstraintState(0, 0, Vector{CI{SAF,LT}}[], Vector{CI{SAF,GT}}[]),
-    )
+    return ConstraintState(BaseConstraintState(), BranchConstraintState())
 end
 
 function Base.empty!(cs::ConstraintState)

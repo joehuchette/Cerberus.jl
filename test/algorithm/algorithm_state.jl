@@ -34,9 +34,9 @@ end
     @test length(cs2.tree) == 1
     @test length(cs3.tree) == 1
 
-    @test _is_root_node(Cerberus.pop_node!(cs1.tree))
-    @test _is_root_node(Cerberus.pop_node!(cs2.tree))
-    @test _is_root_node(Cerberus.pop_node!(cs3.tree))
+    @test Cerberus._is_root_node(Cerberus.pop_node!(cs1.tree))
+    @test Cerberus._is_root_node(Cerberus.pop_node!(cs2.tree))
+    @test Cerberus._is_root_node(Cerberus.pop_node!(cs3.tree))
 
     @test cs1.primal_bound == Inf
     @test cs2.primal_bound == pb_float
