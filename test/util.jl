@@ -107,3 +107,102 @@ end
 function _is_equal(u::_SAF, v::_SAF)
     return _is_equal(convert(Cerberus.CSAF, u), convert(Cerberus.CSAF, v))
 end
+
+function _build_formulation_with_single_disjunction()
+    # min  y + 1.2
+    # s.t. (-2 <= x <= -1 & y = -x - 1) or
+    #          (-1 <= x <= +1 & y = 0) or
+    #          (+1 <= x <= +2 & y = x - 1)
+    #      x + y >= -0.5
+    #      x in [-1.5, 3.0]
+    #      y in [0.0, 0.5]
+    form = Cerberus.DMIPFormulation(
+        Cerberus.Polyhedron(
+            [
+                Cerberus.AffineConstraint(
+                    _CSAF([1.0, 1.0], [_CVI(1), _CVI(2)], 0.0),
+                    _GT(-0.5),
+                ),
+            ],
+            [_IN(-1.5, 3.0), _IN(0.0, 0.5)],
+        ),
+        [nothing, nothing],
+        _CSAF([1.0], [_CVI(2)], 1.2),
+    )
+    disjunction = Cerberus.Disjunction(
+        [
+            _CSAF([1.0], [_CVI(1)], 0.0),
+            _CSAF([1.0, 1.0], [_CVI(1), _CVI(2)], 0.0),
+            _CSAF([1.0], [_CVI(2)], 0.0),
+            _CSAF([-1.0, 1.0], [_CVI(1), _CVI(2)], 0.0),
+        ],
+        DisjunctiveConstraints.DisjunctiveSet(
+            [
+                -2.0 -1.0 +1.0
+                -1.0 -Inf -Inf
+                -Inf 0.0 -Inf
+                -Inf -Inf -1.0
+            ],
+            [
+                -1.0 +1.0 +2.0
+                -1.0 Inf Inf
+                Inf 0.0 Inf
+                Inf Inf -1.0
+            ],
+        ),
+    )
+    formulater = Cerberus.NaiveBigMFormulater(
+        disjunction,
+        DisjunctiveConstraints.IntervalArithmetic(),
+    )
+    Cerberus.attach_formulater!(form, formulater)
+    return form
+end
+
+function _test_roundtrip_model(
+    model::MOI.ModelLike,
+    expected_bounds::Vector{Tuple{Float64,Float64}},
+    expected_lt_acs::Vector{Tuple{_SAF,_LT}},
+    expected_gt_acs::Vector{Tuple{_SAF,_GT}},
+    expected_et_acs::Vector{Tuple{_SAF,_ET}},
+)
+    n = length(expected_bounds)
+    @test MOI.get(model, MOI.NumberOfVariables()) == n
+    for i in 1:n
+        @test MOIU.get_bounds(model, Float64, _VI(i)) == expected_bounds[i]
+    end
+
+    @test Set(MOI.get(model, MOI.ListOfConstraints())) ==
+          Set([(_SAF, _ET), (_SAF, _GT), (_SAF, _LT), (_SV, _IN)])
+
+    lt_constr_cis = MOI.get(model, MOI.ListOfConstraintIndices{_SAF,_LT}())
+    @test length(lt_constr_cis) == length(expected_lt_acs)
+    for (i, ci) in enumerate(lt_constr_cis)
+        f_actual = MOI.get(model, MOI.ConstraintFunction(), ci)
+        s_actual = MOI.get(model, MOI.ConstraintSet(), ci)
+        f_expected, s_expected = expected_lt_acs[i]
+        @test _is_equal(f_actual, f_expected)
+        @test s_actual == s_expected
+    end
+
+    gt_constr_cis = MOI.get(model, MOI.ListOfConstraintIndices{_SAF,_GT}())
+    @test length(gt_constr_cis) == length(expected_gt_acs)
+    for (i, ci) in enumerate(gt_constr_cis)
+        f_actual = MOI.get(model, MOI.ConstraintFunction(), ci)
+        s_actual = MOI.get(model, MOI.ConstraintSet(), ci)
+        f_expected, s_expected = expected_gt_acs[i]
+        @test _is_equal(f_actual, f_expected)
+        @test s_actual == s_expected
+    end
+
+    et_constr_cis = MOI.get(model, MOI.ListOfConstraintIndices{_SAF,_ET}())
+    @test length(et_constr_cis) == length(expected_et_acs)
+    for (i, ci) in
+        enumerate(MOI.get(model, MOI.ListOfConstraintIndices{_SAF,_ET}()))
+        f_actual = MOI.get(model, MOI.ConstraintFunction(), ci)
+        s_actual = MOI.get(model, MOI.ConstraintSet(), ci)
+        f_expected, s_expected = expected_et_acs[i]
+        @test _is_equal(f_actual, f_expected)
+        @test s_actual == s_expected
+    end
+end

@@ -1,7 +1,3 @@
-function _is_root_node(node::Cerberus.Node)
-    return isempty(node.lb_diff) && isempty(node.ub_diff)
-end
-
 function _NodeResult(
     cost::Real,
     simplex_iters::Real,

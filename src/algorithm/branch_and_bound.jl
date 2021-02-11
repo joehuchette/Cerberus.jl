@@ -55,6 +55,7 @@ function process_node!(
     populate_base_model!(state, form, node, config)
     # Update bounds on binary variables at the current node
     apply_branchings!(state, node)
+    formulate_disjunctions!(state, form, node, config)
     set_basis_if_available!(state, node)
 
     # 2. Solve model
@@ -133,7 +134,7 @@ function update_state!(
     elseif node_result.cost == -Inf
         # 3. LP is unbounded.
         #  Implies MIP is infeasible or unbounded. Should only happen at root.
-        @assert isempty(node.lb_diff) && isempty(node.ub_diff)
+        @assert _is_root_node(node)
         state.primal_bound = node_result.cost
     elseif node_result.int_infeas == 0
         # 4. Prune by integrality

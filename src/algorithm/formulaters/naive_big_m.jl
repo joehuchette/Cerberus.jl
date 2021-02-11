@@ -24,21 +24,31 @@ end
 # NOTE: This will ignore any general constraints in `node`.
 function compute_disjunction_activity(
     form::DMIPFormulation,
-    z_vis::Vector{Int},
+    z_vis::Vector{CVI},
     node::Node,
     ϵ_int::Float64,
 )
+    lbs = Dict{CVI,Float64}()
+    ubs = Dict{CVI,Float64}()
+    for cvi in z_vis
+        @assert !haskey(lbs, cvi)
+        @assert !haskey(ubs, cvi)
+        l, u = get_bounds(form, cvi)
+        lbs[cvi] = l
+        ubs[cvi] = u
+    end
+    for lt_bound in node.lt_bounds
+        ubs[lt_bound.cvi] = min(ubs[lt_bound.cvi], lt_bound.s.upper)
+    end
+    for gt_bound in node.gt_bounds
+        lbs[gt_bound.cvi] = max(lbs[gt_bound.cvi], gt_bound.s.lower)
+    end
+
     proven_active = Bool[]
     not_inactive = Bool[]
-    for idx in z_vis
-        cvi = CVI(idx)
-        l, u = get_bounds(form, cvi)
-        if haskey(node.lb_diff, cvi)
-            l = max(l, node.lb_diff[cvi])
-        end
-        if haskey(node.ub_diff, cvi)
-            u = min(u, node.ub_diff[cvi])
-        end
+    for cvi in z_vis
+        l = lbs[cvi]
+        u = ubs[cvi]
         # Approximate version of: l == 1 == u
         push!(proven_active, (abs(l - 1) ≤ ϵ_int) & (abs(u - 1) ≤ ϵ_int))
         # Approximate version of: l <= 1 <= u
@@ -57,25 +67,24 @@ function formulate!(
     config::AlgorithmConfig,
 )
     cvis = form.disjunction_formulaters[formulater]
-    z_vis = instantiate.(cvis, state)
-    # TODO: If proven_active is all falses, can bail out as infeasible. If
+    # TODO: If proven_active contains more than one true, can bail out as infeasible. If
     # there is exactly one true, no need to write a disjunctive formulation.
     # The tricky thing in that second case is that we need to cache that info
     # somehow in the Basis, so that when/if we backtrack we can figure out
     # which constraints to use.
     proven_active, not_inactive =
-        compute_disjunction_activity(form, z_vis, node, config.int_tol)
-    _f = instantiate.(formulater.disjunction.f, state)
-    f = MOI.vectorize(_f)
-    masked_lbs = formulater.disjunctions.s.lbs[:, not_inactive]
-    masked_ubs = formulater.disjunctions.s.ubs[:, not_inactive]
+        compute_disjunction_activity(form, cvis, node, config.int_tol)
+    _f = [instantiate(v, state) for v in formulater.disjunction.f]
+    f = MOIU.vectorize(_f)
+    masked_lbs = formulater.disjunction.s.lbs[:, not_inactive]
+    masked_ubs = formulater.disjunction.s.ubs[:, not_inactive]
     s = DisjunctiveConstraints.DisjunctiveSet(masked_lbs, masked_ubs)
 
     disj_state = DisjunctiveConstraints.formulate!(
         state.gurobi_model,
         DisjunctiveConstraints.NaiveBigM(formulater.activity_method),
         DisjunctiveConstraints.Disjunction(f, s),
-        z_vis,
+        [instantiate(cvi, state) for cvi in cvis[not_inactive]],
     )
     state.disjunction_state[formulater] = disj_state
     return nothing

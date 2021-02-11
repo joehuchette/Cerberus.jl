@@ -210,7 +210,8 @@ end
     @test Cerberus.num_variables(form) == 3 + 6
     @test length(form.disjunction_formulaters) == 1
     @test haskey(form.disjunction_formulaters, formulater)
-    @test form.disjunction_formulaters[formulater] == collect(4:(3+6))
+    @test form.disjunction_formulaters[formulater] ==
+          [_CVI(i) for i in (3+1):(3+6)]
 
     @test_throws ArgumentError Cerberus.attach_formulater!(form, formulater)
 end

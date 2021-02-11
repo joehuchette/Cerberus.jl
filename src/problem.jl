@@ -178,7 +178,7 @@ abstract type AbstractFormulater end
 
 mutable struct DMIPFormulation
     _feasible_region::Polyhedron
-    disjunction_formulaters::Dict{AbstractFormulater,Vector{Int}}
+    disjunction_formulaters::Dict{AbstractFormulater,Vector{CVI}}
     _variable_kind::Vector{_V_INT_SETS}
     obj::CSAF
 
@@ -271,7 +271,7 @@ function attach_formulater!(
     for var_kind in new_variables_to_attach(formulater)
         add_variable(form, var_kind)
     end
-    raw_indices = collect(start_index:num_variables(form))
-    form.disjunction_formulaters[formulater] = raw_indices
+    cvis = [CVI(i) for i in start_index:num_variables(form)]
+    form.disjunction_formulaters[formulater] = cvis
     return nothing
 end

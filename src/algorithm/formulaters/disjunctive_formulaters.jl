@@ -6,6 +6,8 @@ end
 
 abstract type AbstractBigMFormulater <: AbstractFormulater end
 
+abstract type AbstractFormulaterState end
+
 """
     new_variables_to_attach(formulater::AbstractFormulater)::Vector{Int}
 
