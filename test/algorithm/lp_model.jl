@@ -376,7 +376,11 @@ end
 end
 
 @testset "formulate_disjunctions!" begin
-    form = _build_formulation_with_single_disjunction()
+    form = _build_formulation_with_single_disjunction(
+        DisjunctiveConstraints.NaiveBigM(
+            DisjunctiveConstraints.IntervalArithmetic(),
+        ),
+    )
     let node = Cerberus.Node()
         state = Cerberus.CurrentState(form)
         Cerberus.populate_base_model!(state, form, node, CONFIG)

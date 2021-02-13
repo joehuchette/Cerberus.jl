@@ -92,7 +92,7 @@ mutable struct CurrentState
     total_warm_starts::Int
     _variable_indices::Vector{VI}
     constraint_state::ConstraintState
-    disjunction_state::Dict{AbstractFormulater,Any}
+    disjunction_state::Dict{DisjunctiveFormulater,Any}
     polling_state::PollingState
 
     function CurrentState(form::DMIPFormulation; primal_bound::Real = Inf)

@@ -188,15 +188,25 @@ end
     @test [Cerberus.get_variable_kind(fm, _CVI(i)) for i in 1:3] == [nothing, _ZO(), _GI()]
 end
 
-struct DummyFormulater <: Cerberus.AbstractFormulater end
-function Cerberus.new_variables_to_attach(::DummyFormulater)
+struct DummyMethod <: DisjunctiveConstraints.AbstractDisjunctiveFormulation end
+function Cerberus.new_variables_to_attach(
+    ::Cerberus.DisjunctiveFormulater{DummyMethod},
+)
     return [_ZO(), _GI(), nothing, nothing, nothing, nothing]
 end
 
 @testset "isempty(::DMIPFormulation)" begin
     form = Cerberus.DMIPFormulation()
     @test isempty(form)
-    Cerberus.attach_formulater!(form, DummyFormulater())
+    disjunction = Cerberus.Disjunction(
+        _CSAF[],
+        DisjunctiveConstraints.DisjunctiveSet(
+            Matrix{Float64}(undef, 0, 0),
+            Matrix{Float64}(undef, 0, 0),
+        ),
+    )
+    formulater = Cerberus.DisjunctiveFormulater(disjunction, DummyMethod())
+    Cerberus.attach_formulater!(form, formulater)
     @test !isempty(form)
     form = _build_dmip_formulation()
     @test !isempty(form)
@@ -205,7 +215,14 @@ end
 @testset "attach_formulater!" begin
     form = _build_dmip_formulation()
     @assert Cerberus.num_variables(form) == 3
-    formulater = DummyFormulater()
+    disjunction = Cerberus.Disjunction(
+        _CSAF[],
+        DisjunctiveConstraints.DisjunctiveSet(
+            Matrix{Float64}(undef, 0, 0),
+            Matrix{Float64}(undef, 0, 0),
+        ),
+    )
+    formulater = Cerberus.DisjunctiveFormulater(disjunction, DummyMethod())
     @inferred Cerberus.attach_formulater!(form, formulater)
     @test Cerberus.num_variables(form) == 3 + 6
     @test length(form.disjunction_formulaters) == 1

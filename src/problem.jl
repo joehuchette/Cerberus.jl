@@ -169,16 +169,25 @@ Returns `true` if the ambient dimension is 0 and there are no constraints,
 and false otherwise.
 """
 function Base.isempty(p::Polyhedron)
-    return ambient_dim(p) == 0 &&
-           num_constraints(p) == 0 &&
-           Base.isempty(p.bounds)
+    return ambient_dim(p) == 0 && num_constraints(p) == 0 && isempty(p.bounds)
 end
 
-abstract type AbstractFormulater end
+const DisjunctiveSet = DisjunctiveConstraints.DisjunctiveSet
+struct Disjunction
+    f::Vector{CSAF}
+    s::DisjunctiveSet
+end
+
+struct DisjunctiveFormulater{
+    T<:DisjunctiveConstraints.AbstractDisjunctiveFormulation,
+}
+    disjunction::Disjunction
+    method::T
+end
 
 mutable struct DMIPFormulation
     _feasible_region::Polyhedron
-    disjunction_formulaters::Dict{AbstractFormulater,Vector{CVI}}
+    disjunction_formulaters::Dict{DisjunctiveFormulater,Vector{CVI}}
     _variable_kind::Vector{_V_INT_SETS}
     obj::CSAF
 
@@ -262,7 +271,7 @@ end
 
 function attach_formulater!(
     form::DMIPFormulation,
-    formulater::AbstractFormulater,
+    formulater::DisjunctiveFormulater,
 )
     if haskey(form.disjunction_formulaters, formulater)
         throw(ArgumentError("Formulater cannot be attached twice to a model."))
