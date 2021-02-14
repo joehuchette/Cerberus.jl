@@ -61,28 +61,42 @@ end
     end
     @testset "compute_disjunction_activity" begin
         let node = Cerberus.Node()
-            pa, ni = Cerberus.compute_disjunction_activity(
+            activity = Cerberus.compute_disjunction_activity(
                 form,
                 formulater,
                 node,
                 CONFIG,
             )
-            @test pa == [false, false, false]
-            @test ni == [true, true, true]
+            activity == [true, true, true]
         end
         let node = Cerberus.Node(
                 [Cerberus.BoundUpdate(_CVI(5), _LT(0.0))],
                 [Cerberus.BoundUpdate(_CVI(3), _GT(1.0))],
                 2,
             )
-            pa, ni = Cerberus.compute_disjunction_activity(
+            activity = Cerberus.compute_disjunction_activity(
                 form,
                 formulater,
                 node,
                 CONFIG,
             )
-            @test pa == [true, false, false]
-            @test ni == [true, true, false]
+            @test activity == [true, false, false]
+        end
+        let node = Cerberus.Node(
+                Cerberus.BoundUpdate{_LT}[],
+                [
+                    Cerberus.BoundUpdate(_CVI(3), _GT(1.0)),
+                    Cerberus.BoundUpdate(_CVI(4), _GT(1.0)),
+                ],
+                2,
+            )
+            activity = Cerberus.compute_disjunction_activity(
+                form,
+                formulater,
+                node,
+                CONFIG,
+            )
+            @test activity == [false, false, false]
         end
     end
 end

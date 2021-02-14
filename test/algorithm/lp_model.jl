@@ -433,7 +433,7 @@ end
 
         expected_bounds =
             [(-1.5, 3.0), (0.0, 0.5), (0.0, 0.0), (0.0, 1.0), (0.0, 1.0)]
-        expected_et_acs = [(1.0 * x[4] + 1.0 * x[5], _ET(1.0))]
+        expected_et_acs = [(1.0 * x[3] + 1.0 * x[4] + 1.0 * x[5], _ET(1.0))]
         expected_gt_acs = [
             (1.0 * x[1] + 1.0 * x[2], _GT(-0.5)),
             (1.0 * x[1] + 0.5 * x[4], _GT(-1.0)),
@@ -447,7 +447,6 @@ end
             (1.0 * x[2] - 0.5 * x[4], _LT(0.0)),
             (-1.0 * x[1] + 1.0 * x[2] - 3.0 * x[5], _LT(-1.0)),
         ]
-
         _test_roundtrip_model(
             state.gurobi_model,
             expected_bounds,

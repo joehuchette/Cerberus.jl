@@ -15,6 +15,8 @@ function compute_disjunction_activity(
     config::AlgorithmConfig,
 )
     cvis = form.disjunction_formulaters[formulater]
+    @assert length(cvis) ==
+            DisjunctiveConstraints.num_alternatives(formulater.disjunction.s)
     lbs = Dict{CVI,Float64}()
     ubs = Dict{CVI,Float64}()
     for cvi in cvis
@@ -37,16 +39,28 @@ function compute_disjunction_activity(
         end
     end
 
-    proven_active = Bool[]
-    not_inactive = Bool[]
+    activity = Bool[]
+    proven_active = Int[]
     ϵ_int = config.int_tol
-    for cvi in cvis
+    for (i, cvi) in enumerate(cvis)
         l = lbs[cvi]
         u = ubs[cvi]
         # Approximate version of: l == 1 == u
-        push!(proven_active, (abs(l - 1) ≤ ϵ_int) & (abs(u - 1) ≤ ϵ_int))
+        if (abs(l - 1) ≤ ϵ_int) && (abs(u - 1) ≤ ϵ_int)
+            push!(proven_active, i)
+        end
         # Approximate version of: l <= 1 <= u
-        push!(not_inactive, (l ≤ 1 + ϵ_int) & (1 <= u + ϵ_int))
+        push!(activity, (l ≤ 1 + ϵ_int) & (1 <= u + ϵ_int))
     end
-    return proven_active, not_inactive
+    if length(proven_active) == 1
+        # We have proven one alternative must be active; therefore, we can
+        # infer that all others must be inactive.
+        fill!(activity, false)
+        activity[proven_active[1]] = true
+    elseif length(proven_active) > 1
+        # We have proven that two alternatives must be active. This is not
+        # possible; therefore, the problem must be infeasible.
+        fill!(activity, false)
+    end
+    return activity
 end
