@@ -25,10 +25,16 @@ function compute_disjunction_activity(
         ubs[cvi] = u
     end
     for lt_bound in node.lt_bounds
-        ubs[lt_bound.cvi] = min(ubs[lt_bound.cvi], lt_bound.s.upper)
+        cvi = lt_bound.cvi
+        if haskey(ubs, cvi)
+            ubs[cvi] = min(ubs[cvi], lt_bound.s.upper)
+        end
     end
     for gt_bound in node.gt_bounds
-        lbs[gt_bound.cvi] = max(lbs[gt_bound.cvi], gt_bound.s.lower)
+        cvi = gt_bound.cvi
+        if haskey(lbs, cvi)
+            lbs[cvi] = max(lbs[cvi], gt_bound.s.lower)
+        end
     end
 
     proven_active = Bool[]

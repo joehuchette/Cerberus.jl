@@ -92,3 +92,40 @@ end
     @test isempty(dest.branch_lt_constrs)
     @test dest.branch_gt_constrs == [MOI.NONBASIC_AT_UPPER]
 end
+
+@testset "reset_formulation_state!" begin
+    form = _build_formulation_with_single_disjunction()
+    state = Cerberus.CurrentState(form)
+    node = Cerberus.Node(
+        [Cerberus.BoundUpdate(_CVI(5), _LT(0.0))],
+        [Cerberus.BoundUpdate(_CVI(3), _GT(1.0))],
+        [Cerberus.AffineConstraint(_CSAF([2.3], [_CVI(2)], 0.0), _LT(2.3))],
+        [Cerberus.AffineConstraint(_CSAF([2.3], [_CVI(2)], 0.0), _GT(2.3))],
+        4,
+    )
+    Cerberus.populate_base_model!(state, form, node, CONFIG)
+    Cerberus.apply_branchings!(state, node)
+    Cerberus.formulate_disjunctions!(state, form, node, CONFIG)
+    @test length(state._variable_indices) == 5
+    @test length(state.constraint_state.base_state.var_constrs) == 5
+    @test isempty(state.constraint_state.base_state.lt_constrs)
+    @test length(state.constraint_state.base_state.gt_constrs) == 1
+    @test isempty(state.constraint_state.base_state.et_constrs)
+    @test state.constraint_state.branch_state.num_lt_branches == 1
+    @test state.constraint_state.branch_state.num_gt_branches == 1
+    @test length(state.constraint_state.branch_state.lt_general_constrs) == 1
+    @test length(state.constraint_state.branch_state.lt_general_constrs) == 1
+    @test length(state.disjunction_state) == 1
+
+    Cerberus.reset_formulation_state!(state)
+    @test isempty(state._variable_indices)
+    @test isempty(state.constraint_state.base_state.var_constrs)
+    @test isempty(state.constraint_state.base_state.lt_constrs)
+    @test isempty(state.constraint_state.base_state.gt_constrs)
+    @test isempty(state.constraint_state.base_state.et_constrs)
+    @test state.constraint_state.branch_state.num_lt_branches == 0
+    @test state.constraint_state.branch_state.num_gt_branches == 0
+    @test isempty(state.constraint_state.branch_state.lt_general_constrs)
+    @test isempty(state.constraint_state.branch_state.lt_general_constrs)
+    @test isempty(state.disjunction_state)
+end

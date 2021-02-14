@@ -97,7 +97,6 @@ function populate_base_model!(
     return nothing
 end
 
-# TODO: Unit test
 function formulate_disjunctions!(
     state::CurrentState,
     form::DMIPFormulation,

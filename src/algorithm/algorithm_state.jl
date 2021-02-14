@@ -122,17 +122,9 @@ mutable struct CurrentState
     end
 end
 
-# TODO: Unit test
 function reset_formulation_state!(state::CurrentState)
     empty!(state._variable_indices)
-    empty!(state.constraint_state.base_state.var_constrs)
-    empty!(state.constraint_state.base_state.lt_constrs)
-    empty!(state.constraint_state.base_state.gt_constrs)
-    empty!(state.constraint_state.base_state.et_constrs)
-    state.constraint_state.branch_state.num_lt_branches = 0
-    state.constraint_state.branch_state.num_gt_branches = 0
-    empty!(state.constraint_state.branch_state.lt_general_constrs)
-    empty!(state.constraint_state.branch_state.gt_general_constrs)
+    empty!(state.constraint_state)
     empty!(state.disjunction_state)
     return nothing
 end

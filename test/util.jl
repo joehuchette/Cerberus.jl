@@ -109,7 +109,9 @@ function _is_equal(u::_SAF, v::_SAF)
 end
 
 function _build_formulation_with_single_disjunction(
-    method::DisjunctiveConstraints.AbstractDisjunctiveFormulation,
+    method::DisjunctiveConstraints.AbstractDisjunctiveFormulation = DisjunctiveConstraints.NaiveBigM(
+        DisjunctiveConstraints.IntervalArithmetic(),
+    ),
 )
     # min  y + 1.2
     # s.t. (-2 <= x <= -1 & y = -x - 1) or
