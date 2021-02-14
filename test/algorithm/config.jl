@@ -10,8 +10,8 @@
         @test config.warm_start_strategy == Cerberus.DEFAULT_WARM_START_STRATEGY
         @test config.model_reuse_strategy ==
               Cerberus.DEFAULT_MODEL_REUSE_STRATEGY
-        @test config.disjunction_strategy ==
-              Cerberus.DEFAULT_DISJUNCTION_STRATEGY
+        @test config.formulation_tightening_strategy ==
+              Cerberus.DEFAULT_FORMULATION_TIGHTENING_STRATEGY
     end
 
     let lp = identity,
@@ -23,7 +23,7 @@
         it = 1e-6,
         ws = Cerberus.NO_WARM_STARTS,
         mr = Cerberus.NO_MODEL_REUSE,
-        ds = Cerberus.STATIC_FORMULATION,
+        ts = Cerberus.STATIC_FORMULATION,
 
         config = Cerberus.AlgorithmConfig(
             lp_solver_factory = lp,
@@ -35,7 +35,7 @@
             int_tol = it,
             warm_start_strategy = ws,
             model_reuse_strategy = mr,
-            disjunction_strategy = ds,
+            formulation_tightening_strategy = ts,
         )
 
         @test config.lp_solver_factory == lp
@@ -47,6 +47,6 @@
         @test config.int_tol == it
         @test config.warm_start_strategy == ws
         @test config.model_reuse_strategy == mr
-        @test config.disjunction_strategy == ds
+        @test config.formulation_tightening_strategy == ts
     end
 end

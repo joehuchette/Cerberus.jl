@@ -21,13 +21,6 @@ function reset_base_formulation_upon_backtracking!(
     return nothing
 end
 
-function tighten_formulations!(state::CurrentState, node::Node)
-    for (formulater, disj_state) in state.disjunction_state
-        tighten_formulation!(state, formulater, disj_state, node)
-    end
-    return nothing
-end
-
 # NOTE: At all times, the first `num_variables(form)` variables in the model
 # will correspond to those registered with `form`. The disjunctive formulaters
 # may add additional continuous variables, but they must come after this chunk.
@@ -47,8 +40,10 @@ function populate_base_model!(
             # (or reset) disjunctive formulations.
             reset_base_formulation_upon_backtracking!(state, form, node)
         end
-        if config.disjunction_strategy == TIGHTEN_WHENEVER_POSSIBLE
-            tighten_formulations!(state, node)
+        if config.formulation_tightening_strategy == TIGHTEN_AT_EACH_NODE
+            error(
+                "Cerberus does not currently support tightening formulations via problem modification; you must rebuild from scratch.",
+            )
         end
         return nothing
     end
@@ -110,7 +105,7 @@ function formulate_disjunctions!(
             formulater,
             # If we use a static formulation, it must be valid at the root. In
             # a bit of a hack, in this case we will just pass in an empty Node.
-            if config.disjunction_strategy == STATIC_FORMULATION
+            if config.formulation_tightening_strategy == STATIC_FORMULATION
                 Node()
             else
                 node

@@ -4,7 +4,7 @@ struct PseudocostBranching <: BranchingRule end
 
 @enum WarmStartStrategy NO_WARM_STARTS WARM_START_WHEN_BACKTRACKING WARM_START_WHENEVER_POSSIBLE
 @enum ModelReuseStrategy NO_MODEL_REUSE REUSE_MODEL_ON_DIVES USE_SINGLE_MODEL
-@enum DisjunctionStrategy STATIC_FORMULATION TIGHTEN_WHENEVER_POSSIBLE
+@enum FormulationTighteningStrategy STATIC_FORMULATION TIGHTEN_WHEN_REBUILDING TIGHTEN_AT_EACH_NODE
 
 # NOTE: This is not a true configurable parameter; it should really only be
 # changed for debugging.
@@ -33,7 +33,8 @@ const DEFAULT_GAP_TOL = 1e-4
 const DEFAULT_INTEGRALITY_TOL = 1e-5
 const DEFAULT_WARM_START_STRATEGY = WARM_START_WHEN_BACKTRACKING
 const DEFAULT_MODEL_REUSE_STRATEGY = USE_SINGLE_MODEL
-const DEFAULT_DISJUNCTION_STRATEGY = TIGHTEN_WHENEVER_POSSIBLE
+# TODO: Change this default to TIGHTEN_WHENEVER_POSSIBLE
+const DEFAULT_FORMULATION_TIGHTENING_STRATEGY = TIGHTEN_WHEN_REBUILDING
 
 Base.@kwdef mutable struct AlgorithmConfig
     lp_solver_factory::Function = DEFAULT_LP_SOLVER_FACTORY
@@ -45,5 +46,6 @@ Base.@kwdef mutable struct AlgorithmConfig
     int_tol::Float64 = DEFAULT_INTEGRALITY_TOL
     warm_start_strategy::WarmStartStrategy = DEFAULT_WARM_START_STRATEGY
     model_reuse_strategy::ModelReuseStrategy = DEFAULT_MODEL_REUSE_STRATEGY
-    disjunction_strategy::DisjunctionStrategy = DEFAULT_DISJUNCTION_STRATEGY
+    formulation_tightening_strategy::FormulationTighteningStrategy =
+        DEFAULT_FORMULATION_TIGHTENING_STRATEGY
 end

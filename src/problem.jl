@@ -172,10 +172,9 @@ function Base.isempty(p::Polyhedron)
     return ambient_dim(p) == 0 && num_constraints(p) == 0 && isempty(p.bounds)
 end
 
-const DisjunctiveSet = DisjunctiveConstraints.DisjunctiveSet
 struct Disjunction
     f::Vector{CSAF}
-    s::DisjunctiveSet
+    s::DisjunctiveConstraints.DisjunctiveSet
 end
 
 struct DisjunctiveFormulater{

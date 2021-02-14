@@ -35,11 +35,11 @@ otherwise.
 
 Notes:
 * If `activity` is all falses, the caller can infer that the entire problem is
-infeasible.
+    infeasible.
 * Here, an alternative being "feasible" means that the associated values for
-the integer variables are feasible. Therefore, an alternative may be
-"infeasible" and yet still contained in the feasible region for the problem
-(if, for example, the alternative is completely contained in another).
+    the integer variables are feasible. Therefore, an alternative may be
+    "infeasible" and yet still contained in the feasible region for the problem
+    (if, for example, the alternative is completely contained in another).
 """
 function compute_disjunction_activity end
 
@@ -51,11 +51,9 @@ function formulate!(
     config::AlgorithmConfig,
 )
     cvis = form.disjunction_formulaters[formulater]
-    # TODO: If proven_active contains more than one true, can bail out as
-    # infeasible. If there is exactly one true, no need to write a disjunctive
-    # formulation. The tricky thing in that second case is that we need to
-    # cache that info somehow in the Basis, so that when/if we backtrack we can
-    # figure out which constraints to use.
+    # TODO: If activity has exactly one true, can model that alternative
+    # directly. If activity is all falses, the problem is infeasible, and we
+    # can "short circuit" and not worry about formulating or solving.
     activity = compute_disjunction_activity(form, formulater, node, config)
     _f = [instantiate(v, state) for v in formulater.disjunction.f]
     f = MOIU.vectorize(_f)
