@@ -140,12 +140,10 @@ function update_dual_bound!(state::CurrentState)
     return nothing
 end
 
-# TODO: Unit test
 function instantiate(cvi::CVI, state::CurrentState)
     return state._variable_indices[index(cvi)]
 end
 
-# TODO: Unit test
 function instantiate(csaf::CSAF, state::CurrentState)
     return SAF(
         [
@@ -160,5 +158,3 @@ function attach_index!(state::CurrentState, vi::VI)
     push!(state._variable_indices, vi)
     return CVI(length(state._variable_indices))
 end
-
-get_index(state::CurrentState, cvi::CVI) = state._variable_indices[index(cvi)]

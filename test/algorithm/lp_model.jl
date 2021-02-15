@@ -25,17 +25,17 @@
     @test MOI.Utilities.get_bounds(
         model,
         Float64,
-        Cerberus.get_index(state, _CVI(1)),
+        Cerberus.instantiate(_CVI(1), state),
     ) == (0.5, 1.0)
     @test MOI.Utilities.get_bounds(
         model,
         Float64,
-        Cerberus.get_index(state, _CVI(2)),
+        Cerberus.instantiate(_CVI(2), state),
     ) == (-1.3, 2.3)
     @test MOI.Utilities.get_bounds(
         model,
         Float64,
-        Cerberus.get_index(state, _CVI(3)),
+        Cerberus.instantiate(_CVI(3), state),
     ) == (0.0, 1.0)
 
     # TODO: Test obj, objsense
@@ -54,17 +54,17 @@ end
     @test MOI.Utilities.get_bounds(
         model,
         Float64,
-        Cerberus.get_index(state, _CVI(1)),
+        Cerberus.instantiate(_CVI(1), state),
     ) == (0.5, 1.0)
     @test MOI.Utilities.get_bounds(
         model,
         Float64,
-        Cerberus.get_index(state, _CVI(2)),
+        Cerberus.instantiate(_CVI(2), state),
     ) == (-1.3, 2.3)
     @test MOI.Utilities.get_bounds(
         model,
         Float64,
-        Cerberus.get_index(state, _CVI(3)),
+        Cerberus.instantiate(_CVI(3), state),
     ) == (0.0, 1.0)
 
     node = Cerberus.Node(
@@ -79,17 +79,17 @@ end
     @test MOI.Utilities.get_bounds(
         model,
         Float64,
-        Cerberus.get_index(state, _CVI(1)),
+        Cerberus.instantiate(_CVI(1), state),
     ) == (0.5, 0.0)
     @test MOI.Utilities.get_bounds(
         model,
         Float64,
-        Cerberus.get_index(state, _CVI(2)),
+        Cerberus.instantiate(_CVI(2), state),
     ) == (-1.3, 2.3)
     @test MOI.Utilities.get_bounds(
         model,
         Float64,
-        Cerberus.get_index(state, _CVI(3)),
+        Cerberus.instantiate(_CVI(3), state),
     ) == (1.0, 1.0)
 
     let f = _CSAF([1.2, 3.4], [_CVI(1), _CVI(2)], 5.6), s = _LT(7.8)
@@ -151,17 +151,17 @@ end
     @test MOI.Utilities.get_bounds(
         model,
         Float64,
-        Cerberus.get_index(state, _CVI(1)),
+        Cerberus.instantiate(_CVI(1), state),
     ) == (0.5, 0.0)
     @test MOI.Utilities.get_bounds(
         model,
         Float64,
-        Cerberus.get_index(state, _CVI(2)),
+        Cerberus.instantiate(_CVI(2), state),
     ) == (-1.3, 2.3)
     @test MOI.Utilities.get_bounds(
         model,
         Float64,
-        Cerberus.get_index(state, _CVI(3)),
+        Cerberus.instantiate(_CVI(3), state),
     ) == (1.0, 1.0)
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_LT}()) == 2
     let lt_cis = MOI.get(model, MOI.ListOfConstraintIndices{_SAF,_LT}())
@@ -193,17 +193,17 @@ end
     @test MOI.Utilities.get_bounds(
         model,
         Float64,
-        Cerberus.get_index(state, _CVI(1)),
+        Cerberus.instantiate(_CVI(1), state),
     ) == (0.5, 0.0)
     @test MOI.Utilities.get_bounds(
         model,
         Float64,
-        Cerberus.get_index(state, _CVI(2)),
+        Cerberus.instantiate(_CVI(2), state),
     ) == (-1.3, 2.3)
     @test MOI.Utilities.get_bounds(
         model,
         Float64,
-        Cerberus.get_index(state, _CVI(3)),
+        Cerberus.instantiate(_CVI(3), state),
     ) == (0.0, 1.0)
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_LT}()) == 1
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_GT}()) == 1
@@ -239,17 +239,17 @@ end
     @test MOIU.get_bounds(
         state.gurobi_model,
         Float64,
-        Cerberus.get_index(state, _CVI(1)),
+        Cerberus.instantiate(_CVI(1), state),
     ) == (0.5, 1.0)
     @test MOIU.get_bounds(
         state.gurobi_model,
         Float64,
-        Cerberus.get_index(state, _CVI(2)),
+        Cerberus.instantiate(_CVI(2), state),
     ) == (-1.3, 2.3)
     @test MOIU.get_bounds(
         state.gurobi_model,
         Float64,
-        Cerberus.get_index(state, _CVI(3)),
+        Cerberus.instantiate(_CVI(3), state),
     ) == (0.0, 1.0)
 
     bd_1 = Cerberus.BoundUpdate(_CVI(1), _GT(1.0))
@@ -267,17 +267,17 @@ end
     @test MOIU.get_bounds(
         state.gurobi_model,
         Float64,
-        Cerberus.get_index(state, _CVI(1)),
+        Cerberus.instantiate(_CVI(1), state),
     ) == (1.0, 1.0)
     @test MOIU.get_bounds(
         state.gurobi_model,
         Float64,
-        Cerberus.get_index(state, _CVI(2)),
+        Cerberus.instantiate(_CVI(2), state),
     ) == (-1.3, 2.3)
     @test MOIU.get_bounds(
         state.gurobi_model,
         Float64,
-        Cerberus.get_index(state, _CVI(3)),
+        Cerberus.instantiate(_CVI(3), state),
     ) == (0.0, 1.0)
     @test isempty(Cerberus._unattached_bounds(cs, node, _LT))
     @test isempty(Cerberus._unattached_bounds(cs, node, _GT))
@@ -299,17 +299,17 @@ end
     @test MOIU.get_bounds(
         state.gurobi_model,
         Float64,
-        Cerberus.get_index(state, _CVI(1)),
+        Cerberus.instantiate(_CVI(1), state),
     ) == (1.0, 1.0)
     @test MOIU.get_bounds(
         state.gurobi_model,
         Float64,
-        Cerberus.get_index(state, _CVI(2)),
+        Cerberus.instantiate(_CVI(2), state),
     ) == (-1.3, 2.3)
     @test MOIU.get_bounds(
         state.gurobi_model,
         Float64,
-        Cerberus.get_index(state, _CVI(3)),
+        Cerberus.instantiate(_CVI(3), state),
     ) == (0.0, 0.0)
     @test isempty(Cerberus._unattached_bounds(cs, node, _LT))
     @test isempty(Cerberus._unattached_bounds(cs, node, _GT))
@@ -337,17 +337,17 @@ end
     @test MOIU.get_bounds(
         state.gurobi_model,
         Float64,
-        Cerberus.get_index(state, _CVI(1)),
+        Cerberus.instantiate(_CVI(1), state),
     ) == (1.0, 1.0)
     @test MOIU.get_bounds(
         state.gurobi_model,
         Float64,
-        Cerberus.get_index(state, _CVI(2)),
+        Cerberus.instantiate(_CVI(2), state),
     ) == (-1.3, 2.3)
     @test MOIU.get_bounds(
         state.gurobi_model,
         Float64,
-        Cerberus.get_index(state, _CVI(3)),
+        Cerberus.instantiate(_CVI(3), state),
     ) == (0.0, 0.0)
     @test isempty(Cerberus._unattached_bounds(cs, node, _LT))
     @test isempty(Cerberus._unattached_bounds(cs, node, _GT))

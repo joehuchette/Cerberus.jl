@@ -129,3 +129,28 @@ end
     @test isempty(state.constraint_state.branch_state.lt_general_constrs)
     @test isempty(state.disjunction_state)
 end
+
+@testset "instantiate" begin
+    form = _build_dmip_formulation()
+    state = Cerberus.CurrentState(form)
+    vis = state._variable_indices
+    @test isempty(vis)
+    Cerberus.populate_base_model!(state, form, Cerberus.Node(), CONFIG)
+    @test length(vis) == 3
+    vi_1 = @inferred Cerberus.instantiate(_CVI(1), state)
+    @test vi_1 == vis[1]
+    @test Cerberus.instantiate(_CVI(2), state) == vis[2]
+    @test Cerberus.instantiate(_CVI(3), state) == vis[3]
+    svs = _SV.(vis)
+    @test _is_equal(
+        Cerberus.instantiate(
+            _CSAF([1.2, 3.4, 5.6], [_CVI(3), _CVI(1), _CVI(2)], 7.8),
+            state,
+        ),
+        1.2 * svs[3] + 3.4 * svs[1] + 5.6 * svs[2] + 7.8,
+    )
+    @test_throws BoundsError Cerberus.instantiate(_CVI(4), state)
+
+    cvi = @inferred Cerberus.attach_index!(state, _VI(7))
+    @test cvi == _CVI(4)
+end

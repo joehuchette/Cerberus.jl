@@ -157,7 +157,7 @@ function apply_branchings!(state::CurrentState, node::Node)
     cs = state.constraint_state
     for lt_bound in _unattached_bounds(cs, node, LT)
         cvi = lt_bound.cvi
-        vi = get_index(state, cvi)
+        vi = instantiate(cvi, state)
         ci = cs.base_state.var_constrs[index(cvi)]
         interval = MOI.get(model, MOI.ConstraintSet(), ci)
         new_interval = IN(interval.lower, min(lt_bound.s.upper, interval.upper))
@@ -166,7 +166,7 @@ function apply_branchings!(state::CurrentState, node::Node)
     end
     for gt_bound in _unattached_bounds(cs, node, GT)
         cvi = gt_bound.cvi
-        vi = get_index(state, cvi)
+        vi = instantiate(cvi, state)
         ci = cs.base_state.var_constrs[index(cvi)]
         interval = MOI.get(model, MOI.ConstraintSet(), ci)
         new_interval = IN(max(gt_bound.s.lower, interval.lower), interval.upper)
