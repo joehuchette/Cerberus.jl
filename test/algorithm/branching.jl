@@ -57,7 +57,7 @@ end
         @test node.gt_bounds == [Cerberus.BoundUpdate(_CVI(4), _GT(3.0))]
         @test length(node.lt_general_constrs) == 1
         lt_constr = node.lt_general_constrs[1]
-        _test_equal(lt_constr.f, _CSAF([1.2, 3.4], [_CVI(1), _CVI(3)], 0.0))
+        @test _is_equal(lt_constr.f, _CSAF([1.2, 3.4], [_CVI(1), _CVI(3)], 0.0))
         @test lt_constr.s == _LT(7.8 - 5.6)
         @test isempty(node.gt_general_constrs)
         @test node.depth == 3
@@ -69,14 +69,14 @@ end
         @test node.lt_bounds == [Cerberus.BoundUpdate(_CVI(2), _LT(1.0))]
         @test node.gt_bounds == [Cerberus.BoundUpdate(_CVI(4), _GT(3.0))]
         @test length(node.lt_general_constrs) == 1
-        _test_equal(
+        @test _is_equal(
             node.lt_general_constrs[1].f,
             _CSAF([1.2, 3.4], [_CVI(1), _CVI(3)], 0.0),
         )
         @test node.lt_general_constrs[1].s == _LT(7.8 - 5.6)
         @test length(node.gt_general_constrs) == 1
         gt_constr = node.gt_general_constrs[1]
-        _test_equal(gt_constr.f, _CSAF([2.4, 4.6], [_CVI(2), _CVI(1)], 0.0))
+        @test _is_equal(gt_constr.f, _CSAF([2.4, 4.6], [_CVI(2), _CVI(1)], 0.0))
         @test gt_constr.s == _GT(8.0 - 6.8)
         @test node.depth == 4
         @test node.dual_bound == -Inf

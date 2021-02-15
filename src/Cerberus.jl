@@ -1,13 +1,22 @@
 module Cerberus
 
-import DataStructures, Gurobi, Logging, MathOptInterface, Printf, SparseArrays
+import DataStructures,
+    DisjunctiveConstraints,
+    Gurobi,
+    Logging,
+    MathOptInterface,
+    Printf,
+    SparseArrays
 const MOI = MathOptInterface
 const MOIU = MOI.Utilities
 
 const VI = MOI.VariableIndex
 const SV = MOI.SingleVariable
+const VOV = MOI.VectorOfVariables
 const SAT = MOI.ScalarAffineTerm{Float64}
 const SAF = MOI.ScalarAffineFunction{Float64}
+const VAT = MOI.VectorAffineTerm{Float64}
+const VAF = MOI.VectorAffineFunction{Float64}
 const ET = MOI.EqualTo{Float64}
 const GT = MOI.GreaterThan{Float64}
 const LT = MOI.LessThan{Float64}
@@ -39,6 +48,9 @@ include("algorithm/util.jl")
 include("algorithm/branch_and_bound.jl")
 include("algorithm/branching.jl")
 include("algorithm/logging.jl")
+
+include("algorithm/formulaters/disjunctive_formulaters.jl")
+include("algorithm/formulaters/naive_big_m.jl")
 
 include("MOI/optimizer.jl")
 include("MOI/variable.jl")

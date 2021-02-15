@@ -1,7 +1,10 @@
 @testset "AffineConstraint" begin
     v = [_SV(_VI(i)) for i in 1:3]
     ac = Cerberus.AffineConstraint(v[1] + 2.0 * v[2] + 3.0 * v[3], _ET(3.0))
-    _test_equal(ac.f, _CSAF([1.0, 2.0, 3.0], [_CVI(1), _CVI(2), _CVI(3)], 0.0))
+    @test _is_equal(
+        ac.f,
+        _CSAF([1.0, 2.0, 3.0], [_CVI(1), _CVI(2), _CVI(3)], 0.0),
+    )
     @test ac.s == _ET(3.0)
 end
 
@@ -12,7 +15,7 @@ function _test_polyhedron(p::Cerberus.Polyhedron)
     @test Cerberus.num_constraints(p, _ET) == length(p.et_constrs) == 1
     et_constr = @inferred Cerberus.get_constraint(p, _ET, 1)
     @test et_constr === p.et_constrs[1]
-    _test_equal(
+    _is_equal(
         et_constr.f,
         _CSAF([1.0, 2.1, 3.0], [_CVI(1), _CVI(2), _CVI(3)], 0.0),
     )
@@ -20,7 +23,7 @@ function _test_polyhedron(p::Cerberus.Polyhedron)
 
     lt_constr = @inferred Cerberus.get_constraint(p, _LT, 1)
     @test lt_constr === p.lt_constrs[1]
-    _test_equal(lt_constr.f, _CSAF([-3.5, 1.2], [_CVI(1), _CVI(2)], 0.0))
+    @test _is_equal(lt_constr.f, _CSAF([-3.5, 1.2], [_CVI(1), _CVI(2)], 0.0))
     @test lt_constr.s == _LT(4.0)
 
     @test p.bounds == [_IN(0.5, 1.0), _IN(-1.3, 2.3), _IN(0.0, 1.0)]
@@ -62,7 +65,7 @@ end
 @testset "DMIPFormulation" begin
     fm = @inferred _build_dmip_formulation()
     _test_polyhedron(fm._feasible_region)
-    _test_equal(fm.obj, _CSAF([1.0, -1.0], [_CVI(1), _CVI(2)], 0.0))
+    @test _is_equal(fm.obj, _CSAF([1.0, -1.0], [_CVI(1), _CVI(2)], 0.0))
     @test isempty(fm.disjunction_formulaters)
     @test [Cerberus.get_variable_kind(fm, _CVI(i)) for i in 1:3] == [_ZO(), nothing, _ZO()]
 
@@ -71,7 +74,7 @@ end
         @test Cerberus.num_variables(empty_fm) == 0
         @test Cerberus.ambient_dim(empty_fm._feasible_region) == 0
         @test Cerberus.num_constraints(empty_fm._feasible_region) == 0
-        _test_equal(empty_fm.obj, _CSAF())
+        @test _is_equal(empty_fm.obj, _CSAF())
         @test isempty(empty_fm.disjunction_formulaters)
         @test isempty(empty_fm._variable_kind)
     end
@@ -106,10 +109,10 @@ end
 
     @testset "get_constraint(s)" begin
         lt_true = @inferred Cerberus.get_constraint(fm, _CCI{_LT}(1))
-        _test_equal(lt_true.f, _CSAF([-3.5, 1.2], [_CVI(1), _CVI(2)], 0.0))
+        @test _is_equal(lt_true.f, _CSAF([-3.5, 1.2], [_CVI(1), _CVI(2)], 0.0))
         @test lt_true.s == _LT(4.0)
         et_true = @inferred Cerberus.get_constraint(fm, _CCI{_ET}(1))
-        _test_equal(
+        @test _is_equal(
             et_true.f,
             _CSAF([1.0, 2.1, 3.0], [_CVI(1), _CVI(2), _CVI(3)], 0.0),
         )
@@ -165,7 +168,7 @@ function _test_gi_polyhedron(p::Cerberus.Polyhedron)
     @test Cerberus.num_constraints(p, _ET) == 0
     lt_constr = @inferred Cerberus.get_constraint(p, _LT, 1)
     @test lt_constr === p.lt_constrs[1]
-    _test_equal(
+    _is_equal(
         lt_constr.f,
         _CSAF([1.3, 3.7, 2.4], [_CVI(1), _CVI(2), _CVI(3)], 0.0),
     )
@@ -183,4 +186,49 @@ end
     _test_gi_polyhedron(fm._feasible_region)
     @test isempty(fm.disjunction_formulaters)
     @test [Cerberus.get_variable_kind(fm, _CVI(i)) for i in 1:3] == [nothing, _ZO(), _GI()]
+end
+
+struct DummyMethod <: DisjunctiveConstraints.AbstractDisjunctiveFormulation end
+function Cerberus.new_variables_to_attach(
+    ::Cerberus.DisjunctiveFormulater{DummyMethod},
+)
+    return [_ZO(), _GI(), nothing, nothing, nothing, nothing]
+end
+
+@testset "isempty(::DMIPFormulation)" begin
+    form = Cerberus.DMIPFormulation()
+    @test isempty(form)
+    disjunction = Cerberus.Disjunction(
+        _CSAF[],
+        DisjunctiveConstraints.DisjunctiveSet(
+            Matrix{Float64}(undef, 0, 0),
+            Matrix{Float64}(undef, 0, 0),
+        ),
+    )
+    formulater = Cerberus.DisjunctiveFormulater(disjunction, DummyMethod())
+    Cerberus.attach_formulater!(form, formulater)
+    @test !isempty(form)
+    form = _build_dmip_formulation()
+    @test !isempty(form)
+end
+
+@testset "attach_formulater!" begin
+    form = _build_dmip_formulation()
+    @assert Cerberus.num_variables(form) == 3
+    disjunction = Cerberus.Disjunction(
+        _CSAF[],
+        DisjunctiveConstraints.DisjunctiveSet(
+            Matrix{Float64}(undef, 0, 0),
+            Matrix{Float64}(undef, 0, 0),
+        ),
+    )
+    formulater = Cerberus.DisjunctiveFormulater(disjunction, DummyMethod())
+    @inferred Cerberus.attach_formulater!(form, formulater)
+    @test Cerberus.num_variables(form) == 3 + 6
+    @test length(form.disjunction_formulaters) == 1
+    @test haskey(form.disjunction_formulaters, formulater)
+    @test form.disjunction_formulaters[formulater] ==
+          [_CVI(i) for i in (3+1):(3+6)]
+
+    @test_throws ArgumentError Cerberus.attach_formulater!(form, formulater)
 end

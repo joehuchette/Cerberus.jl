@@ -90,20 +90,17 @@ mutable struct CurrentState
     total_simplex_iters::Int
     total_model_builds::Int
     total_warm_starts::Int
-    variable_indices::Vector{VI}
+    _variable_indices::Vector{VI}
     constraint_state::ConstraintState
+    disjunction_state::Dict{DisjunctiveFormulater,Any}
     polling_state::PollingState
 
-    function CurrentState(
-        fm::DMIPFormulation,
-        config::AlgorithmConfig;
-        primal_bound::Real = Inf,
-    )
-        nvars = num_variables(fm)
+    function CurrentState(form::DMIPFormulation; primal_bound::Real = Inf)
+        nvars = num_variables(form)
         state = new()
         state.gurobi_env = Gurobi.Env()
         state.backtracking = false
-        # Model is undefined here in constructor; build it before accessing.
+        # gurobi_model is left undefined; build it before accessing.
         state.rebuild_model = true
         state.tree = Tree()
         push_node!(state.tree, Node())
@@ -117,11 +114,19 @@ mutable struct CurrentState
         state.total_simplex_iters = 0
         state.total_model_builds = 0
         state.total_warm_starts = 0
-        state.variable_indices = VI[]
+        state._variable_indices = VI[]
         state.constraint_state = ConstraintState()
+        state.disjunction_state = Dict()
         state.polling_state = PollingState()
         return state
     end
+end
+
+function reset_formulation_state!(state::CurrentState)
+    empty!(state._variable_indices)
+    empty!(state.constraint_state)
+    empty!(state.disjunction_state)
+    return nothing
 end
 
 function update_dual_bound!(state::CurrentState)
@@ -135,12 +140,21 @@ function update_dual_bound!(state::CurrentState)
     return nothing
 end
 
+function instantiate(cvi::CVI, state::CurrentState)
+    return state._variable_indices[index(cvi)]
+end
+
 function instantiate(csaf::CSAF, state::CurrentState)
     return SAF(
         [
-            SAT(coeff, state.variable_indices[index(cvi)]) for
+            SAT(coeff, instantiate(cvi, state)) for
             (coeff, cvi) in zip(csaf.coeffs, csaf.indices)
         ],
         csaf.constant,
     )
+end
+
+function attach_index!(state::CurrentState, vi::VI)
+    push!(state._variable_indices, vi)
+    return CVI(length(state._variable_indices))
 end

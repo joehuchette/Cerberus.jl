@@ -8,22 +8,6 @@ function _is_time_to_terminate(state::CurrentState, config::AlgorithmConfig)
     end
 end
 
-# NOTE: Almost all of the time inside this functions is spent in process_node!.
-# Roughly 1/3 is in build_base_model, 1/3 in optimize!(::Gurobi.Optimizer), and
-# 1/5 in _update_basis!. Some ideas of how to improve performance in the future:
-#   1. Use only one model throughout the algorithm, even on backtracks. This
-#      means that either we keep all the cuts we (will eventually) add, or
-#      purge them somehow.
-#   2. Roughly 1/5 of the time in build_base_model is spent individually
-#      setting the variable bounds. We could try to back this or, even better,
-#      pass the bounds upon creating the variable via GRBaddvar. Maybe the
-#      cleverest way to do this would be to add to Gurobi.jl a method
-#      MOI.add_constrained_variable(::Gurobi.Optimizer, set).
-#   3. I think that Gurobi.VariableInfo introduces typestability issues in,
-#      e.g. Gurobi._update_if_necessary. An "easy" fix is to have a fastpath
-#      in that method that skips over updating the entries in the case where
-#      no columns are deleted. But it's likely worth addressing the type
-#      instability directly.
 function optimize!(
     form::DMIPFormulation,
     config::AlgorithmConfig,
@@ -32,7 +16,7 @@ function optimize!(
     result = Result()
     # TODO: Model presolve. Must happen before initial state is built.
     # Initialize search tree with LP relaxation
-    state = CurrentState(form, config, primal_bound = primal_bound)
+    state = CurrentState(form, primal_bound = primal_bound)
     _log_preamble(form, primal_bound, config)
     while !isempty(state.tree)
         node = pop_node!(state.tree)
@@ -71,6 +55,7 @@ function process_node!(
     populate_base_model!(state, form, node, config)
     # Update bounds on binary variables at the current node
     apply_branchings!(state, node)
+    formulate_disjunctions!(state, form, node, config)
     set_basis_if_available!(state, node)
 
     # 2. Solve model
@@ -174,14 +159,15 @@ function update_state!(
         # diff with the root. So, after backtracking we will need to reset all
         # bounds, but can otherwise reuse the same model.
         state.backtracking = false
-        # TODO: Add a check in this branch to ensure we don't have a "funny" return
-        #       status. This is a little kludgy since we don't necessarily store the
-        #       MOI model in node_result. Maybe need to add termination status as a field...
+        # TODO: Add a check in this branch to ensure we don't have a "funny"
+        # return status. This is a little kludgy since we don't necessarily
+        # store the MOI model in node_result. Maybe need to add termination
+        # status as a field...
     end
     state.rebuild_model = if state.backtracking
         (config.model_reuse_strategy != USE_SINGLE_MODEL)
     else
-        (config.model_reuse_strategy == NO_REUSE)
+        (config.model_reuse_strategy == NO_MODEL_REUSE)
     end
     state.total_elapsed_time_sec = time() - state.starting_time
     delete!(state.warm_starts, node)
@@ -198,10 +184,10 @@ function _store_basis_if_desired!(
         # Do nothing
     else
         basis = get_basis(state)
-        if config.warm_start_strategy == WHEN_BACKTRACKING
+        if config.warm_start_strategy == WARM_START_WHEN_BACKTRACKING
             state.warm_starts[other_child] = basis
         else
-            @assert config.warm_start_strategy == WHENEVER_POSSIBLE
+            @assert config.warm_start_strategy == WARM_START_WHENEVER_POSSIBLE
             state.warm_starts[favorite_child] = copy(basis)
             state.warm_starts[other_child] = basis
         end

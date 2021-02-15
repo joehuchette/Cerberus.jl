@@ -33,8 +33,10 @@ function _build_optimizer(
     )
 end
 
-const OPTIMIZER =
-    _build_optimizer(Cerberus.WHENEVER_POSSIBLE, Cerberus.REUSE_ON_DIVES)
+const OPTIMIZER = _build_optimizer(
+    Cerberus.WARM_START_WHENEVER_POSSIBLE,
+    Cerberus.REUSE_MODEL_ON_DIVES,
+)
 
 const MOI_CONFIG = MOIT.TestConfig(
     modify_lhs = false,
@@ -130,8 +132,8 @@ end
 @testset "contlinear" begin
     MOIT.contlineartest(
         _build_bridged_optimizer(
-            Cerberus.WHENEVER_POSSIBLE,
-            Cerberus.REUSE_ON_DIVES,
+            Cerberus.WARM_START_WHENEVER_POSSIBLE,
+            Cerberus.REUSE_MODEL_ON_DIVES,
         ),
         MOI_CONFIG,
         [
@@ -145,11 +147,14 @@ end
 @testset "intlinear" begin
     for ws in (
             Cerberus.NO_WARM_STARTS,
-            Cerberus.WHEN_BACKTRACKING,
-            Cerberus.WHENEVER_POSSIBLE,
+            Cerberus.WARM_START_WHEN_BACKTRACKING,
+            Cerberus.WARM_START_WHENEVER_POSSIBLE,
         ),
-        mr in
-        (Cerberus.NO_REUSE, Cerberus.REUSE_ON_DIVES, Cerberus.USE_SINGLE_MODEL)
+        mr in (
+            Cerberus.NO_MODEL_REUSE,
+            Cerberus.REUSE_MODEL_ON_DIVES,
+            Cerberus.USE_SINGLE_MODEL,
+        )
 
         MOIT.intlineartest(
             _build_bridged_optimizer(ws, mr),

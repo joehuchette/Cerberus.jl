@@ -1,7 +1,7 @@
 using Test
 using Cerberus
 using SparseArrays
-import Gurobi, MathOptInterface
+import DisjunctiveConstraints, Gurobi, MathOptInterface
 const MOI = MathOptInterface
 const MOIU = MOI.Utilities
 

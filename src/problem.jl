@@ -169,51 +169,48 @@ Returns `true` if the ambient dimension is 0 and there are no constraints,
 and false otherwise.
 """
 function Base.isempty(p::Polyhedron)
-    return ambient_dim(p) == 0 &&
-           num_constraints(p) == 0 &&
-           Base.isempty(p.bounds)
+    return ambient_dim(p) == 0 && num_constraints(p) == 0 && isempty(p.bounds)
 end
 
-abstract type AbstractFormulater end
+struct Disjunction
+    f::Vector{CSAF}
+    s::DisjunctiveConstraints.DisjunctiveSet
+end
+
+struct DisjunctiveFormulater{
+    T<:DisjunctiveConstraints.AbstractDisjunctiveFormulation,
+}
+    disjunction::Disjunction
+    method::T
+end
 
 mutable struct DMIPFormulation
     _feasible_region::Polyhedron
-    disjunction_formulaters::Vector{AbstractFormulater}
+    disjunction_formulaters::Dict{DisjunctiveFormulater,Vector{CVI}}
     _variable_kind::Vector{_V_INT_SETS}
     obj::CSAF
 
     function DMIPFormulation(
         _feasible_region::Polyhedron,
-        disjunction_formulaters::Vector{AbstractFormulater},
         _variable_kind::Vector,
         obj::CSAF,
     )
         n = ambient_dim(_feasible_region)
         @assert length(_variable_kind) == n
         @assert _max_var_index(obj) <= n
-        return new(
-            _feasible_region,
-            disjunction_formulaters,
-            _variable_kind,
-            obj,
-        )
+        return new(_feasible_region, Dict(), _variable_kind, obj)
     end
 end
 
 function DMIPFormulation()
-    return DMIPFormulation(
-        Polyhedron(),
-        AbstractFormulater[],
-        _V_INT_SETS[],
-        CSAF(),
-    )
+    return DMIPFormulation(Polyhedron(), _V_INT_SETS[], CSAF())
 end
 
 num_variables(fm::DMIPFormulation) = ambient_dim(fm._feasible_region)
 
-function add_variable(fm::DMIPFormulation)
+function add_variable(fm::DMIPFormulation, kind::_V_INT_SETS = nothing)
     add_variable(fm._feasible_region)
-    push!(fm._variable_kind, nothing)
+    push!(fm._variable_kind, kind)
     return nothing
 end
 
@@ -268,5 +265,21 @@ end
 
 function set_bounds!(form::DMIPFormulation, cvi::CVI, bounds::IN)
     form._feasible_region.bounds[index(cvi)] = bounds
+    return nothing
+end
+
+function attach_formulater!(
+    form::DMIPFormulation,
+    formulater::DisjunctiveFormulater,
+)
+    if haskey(form.disjunction_formulaters, formulater)
+        throw(ArgumentError("Formulater cannot be attached twice to a model."))
+    end
+    start_index = num_variables(form) + 1
+    for var_kind in new_variables_to_attach(formulater)
+        add_variable(form, var_kind)
+    end
+    cvis = [CVI(i) for i in start_index:num_variables(form)]
+    form.disjunction_formulaters[formulater] = cvis
     return nothing
 end

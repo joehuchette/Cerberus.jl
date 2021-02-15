@@ -1,6 +1,6 @@
 @testset "build_base_model" begin
     form = _build_dmip_formulation()
-    state = Cerberus.CurrentState(form, CONFIG)
+    state = Cerberus.CurrentState(form)
     node = Cerberus.Node()
     @inferred Cerberus.populate_base_model!(state, form, node, CONFIG)
     model = state.gurobi_model
@@ -9,39 +9,63 @@
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_ET}()) == 1
     c1 = MOI.get(model, MOI.ListOfConstraintIndices{_SAF,_ET}())[1]
     f1 = MOI.get(model, MOI.ConstraintFunction(), c1)
-    _test_equal(f1, 1.0 * _SV(_VI(1)) + 2.1 * _SV(_VI(2)) + 3.0 * _SV(_VI(3)))
+    _is_equal(f1, 1.0 * _SV(_VI(1)) + 2.1 * _SV(_VI(2)) + 3.0 * _SV(_VI(3)))
     s1 = MOI.get(model, MOI.ConstraintSet(), c1)
     @test s1 == _ET(3.0)
 
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_LT}()) == 1
     c2 = MOI.get(model, MOI.ListOfConstraintIndices{_SAF,_LT}())[1]
     f2 = MOI.get(model, MOI.ConstraintFunction(), c2)
-    _test_equal(f2, -3.5 * _SV(_VI(1)) + 1.2 * _SV(_VI(2)))
+    _is_equal(f2, -3.5 * _SV(_VI(1)) + 1.2 * _SV(_VI(2)))
     s2 = MOI.get(model, MOI.ConstraintSet(), c2)
     @test s2 == _LT(4.0)
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_GT}()) == 0
 
     @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
-    @test MOI.Utilities.get_bounds(model, Float64, _VI(1)) == (0.5, 1.0)
-    @test MOI.Utilities.get_bounds(model, Float64, _VI(2)) == (-1.3, 2.3)
-    @test MOI.Utilities.get_bounds(model, Float64, _VI(3)) == (0.0, 1.0)
+    @test MOI.Utilities.get_bounds(
+        model,
+        Float64,
+        Cerberus.instantiate(_CVI(1), state),
+    ) == (0.5, 1.0)
+    @test MOI.Utilities.get_bounds(
+        model,
+        Float64,
+        Cerberus.instantiate(_CVI(2), state),
+    ) == (-1.3, 2.3)
+    @test MOI.Utilities.get_bounds(
+        model,
+        Float64,
+        Cerberus.instantiate(_CVI(3), state),
+    ) == (0.0, 1.0)
 
     # TODO: Test obj, objsense
     @test MOI.get(model, MOI.ObjectiveSense()) == MOI.MIN_SENSE
     obj = MOI.get(model, MOI.ObjectiveFunction{_SAF}())
-    _test_equal(obj, 1.0 * _SV(_VI(1)) - 1.0 * _SV(_VI(2)))
+    _is_equal(obj, 1.0 * _SV(_VI(1)) - 1.0 * _SV(_VI(2)))
 end
 
 @testset "update_node_bounds!" begin
     form = _build_dmip_formulation()
-    state = _CurrentState(form, CONFIG)
+    state = _CurrentState(form)
     node = Cerberus.Node()
     @inferred Cerberus.populate_base_model!(state, form, node, CONFIG)
     model = state.gurobi_model
     @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
-    @test MOI.Utilities.get_bounds(model, Float64, _VI(1)) == (0.5, 1.0)
-    @test MOI.Utilities.get_bounds(model, Float64, _VI(2)) == (-1.3, 2.3)
-    @test MOI.Utilities.get_bounds(model, Float64, _VI(3)) == (0.0, 1.0)
+    @test MOI.Utilities.get_bounds(
+        model,
+        Float64,
+        Cerberus.instantiate(_CVI(1), state),
+    ) == (0.5, 1.0)
+    @test MOI.Utilities.get_bounds(
+        model,
+        Float64,
+        Cerberus.instantiate(_CVI(2), state),
+    ) == (-1.3, 2.3)
+    @test MOI.Utilities.get_bounds(
+        model,
+        Float64,
+        Cerberus.instantiate(_CVI(3), state),
+    ) == (0.0, 1.0)
 
     node = Cerberus.Node(
         [Cerberus.BoundUpdate(_CVI(1), _LT(0.0))],
@@ -52,9 +76,21 @@ end
     )
     @inferred Cerberus.apply_branchings!(state, node)
     @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
-    @test MOI.Utilities.get_bounds(model, Float64, _VI(1)) == (0.5, 0.0)
-    @test MOI.Utilities.get_bounds(model, Float64, _VI(2)) == (-1.3, 2.3)
-    @test MOI.Utilities.get_bounds(model, Float64, _VI(3)) == (1.0, 1.0)
+    @test MOI.Utilities.get_bounds(
+        model,
+        Float64,
+        Cerberus.instantiate(_CVI(1), state),
+    ) == (0.5, 0.0)
+    @test MOI.Utilities.get_bounds(
+        model,
+        Float64,
+        Cerberus.instantiate(_CVI(2), state),
+    ) == (-1.3, 2.3)
+    @test MOI.Utilities.get_bounds(
+        model,
+        Float64,
+        Cerberus.instantiate(_CVI(3), state),
+    ) == (1.0, 1.0)
 
     let f = _CSAF([1.2, 3.4], [_CVI(1), _CVI(2)], 5.6), s = _LT(7.8)
         bd = Cerberus.AffineConstraint(f, s)
@@ -70,7 +106,7 @@ end
         s_rt = MOI.get(model, MOI.ConstraintSet(), ci)
         # Constraint added with MOIU.normalize_and_add_constraint, which shifts
         # constant over to set.
-        _test_equal(f_rt, Cerberus.instantiate(f, state) - 5.6)
+        @test _is_equal(f_rt, Cerberus.instantiate(f, state) - 5.6)
         @test s_rt == _LT(7.8 - 5.6)
     end
 
@@ -87,14 +123,14 @@ end
         ci = cis[1]
         f_rt = MOI.get(model, MOI.ConstraintFunction(), ci)
         s_rt = MOI.get(model, MOI.ConstraintSet(), ci)
-        _test_equal(f_rt, Cerberus.instantiate(f, state))
+        @test _is_equal(f_rt, Cerberus.instantiate(f, state))
         @test s_rt == s
     end
 end
 
-@testset "reset_formulation_upon_backtracking!" begin
+@testset "reset_base_formulation_upon_backtracking!" begin
     form = _build_dmip_formulation()
-    state = Cerberus.CurrentState(form, CONFIG)
+    state = Cerberus.CurrentState(form)
     node = Cerberus.Node()
     Cerberus.populate_base_model!(state, form, node, CONFIG)
     f_lt = _CSAF([1.2, 3.4], [_CVI(1), _CVI(2)], 0.0)
@@ -112,15 +148,27 @@ end
 
     model = state.gurobi_model
     @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
-    @test MOI.Utilities.get_bounds(model, Float64, _VI(1)) == (0.5, 0.0)
-    @test MOI.Utilities.get_bounds(model, Float64, _VI(2)) == (-1.3, 2.3)
-    @test MOI.Utilities.get_bounds(model, Float64, _VI(3)) == (1.0, 1.0)
+    @test MOI.Utilities.get_bounds(
+        model,
+        Float64,
+        Cerberus.instantiate(_CVI(1), state),
+    ) == (0.5, 0.0)
+    @test MOI.Utilities.get_bounds(
+        model,
+        Float64,
+        Cerberus.instantiate(_CVI(2), state),
+    ) == (-1.3, 2.3)
+    @test MOI.Utilities.get_bounds(
+        model,
+        Float64,
+        Cerberus.instantiate(_CVI(3), state),
+    ) == (1.0, 1.0)
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_LT}()) == 2
     let lt_cis = MOI.get(model, MOI.ListOfConstraintIndices{_SAF,_LT}())
         lt_ci = lt_cis[2]
         f_lt_rt = MOI.get(model, MOI.ConstraintFunction(), lt_ci)
         s_lt_rt = MOI.get(model, MOI.ConstraintSet(), lt_ci)
-        _test_equal(f_lt_rt, Cerberus.instantiate(f_lt, state))
+        @test _is_equal(f_lt_rt, Cerberus.instantiate(f_lt, state))
         @test s_lt_rt == s_lt
     end
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_GT}()) == 1
@@ -128,7 +176,7 @@ end
         gt_ci = gt_cis[1]
         f_gt_rt = MOI.get(model, MOI.ConstraintFunction(), gt_ci)
         s_gt_rt = MOI.get(model, MOI.ConstraintSet(), gt_ci)
-        _test_equal(f_gt_rt, Cerberus.instantiate(f_gt, state))
+        @test _is_equal(f_gt_rt, Cerberus.instantiate(f_gt, state))
         @test s_gt_rt == s_gt
     end
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_ET}()) == 1
@@ -140,18 +188,30 @@ end
         [Cerberus.AffineConstraint{_GT}(f_gt, s_gt)],
         2,
     )
-    Cerberus.reset_formulation_upon_backtracking!(state, form, node_2)
+    Cerberus.reset_base_formulation_upon_backtracking!(state, form, node_2)
     @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
-    @test MOI.Utilities.get_bounds(model, Float64, _VI(1)) == (0.5, 0.0)
-    @test MOI.Utilities.get_bounds(model, Float64, _VI(2)) == (-1.3, 2.3)
-    @test MOI.Utilities.get_bounds(model, Float64, _VI(3)) == (0.0, 1.0)
+    @test MOI.Utilities.get_bounds(
+        model,
+        Float64,
+        Cerberus.instantiate(_CVI(1), state),
+    ) == (0.5, 0.0)
+    @test MOI.Utilities.get_bounds(
+        model,
+        Float64,
+        Cerberus.instantiate(_CVI(2), state),
+    ) == (-1.3, 2.3)
+    @test MOI.Utilities.get_bounds(
+        model,
+        Float64,
+        Cerberus.instantiate(_CVI(3), state),
+    ) == (0.0, 1.0)
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_LT}()) == 1
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_GT}()) == 1
     let gt_cis = MOI.get(model, MOI.ListOfConstraintIndices{_SAF,_GT}())
         gt_ci = gt_cis[1]
         f_gt_rt = MOI.get(model, MOI.ConstraintFunction(), gt_ci)
         s_gt_rt = MOI.get(model, MOI.ConstraintSet(), gt_ci)
-        _test_equal(f_gt_rt, Cerberus.instantiate(f_gt, state))
+        @test _is_equal(f_gt_rt, Cerberus.instantiate(f_gt, state))
         @test s_gt_rt == s_gt
     end
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_ET}()) == 1
@@ -159,7 +219,7 @@ end
 
 @testset "apply_branchings!" begin
     form = _build_dmip_formulation()
-    state = Cerberus.CurrentState(form, CONFIG)
+    state = Cerberus.CurrentState(form)
     cs = state.constraint_state
 
     node = Cerberus.Node()
@@ -179,17 +239,17 @@ end
     @test MOIU.get_bounds(
         state.gurobi_model,
         Float64,
-        state.variable_indices[1],
+        Cerberus.instantiate(_CVI(1), state),
     ) == (0.5, 1.0)
     @test MOIU.get_bounds(
         state.gurobi_model,
         Float64,
-        state.variable_indices[2],
+        Cerberus.instantiate(_CVI(2), state),
     ) == (-1.3, 2.3)
     @test MOIU.get_bounds(
         state.gurobi_model,
         Float64,
-        state.variable_indices[3],
+        Cerberus.instantiate(_CVI(3), state),
     ) == (0.0, 1.0)
 
     bd_1 = Cerberus.BoundUpdate(_CVI(1), _GT(1.0))
@@ -207,17 +267,17 @@ end
     @test MOIU.get_bounds(
         state.gurobi_model,
         Float64,
-        state.variable_indices[1],
+        Cerberus.instantiate(_CVI(1), state),
     ) == (1.0, 1.0)
     @test MOIU.get_bounds(
         state.gurobi_model,
         Float64,
-        state.variable_indices[2],
+        Cerberus.instantiate(_CVI(2), state),
     ) == (-1.3, 2.3)
     @test MOIU.get_bounds(
         state.gurobi_model,
         Float64,
-        state.variable_indices[3],
+        Cerberus.instantiate(_CVI(3), state),
     ) == (0.0, 1.0)
     @test isempty(Cerberus._unattached_bounds(cs, node, _LT))
     @test isempty(Cerberus._unattached_bounds(cs, node, _GT))
@@ -239,17 +299,17 @@ end
     @test MOIU.get_bounds(
         state.gurobi_model,
         Float64,
-        state.variable_indices[1],
+        Cerberus.instantiate(_CVI(1), state),
     ) == (1.0, 1.0)
     @test MOIU.get_bounds(
         state.gurobi_model,
         Float64,
-        state.variable_indices[2],
+        Cerberus.instantiate(_CVI(2), state),
     ) == (-1.3, 2.3)
     @test MOIU.get_bounds(
         state.gurobi_model,
         Float64,
-        state.variable_indices[3],
+        Cerberus.instantiate(_CVI(3), state),
     ) == (0.0, 0.0)
     @test isempty(Cerberus._unattached_bounds(cs, node, _LT))
     @test isempty(Cerberus._unattached_bounds(cs, node, _GT))
@@ -277,17 +337,17 @@ end
     @test MOIU.get_bounds(
         state.gurobi_model,
         Float64,
-        state.variable_indices[1],
+        Cerberus.instantiate(_CVI(1), state),
     ) == (1.0, 1.0)
     @test MOIU.get_bounds(
         state.gurobi_model,
         Float64,
-        state.variable_indices[2],
+        Cerberus.instantiate(_CVI(2), state),
     ) == (-1.3, 2.3)
     @test MOIU.get_bounds(
         state.gurobi_model,
         Float64,
-        state.variable_indices[3],
+        Cerberus.instantiate(_CVI(3), state),
     ) == (0.0, 0.0)
     @test isempty(Cerberus._unattached_bounds(cs, node, _LT))
     @test isempty(Cerberus._unattached_bounds(cs, node, _GT))
@@ -315,9 +375,91 @@ end
     @test MOI.get(state.gurobi_model, MOI.NumberOfConstraints{_SAF,_GT}()) == 1
 end
 
+@testset "formulate_disjunctions!" begin
+    form = _build_formulation_with_single_disjunction(
+        DisjunctiveConstraints.NaiveBigM(
+            DisjunctiveConstraints.IntervalArithmetic(),
+        ),
+    )
+    let node = Cerberus.Node()
+        state = Cerberus.CurrentState(form)
+        Cerberus.populate_base_model!(state, form, node, CONFIG)
+        Cerberus.apply_branchings!(state, node)
+        @inferred Cerberus.formulate_disjunctions!(state, form, node, CONFIG)
+        x = [_SV(Cerberus.instantiate(_CVI(i), state)) for i in 1:5]
+        @assert [v.variable.value for v in x] == collect(1:5)
+
+        expected_bounds =
+            [(-1.5, 3.0), (0.0, 0.5), (0.0, 1.0), (0.0, 1.0), (0.0, 1.0)]
+        expected_et_acs = [(1.0 * x[3] + 1.0 * x[4] + 1.0 * x[5], _ET(1.0))]
+        expected_gt_acs = [
+            (1.0 * x[1] + 1.0 * x[2], _GT(-0.5)),
+            (1.0 * x[1] - 0.5 * x[3], _GT(-2.0)),
+            (1.0 * x[1] + 0.5 * x[4], _GT(-1.0)),
+            (1.0 * x[1] + 2.5 * x[5], _GT(+1.0)),
+            (1.0 * x[1] + 1.0 * x[2] + 0.5 * x[3], _GT(-1.0)),
+            (1.0 * x[2], _GT(0.0)),
+            (-1.0 * x[1] + 1.0 * x[2] + 2.0 * x[5], _GT(-1.0)),
+        ]
+        expected_lt_acs = [
+            (1.0 * x[1] - 4.0 * x[3], _LT(-1.0)),
+            (1.0 * x[1] - 2.0 * x[4], _LT(+1.0)),
+            (1.0 * x[1] - 1.0 * x[5], _LT(+2.0)),
+            (1.0 * x[1] + 1.0 * x[2] - 4.5 * x[3], _LT(-1.0)),
+            (1.0 * x[2] - 0.5 * x[4], _LT(0.0)),
+            (-1.0 * x[1] + 1.0 * x[2] - 3.0 * x[5], _LT(-1.0)),
+        ]
+
+        _test_roundtrip_model(
+            state.gurobi_model,
+            expected_bounds,
+            expected_lt_acs,
+            expected_gt_acs,
+            expected_et_acs,
+        )
+    end
+
+    let node = Cerberus.Node(
+            [Cerberus.BoundUpdate(_CVI(3), _LT(0.0))],
+            Cerberus.BoundUpdate{_GT}[],
+            1,
+        )
+        state = Cerberus.CurrentState(form)
+        Cerberus.populate_base_model!(state, form, node, CONFIG)
+        Cerberus.apply_branchings!(state, node)
+        @inferred Cerberus.formulate_disjunctions!(state, form, node, CONFIG)
+        x = [_SV(Cerberus.instantiate(_CVI(i), state)) for i in 1:5]
+        @assert [v.variable.value for v in x] == collect(1:5)
+
+        expected_bounds =
+            [(-1.5, 3.0), (0.0, 0.5), (0.0, 0.0), (0.0, 1.0), (0.0, 1.0)]
+        expected_et_acs = [(1.0 * x[3] + 1.0 * x[4] + 1.0 * x[5], _ET(1.0))]
+        expected_gt_acs = [
+            (1.0 * x[1] + 1.0 * x[2], _GT(-0.5)),
+            (1.0 * x[1] + 0.5 * x[4], _GT(-1.0)),
+            (1.0 * x[1] + 2.5 * x[5], _GT(+1.0)),
+            (1.0 * x[2], _GT(0.0)),
+            (-1.0 * x[1] + 1.0 * x[2] + 2.0 * x[5], _GT(-1.0)),
+        ]
+        expected_lt_acs = [
+            (1.0 * x[1] - 2.0 * x[4], _LT(+1.0)),
+            (1.0 * x[1] - 1.0 * x[5], _LT(+2.0)),
+            (1.0 * x[2] - 0.5 * x[4], _LT(0.0)),
+            (-1.0 * x[1] + 1.0 * x[2] - 3.0 * x[5], _LT(-1.0)),
+        ]
+        _test_roundtrip_model(
+            state.gurobi_model,
+            expected_bounds,
+            expected_lt_acs,
+            expected_gt_acs,
+            expected_et_acs,
+        )
+    end
+end
+
 @testset "MOI.optimize!" begin
     form = _build_dmip_formulation()
-    state = _CurrentState(form, CONFIG)
+    state = _CurrentState(form)
     node = Cerberus.Node()
     Cerberus.populate_base_model!(state, form, node, CONFIG)
     model = state.gurobi_model
@@ -331,7 +473,7 @@ end
 
 @testset "_fill_solution!" begin
     form = _build_dmip_formulation()
-    state = _CurrentState(form, CONFIG)
+    state = _CurrentState(form)
     node = Cerberus.Node()
     Cerberus.populate_base_model!(state, form, node, CONFIG)
     model = state.gurobi_model
@@ -344,7 +486,7 @@ end
 
 @testset "get_basis" begin
     form = _build_dmip_formulation()
-    state = _CurrentState(form, CONFIG)
+    state = _CurrentState(form)
     node = Cerberus.Node()
     Cerberus.populate_base_model!(state, form, node, CONFIG)
     model = state.gurobi_model
@@ -369,7 +511,7 @@ end
 
 function _set_basis_model(basis::Cerberus.Basis)
     form = _build_dmip_formulation()
-    state = _CurrentState(form, CONFIG)
+    state = _CurrentState(form)
     node = Cerberus.Node(
         Cerberus.BoundUpdate{_LT}[],
         Cerberus.BoundUpdate{_GT}[],

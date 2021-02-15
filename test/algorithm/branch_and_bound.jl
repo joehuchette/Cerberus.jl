@@ -14,7 +14,7 @@ end
     # A feasible model
     let
         fm = _build_dmip_formulation()
-        state = _CurrentState(fm, CONFIG)
+        state = _CurrentState(fm)
         node = Cerberus.Node()
         result = @inferred Cerberus.process_node!(state, fm, node, CONFIG)
         @test result.cost ≈ 0.5 - 2.5 / 2.1
@@ -31,9 +31,9 @@ end
         fm = _build_dmip_formulation()
         no_inc_config = Cerberus.AlgorithmConfig(
             warm_start_strategy = Cerberus.NO_WARM_STARTS,
-            model_reuse_strategy = Cerberus.NO_REUSE,
+            model_reuse_strategy = Cerberus.NO_MODEL_REUSE,
         )
-        state = _CurrentState(fm, no_inc_config)
+        state = _CurrentState(fm)
         node = Cerberus.Node()
         result =
             @inferred Cerberus.process_node!(state, fm, node, no_inc_config)
@@ -46,7 +46,7 @@ end
     # An infeasible model
     let
         fm = _build_dmip_formulation()
-        state = _CurrentState(fm, CONFIG)
+        state = _CurrentState(fm)
         # A bit hacky, but force infeasibility by branching both up and down.
         node = Cerberus.Node(
             [Cerberus.BoundUpdate(_CVI(1), _LT(0.0))],
@@ -90,7 +90,7 @@ end
 
 @testset "_store_basis_if_desired!" begin
     fm = _build_dmip_formulation()
-    state = Cerberus.CurrentState(fm, CONFIG)
+    state = Cerberus.CurrentState(fm)
     node = Cerberus.Node()
     Cerberus.process_node!(state, fm, node, CONFIG)
     fc = Cerberus.Node(
@@ -111,7 +111,7 @@ end
     result = Cerberus.NodeResult(cost, [1.2, 2.3, 3.4], 1492, 12, 13)
     let no_incrementalism_config = Cerberus.AlgorithmConfig(
             warm_start_strategy = Cerberus.NO_WARM_STARTS,
-            model_reuse_strategy = Cerberus.NO_REUSE,
+            model_reuse_strategy = Cerberus.NO_MODEL_REUSE,
         )
         @inferred Cerberus._store_basis_if_desired!(
             state,
@@ -122,8 +122,8 @@ end
         @test isempty(state.warm_starts)
     end
     let warm_start_only_config = Cerberus.AlgorithmConfig(
-            warm_start_strategy = Cerberus.WHENEVER_POSSIBLE,
-            model_reuse_strategy = Cerberus.NO_REUSE,
+            warm_start_strategy = Cerberus.WARM_START_WHENEVER_POSSIBLE,
+            model_reuse_strategy = Cerberus.NO_MODEL_REUSE,
         )
         @inferred Cerberus._store_basis_if_desired!(
             state,
@@ -141,8 +141,8 @@ end
     end
     empty!(state.warm_starts)
     let warm_start_off_dives_config = Cerberus.AlgorithmConfig(
-            warm_start_strategy = Cerberus.WHEN_BACKTRACKING,
-            model_reuse_strategy = Cerberus.REUSE_ON_DIVES,
+            warm_start_strategy = Cerberus.WARM_START_WHEN_BACKTRACKING,
+            model_reuse_strategy = Cerberus.REUSE_MODEL_ON_DIVES,
         )
         @inferred Cerberus._store_basis_if_desired!(
             state,
@@ -162,7 +162,7 @@ end
     starting_pb = 12.3
     simplex_iters_per = 18
     depth = 7
-    cs = _CurrentState(fm, CONFIG, primal_bound = starting_pb)
+    cs = _CurrentState(fm, primal_bound = starting_pb)
     @test Cerberus._is_root_node(Cerberus.pop_node!(cs.tree))
     node = Cerberus.Node()
 
