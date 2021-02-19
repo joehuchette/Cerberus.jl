@@ -179,17 +179,17 @@ function _store_basis_if_desired!(
         # Do nothing
     else
         basis = get_basis(state)
-        if config.warm_start_strategy == WARM_START_WHEN_BACKTRACKING
-            state.warm_starts[children[1]] = basis
-            for i in 2:(N-1)
-                state.warm_starts[children[i]] = copy(basis)
+        state.warm_starts[children[1]] = basis
+        ending_index = (
+            if config.warm_start_strategy == WARM_START_WHEN_BACKTRACKING
+                N - 1
+            else
+                @assert config.warm_start_strategy == WARM_START_WHENEVER_POSSIBLE
+                N
             end
-        else
-            @assert config.warm_start_strategy == WARM_START_WHENEVER_POSSIBLE
-            state.warm_starts[children[1]] = basis
-            for i in 2:N
-                state.warm_starts[children[i]] = copy(basis)
-            end
+        )
+        for i in 2:ending_index
+            state.warm_starts[children[i]] = copy(basis)
         end
     end
     return nothing

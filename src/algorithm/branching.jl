@@ -122,7 +122,6 @@ function aggregate_score end
 
 aggregate_score(vbs::VariableBranchingScore) = vbs.aggregate_score
 
-# Function returns nodes created by branching, in increasing preference order.
 """
     branch_on(parent_node::Node, candidate::AbstractBranchingCandidate, score::AbstractBranchingScore)::NTuple{Node}
 
@@ -141,7 +140,6 @@ function branch_on(
     candidate::VariableBranchingCandidate,
     score::VariableBranchingScore,
 )::Tuple{Node,Node}
-    # How do we decide which to prioritize?
     db = down_branch(parent_node, candidate.index, candidate.value)
     ub = up_branch(parent_node, candidate.index, candidate.value)
     if score.down_branch_score > score.up_branch_score
@@ -196,10 +194,9 @@ function branch(
     parent_result::NodeResult,
     config::AlgorithmConfig,
 )::NTuple
-    # NOTE: The following calls dispatch on config.branching_rule, behind a
-    # function barrier. In the "simple" case (i.e. variable branching), this
-    # should be type stable. In the more complex case (general branching), it
-    # will not be.
+    # NOTE: The following calls dispatch on `config`. In the "simple" case
+    # (i.e. variable branching), this should be type stable. In the more
+    # complex case (general branching), it may not be.
     candidates = branching_candidates(form, parent_result, config)
     if isempty(candidates)
         error("No branching candidates--are you sure you want to be branching?")
