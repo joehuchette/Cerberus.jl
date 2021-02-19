@@ -1,6 +1,6 @@
 @testset "build_base_model" begin
     form = _build_dmip_formulation()
-    state = Cerberus.CurrentState(form)
+    state = Cerberus.CurrentState()
     node = Cerberus.Node()
     @inferred Cerberus.populate_base_model!(state, form, node, CONFIG)
     model = state.gurobi_model
@@ -46,7 +46,7 @@ end
 
 @testset "update_node_bounds!" begin
     form = _build_dmip_formulation()
-    state = _CurrentState(form)
+    state = _CurrentState()
     node = Cerberus.Node()
     @inferred Cerberus.populate_base_model!(state, form, node, CONFIG)
     model = state.gurobi_model
@@ -130,7 +130,7 @@ end
 
 @testset "reset_base_formulation_upon_backtracking!" begin
     form = _build_dmip_formulation()
-    state = Cerberus.CurrentState(form)
+    state = Cerberus.CurrentState()
     node = Cerberus.Node()
     Cerberus.populate_base_model!(state, form, node, CONFIG)
     f_lt = _CSAF([1.2, 3.4], [_CVI(1), _CVI(2)], 0.0)
@@ -219,7 +219,7 @@ end
 
 @testset "apply_branchings!" begin
     form = _build_dmip_formulation()
-    state = Cerberus.CurrentState(form)
+    state = Cerberus.CurrentState()
     cs = state.constraint_state
 
     node = Cerberus.Node()
@@ -382,7 +382,7 @@ end
         ),
     )
     let node = Cerberus.Node()
-        state = Cerberus.CurrentState(form)
+        state = Cerberus.CurrentState()
         Cerberus.populate_base_model!(state, form, node, CONFIG)
         Cerberus.apply_branchings!(state, node)
         @inferred Cerberus.formulate_disjunctions!(state, form, node, CONFIG)
@@ -424,7 +424,7 @@ end
             Cerberus.BoundUpdate{_GT}[],
             1,
         )
-        state = Cerberus.CurrentState(form)
+        state = Cerberus.CurrentState()
         Cerberus.populate_base_model!(state, form, node, CONFIG)
         Cerberus.apply_branchings!(state, node)
         @inferred Cerberus.formulate_disjunctions!(state, form, node, CONFIG)
@@ -459,7 +459,7 @@ end
 
 @testset "MOI.optimize!" begin
     form = _build_dmip_formulation()
-    state = _CurrentState(form)
+    state = _CurrentState()
     node = Cerberus.Node()
     Cerberus.populate_base_model!(state, form, node, CONFIG)
     model = state.gurobi_model
@@ -473,20 +473,21 @@ end
 
 @testset "_fill_solution!" begin
     form = _build_dmip_formulation()
-    state = _CurrentState(form)
+    state = _CurrentState()
     node = Cerberus.Node()
     Cerberus.populate_base_model!(state, form, node, CONFIG)
     model = state.gurobi_model
     MOI.optimize!(model)
     @assert MOI.get(model, MOI.PrimalStatus()) == MOI.FEASIBLE_POINT
-    x = @inferred Cerberus._get_lp_solution!(model)
+    @inferred Cerberus._update_lp_solution!(state, form)
+    x = state.current_solution
     @test length(x) == 3
     @test x ≈ [1 / 2, 2.5 / 2.1, 0.0]
 end
 
 @testset "get_basis" begin
     form = _build_dmip_formulation()
-    state = _CurrentState(form)
+    state = _CurrentState()
     node = Cerberus.Node()
     Cerberus.populate_base_model!(state, form, node, CONFIG)
     model = state.gurobi_model
@@ -511,7 +512,7 @@ end
 
 function _set_basis_model(basis::Cerberus.Basis)
     form = _build_dmip_formulation()
-    state = _CurrentState(form)
+    state = _CurrentState()
     node = Cerberus.Node(
         Cerberus.BoundUpdate{_LT}[],
         Cerberus.BoundUpdate{_GT}[],

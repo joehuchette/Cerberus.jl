@@ -206,6 +206,10 @@ function DMIPFormulation()
     return DMIPFormulation(Polyhedron(), _V_INT_SETS[], CSAF())
 end
 
+# TODO: Unit test
+function all_variables(fm::DMIPFormulation)
+    return [CVI(i) for i in 1:length(fm._variable_kind)]
+end
 num_variables(fm::DMIPFormulation) = ambient_dim(fm._feasible_region)
 
 function add_variable(fm::DMIPFormulation, kind::_V_INT_SETS = nothing)

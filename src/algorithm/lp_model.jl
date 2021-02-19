@@ -6,8 +6,7 @@ function reset_base_formulation_upon_backtracking!(
 )
     model = state.gurobi_model
     cs = state.constraint_state
-    for i in 1:num_variables(form)
-        cvi = CVI(i)
+    for cvi in all_variables(form)
         l, u = get_bounds(form, cvi)
         ci = cs.base_state.var_constrs[index(cvi)]
         MOI.set(model, MOI.ConstraintSet(), ci, IN(l, u))
@@ -49,8 +48,8 @@ function populate_base_model!(
     end
     reset_formulation_state!(state)
     model = config.lp_solver_factory(state, config)::Gurobi.Optimizer
-    for i in 1:num_variables(form)
-        l, u = get_bounds(form, CVI(i))
+    for cvi in all_variables(form)
+        l, u = get_bounds(form, cvi)
         # Cache the above updates in formulation. Even better,
         # batch add variables.
         vi, ci = MOI.add_constrained_variable(model, IN(l, u))
@@ -186,13 +185,18 @@ function apply_branchings!(state::CurrentState, node::Node)
     return nothing
 end
 
-function _get_lp_solution!(model::MOI.AbstractOptimizer)
-    nvars = MOI.get(model, MOI.NumberOfVariables())
-    x = Vector{Float64}(undef, nvars)
-    for v in MOI.get(model, MOI.ListOfVariableIndices())
-        x[v.value] = MOI.get(model, MOI.VariablePrimal(), v)
+# TODO: Unit test
+function _update_lp_solution!(state::CurrentState, form::DMIPFormulation)
+    # NOTE: I believe that the following is costless if the size is correct.
+    resize!(state.current_solution, num_variables(form))
+    for cvi in all_variables(form)
+        state.current_solution[index(cvi)] = MOI.get(
+            state.gurobi_model,
+            MOI.VariablePrimal(),
+            instantiate(cvi, state),
+        )
     end
-    return x
+    return nothing
 end
 
 function get_basis(state::CurrentState)::Basis

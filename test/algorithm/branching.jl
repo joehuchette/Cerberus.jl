@@ -84,18 +84,17 @@ end
 end
 
 @testset "MostInfeasible" begin
+    mi_config = Cerberus.AlgorithmConfig(
+        branching_rule = Cerberus.MostInfeasible(),
+        silent = true,
+    )
     let fm = _build_dmip_formulation()
+        state = Cerberus.CurrentState()
         node = Cerberus.Node()
         x = [0.6, 0.7, 0.1]
         cost = 1.2
         result = Cerberus.NodeResult(cost, x, 12, 13, 14)
-        n1, n2 = @inferred Cerberus.branch(
-            fm,
-            Cerberus.MostInfeasible(),
-            node,
-            result,
-            CONFIG,
-        )
+        n1, n2 = @inferred Cerberus.branch(state, fm, node, result, mi_config)
         @test isempty(n1.lt_bounds)
         @test n1.gt_bounds == [Cerberus.BoundUpdate(_CVI(1), _GT(1.0))]
         @test n1.depth == 1
@@ -108,13 +107,7 @@ end
 
         x2 = [1.0, 0.7, 0.1]
         result.x = x2
-        n3, n4 = @inferred Cerberus.branch(
-            fm,
-            Cerberus.MostInfeasible(),
-            n2,
-            result,
-            CONFIG,
-        )
+        n3, n4 = @inferred Cerberus.branch(state, fm, n2, result, mi_config)
         @test n3.lt_bounds == [
             Cerberus.BoundUpdate(_CVI(1), _LT(0.0)),
             Cerberus.BoundUpdate(_CVI(3), _LT(0.0)),
@@ -131,28 +124,23 @@ end
         # Nothing to branch on, should throw. Really, should have pruned by integrality before.
         x3 = [1.0, 0.7, 0.0]
         result.x = x3
-        @test_throws AssertionError Cerberus.branch(
+        @test_throws ErrorException Cerberus.branch(
+            state,
             fm,
-            Cerberus.MostInfeasible(),
             n4,
             result,
-            CONFIG,
+            mi_config,
         )
     end
 
     # General integer branching
     let fm = _build_gi_dmip_formulation()
+        state = Cerberus.CurrentState()
         node = Cerberus.Node()
         x = [0.6, 0.4, 0.7]
         cost = 1.2
         result = Cerberus.NodeResult(cost, x, 12, 13, 14)
-        fc, oc = @inferred Cerberus.branch(
-            fm,
-            Cerberus.MostInfeasible(),
-            node,
-            result,
-            CONFIG,
-        )
+        fc, oc = @inferred Cerberus.branch(state, fm, node, result, mi_config)
         @test fc.lt_bounds == [Cerberus.BoundUpdate(_CVI(2), _LT(0.0))]
         @test isempty(fc.gt_bounds)
         @test fc.depth == 1
@@ -162,13 +150,7 @@ end
 
         x2 = [0.6, 0.4, 2.55]
         result.x = x2
-        fc_2, oc_2 = @inferred Cerberus.branch(
-            fm,
-            Cerberus.MostInfeasible(),
-            oc,
-            result,
-            CONFIG,
-        )
+        fc_2, oc_2 = @inferred Cerberus.branch(state, fm, oc, result, mi_config)
         @test isempty(fc_2.lt_bounds)
         @test fc_2.gt_bounds == [
             Cerberus.BoundUpdate(_CVI(2), _GT(1.0)),

@@ -10,7 +10,7 @@
             formulater, _ = first(form.disjunction_formulaters)
 
             let node = Cerberus.Node()
-                state = Cerberus.CurrentState(form)
+                state = Cerberus.CurrentState()
                 Cerberus.populate_base_model!(state, form, node, CONFIG)
                 Cerberus.apply_branchings!(state, node)
                 @inferred Cerberus.formulate!(
@@ -64,7 +64,7 @@
                     Cerberus.BoundUpdate{_GT}[],
                     1,
                 )
-                state = Cerberus.CurrentState(form)
+                state = Cerberus.CurrentState()
                 Cerberus.populate_base_model!(state, form, node, CONFIG)
                 Cerberus.apply_branchings!(state, node)
                 @inferred Cerberus.formulate!(
