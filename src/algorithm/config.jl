@@ -1,5 +1,5 @@
 abstract type AbstractBranchingRule end
-abstract type AbstractVariableBranchingRule end
+abstract type AbstractVariableBranchingRule <: AbstractBranchingRule end
 struct MostInfeasible <: AbstractVariableBranchingRule end
 struct PseudocostBranching <: AbstractVariableBranchingRule end
 
@@ -37,10 +37,10 @@ const DEFAULT_MODEL_REUSE_STRATEGY = USE_SINGLE_MODEL
 # TODO: Change this default to TIGHTEN_WHENEVER_POSSIBLE
 const DEFAULT_FORMULATION_TIGHTENING_STRATEGY = TIGHTEN_WHEN_REBUILDING
 
-Base.@kwdef mutable struct AlgorithmConfig
+Base.@kwdef mutable struct AlgorithmConfig{B<:AbstractBranchingRule}
     lp_solver_factory::Function = DEFAULT_LP_SOLVER_FACTORY
     silent::Bool = DEFAULT_SILENT
-    branching_rule = DEFAULT_BRANCHING_RULE #::AbstractBranchingRule
+    branching_rule::B = DEFAULT_BRANCHING_RULE
     time_limit_sec::Float64 = DEFAULT_TIME_LIMIT_SEC
     node_limit::Int = DEFAULT_NODE_LIMIT
     gap_tol::Float64 = DEFAULT_GAP_TOL

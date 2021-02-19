@@ -54,11 +54,25 @@ end
 # Fallback that works for variable branching. Add new methods for branching on
 # general constraints.
 function branching_candidates(
-    ::AbstractVariableBranchingRule,
+    form::DMIPFormulation,
+    parent_result::NodeResult,
+    config::AlgorithmConfig,
+)
+    return branching_candidates(
+        config.branching_rule,
+        form,
+        parent_result,
+        config,
+    )
+end
+
+function branching_candidates(
+    br::AbstractVariableBranchingRule,
     form::DMIPFormulation,
     parent_result::NodeResult,
     config::AlgorithmConfig,
 )::Vector{VariableBranchingCandidate}
+    @assert config.branching_rule === br
     candidates = VariableBranchingCandidate[]
     for cvi in all_variables(form)
         var_set = get_variable_kind(form, cvi)
@@ -76,7 +90,8 @@ function branching_candidates(
     return candidates
 end
 
-struct VariableBranchingScore
+abstract type AbstractBranchingScore end
+struct VariableBranchingScore <: AbstractBranchingScore
     down_branch_score::Float64
     up_branch_score::Float64
     aggregate_score::Float64
@@ -100,8 +115,23 @@ function branch_on(
 end
 
 function branching_score(
+    state::CurrentState,
+    bc::VariableBranchingCandidate,
+    parent_result::NodeResult,
+    config::AlgorithmConfig,
+)
+    return branching_score(
+        config.branching_rule,
+        state,
+        bc,
+        parent_result,
+        config,
+    )
+end
+
+function branching_score(
+    ::MostInfeasible,
     ::CurrentState,
-    br::MostInfeasible,
     bc::VariableBranchingCandidate,
     parent_result::NodeResult,
     config::AlgorithmConfig,
@@ -121,17 +151,17 @@ function branch(
     parent_result::NodeResult,
     config::AlgorithmConfig,
 )
-    br = config.branching_rule
-    # NOTE: This dispatches on B. In the "simple" case (i.e. variable
-    # branching), this should be type stable. In the more complex case (general
-    # branching), it will not be.
-    candidates = branching_candidates(br, form, parent_result, config)
+    # NOTE: The following calls dispatch on config.branching_rule, behind a
+    # function barrier. In the "simple" case (i.e. variable branching), this
+    # should be type stable. In the more complex case (general branching), it
+    # will not be.
+    candidates = branching_candidates(form, parent_result, config)
     if isempty(candidates)
         error("No branching candidates--are you sure you want to be branching?")
     end
     scores = Dict(
         candidate =>
-            branching_score(state, br, candidate, parent_result, config) for
+            branching_score(state, candidate, parent_result, config) for
         candidate in candidates
     )
     # TODO: Can make all of this more efficient, if bottleneck.
@@ -141,4 +171,54 @@ function branch(
     )
     best_agg_score, best_candidate = findmax(agg_scores)
     return branch_on(parent_node, best_candidate, scores[best_candidate])
+end
+
+struct DummyBranchingRule <: Cerberus.AbstractBranchingRule end
+struct DummyBranchingCandidate <: Cerberus.AbstractBranchingCandidate
+    cvi::CVI
+end
+struct DummyBranchingScore <: Cerberus.AbstractBranchingScore
+    val::Any
+end
+function Cerberus.branching_candidates(
+    ::DummyBranchingRule,
+    ::Cerberus.DMIPFormulation,
+    ::Cerberus.NodeResult,
+    config::Cerberus.AlgorithmConfig,
+)
+    @assert config.branching_rule === DummyBranchingRule()
+    return [DummyBranchingCandidate(CVI(1)), DummyBranchingCandidate(CVI(3))]
+end
+function Cerberus.branching_score(
+    ::Cerberus.CurrentState,
+    dbc::DummyBranchingCandidate,
+    ::Cerberus.NodeResult,
+    config::Cerberus.AlgorithmConfig,
+)
+    @assert config.branching_rule === DummyBranchingRule()
+    return DummyBranchingScore(Cerberus.index(dbc.cvi))
+end
+Cerberus.aggregate_score(::DummyBranchingScore) = 42.0
+function Cerberus.branch_on(
+    node::Cerberus.Node,
+    ::DummyBranchingCandidate,
+    ::DummyBranchingScore,
+)
+    return (
+        Cerberus.Node(
+            vcat(node.lt_bounds, Cerberus.BoundUpdate(CVI(3), LT(0.0))),
+            vcat(node.gt_bounds, Cerberus.BoundUpdate(CVI(3), GT(0.0))),
+            node.depth + 1,
+        ),
+        Cerberus.Node(
+            vcat(node.lt_bounds, Cerberus.BoundUpdate(CVI(3), LT(1.0))),
+            vcat(node.gt_bounds, Cerberus.BoundUpdate(CVI(3), GT(1.0))),
+            node.depth + 1,
+        ),
+        Cerberus.Node(
+            vcat(node.lt_bounds, Cerberus.BoundUpdate(CVI(3), LT(2.0))),
+            vcat(node.gt_bounds, Cerberus.BoundUpdate(CVI(3), GT(2.0))),
+            node.depth + 1,
+        ),
+    )
 end

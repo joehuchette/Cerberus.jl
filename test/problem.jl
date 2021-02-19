@@ -88,6 +88,13 @@ end
         @test Cerberus.num_variables(fm) == 4
     end
 
+    @testset "all_variables" begin
+        av = @inferred Cerberus.all_variables(fm)
+        @test av == [_CVI(i) for i in 1:4]
+        Cerberus.add_variable(fm)
+        @test Cerberus.all_variables(fm) == [_CVI(i) for i in 1:5]
+    end
+
     @testset "get_variable_kind" begin
         @test Cerberus.get_variable_kind(fm, _CVI(1)) == _ZO()
         @test Cerberus.get_variable_kind(fm, _CVI(2)) === nothing
