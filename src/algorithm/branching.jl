@@ -45,34 +45,40 @@ function _branch(node::Node, branch_cvi::CVI, set::S) where {S<:Union{LT,GT}}
     return new_node
 end
 
+"""
+Abstract type representing a possible way the algorithm could branch. Allows us
+to understand the value in taking this particular branching choice without
+instantiating all of the data structures necessary to actually represent it.
+"""
 abstract type AbstractBranchingCandidate end
+
+"""
+Represent a variable branching candidate in terms of: 1) the variable being
+branched on, and 2) its fractional value at the LP solution.
+"""
 struct VariableBranchingCandidate <: AbstractBranchingCandidate
-    cvi::CVI
-    x_val::Float64
+    index::CVI
+    value::Float64
 end
 
-# Fallback that works for variable branching. Add new methods for branching on
-# general constraints.
+"""
+    branching_candidates(form::DMIPFormulation, nr::NodeResult, config::AlgorithmConfig{B}) where {B <: AbstractBranchingRule}
+
+Given the formulation, the result from the node LP solve, and the branching
+rule (of type `B` as encoded in `config`), returns a vector of potential
+branching candidates.
+
+For example, if `B <: AbstractVariableBranchingRule`, there is a method which
+will inspect the current LP solution and return branching candidates for each
+integer variable taking a fractional value.
+"""
+function branching_candidates end
+
 function branching_candidates(
     form::DMIPFormulation,
     parent_result::NodeResult,
-    config::AlgorithmConfig,
-)
-    return branching_candidates(
-        config.branching_rule,
-        form,
-        parent_result,
-        config,
-    )
-end
-
-function branching_candidates(
-    br::AbstractVariableBranchingRule,
-    form::DMIPFormulation,
-    parent_result::NodeResult,
-    config::AlgorithmConfig,
-)::Vector{VariableBranchingCandidate}
-    @assert config.branching_rule === br
+    config::AlgorithmConfig{B},
+)::Vector{VariableBranchingCandidate} where {B<:AbstractVariableBranchingRule}
     candidates = VariableBranchingCandidate[]
     for cvi in all_variables(form)
         var_set = get_variable_kind(form, cvi)
@@ -90,23 +96,54 @@ function branching_candidates(
     return candidates
 end
 
+"""
+Abstract type representing a numeric scoring for a branching candidate.
+"""
 abstract type AbstractBranchingScore end
+
+"""
+Generic representation for scoring a variable branching candidate in terms of
+a score for the down branch, a score for the up branch, and an aggregate
+for the two.
+"""
 struct VariableBranchingScore <: AbstractBranchingScore
     down_branch_score::Float64
     up_branch_score::Float64
     aggregate_score::Float64
 end
+
+"""
+    aggregate_score(::AbstractBranchingScore)::Float64
+
+Represent a scoring for a branching candidate using a scalar numeric value.
+Conventionally, this will be a value between 0 and 1.
+"""
+function aggregate_score end
+
 aggregate_score(vbs::VariableBranchingScore) = vbs.aggregate_score
 
 # Function returns nodes created by branching, in increasing preference order.
+"""
+    branch_on(parent_node::Node, candidate::AbstractBranchingCandidate, score::AbstractBranchingScore)::NTuple{Node}
+
+Given a node, a selected branching candidate, and a score for that candidate,
+apply that branching. The return value will be a tuple of `Node`s. These nodes
+will be proved in increasing order of preference, i.e. the _last_ entry in the
+return tuple will be the favorite.
+
+Note:
+* The memory in `parent_node` should remain untouched unaliased.
+"""
+function branch_on end
+
 function branch_on(
     parent_node::Node,
     candidate::VariableBranchingCandidate,
     score::VariableBranchingScore,
 )::Tuple{Node,Node}
     # How do we decide which to prioritize?
-    db = down_branch(parent_node, candidate.cvi, candidate.x_val)
-    ub = up_branch(parent_node, candidate.cvi, candidate.x_val)
+    db = down_branch(parent_node, candidate.index, candidate.value)
+    ub = up_branch(parent_node, candidate.index, candidate.value)
     if score.down_branch_score > score.up_branch_score
         return ub, db
     else
@@ -114,29 +151,24 @@ function branch_on(
     end
 end
 
-function branching_score(
-    state::CurrentState,
-    bc::VariableBranchingCandidate,
-    parent_result::NodeResult,
-    config::AlgorithmConfig,
-)
-    return branching_score(
-        config.branching_rule,
-        state,
-        bc,
-        parent_result,
-        config,
-    )
-end
+"""
+    branching_score(state::CurrentState, bc::AbstractBranchingCandidate, nr::NodeResult, config::AlgorithmConfig)::AbstractBranchingScore
+
+Scores a given branching candidate that could potentially be taken at the
+current node.
+
+Note:
+* The two methods are added to hide the
+"""
+function branching_score end
 
 function branching_score(
-    ::MostInfeasible,
     ::CurrentState,
     bc::VariableBranchingCandidate,
     parent_result::NodeResult,
-    config::AlgorithmConfig,
+    config::AlgorithmConfig{MostInfeasible},
 )
-    xi = parent_result.x[index(bc.cvi)]
+    xi = parent_result.x[index(bc.index)]
     xi_f = _approx_floor(xi, config.int_tol)
     xi_c = _approx_ceil(xi, config.int_tol)
     f⁺ = xi_c - xi
@@ -144,13 +176,26 @@ function branching_score(
     return VariableBranchingScore(f⁻, f⁺, min(f⁻, f⁺))
 end
 
+"""
+Given a current node and node LP result, branch. The return value will be a
+tuple of `Node`s corresponding to the childen created by the branching.
+
+This is a generic implementation which should support multiway branching and
+general constraint branching. However, the "easy" case with binary variable
+branching should be type stable and efficient.
+
+Note:
+* This method will error if branching is not valid. This is encoded via
+`branching_candidates`: if no candidates are returned, then this function will
+error.
+"""
 function branch(
     state::CurrentState,
     form::DMIPFormulation,
     parent_node::Node,
     parent_result::NodeResult,
     config::AlgorithmConfig,
-)
+)::NTuple
     # NOTE: The following calls dispatch on config.branching_rule, behind a
     # function barrier. In the "simple" case (i.e. variable branching), this
     # should be type stable. In the more complex case (general branching), it

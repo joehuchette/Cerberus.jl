@@ -317,10 +317,9 @@ struct DummyBranchingScore <: Cerberus.AbstractBranchingScore
     val::Any
 end
 function Cerberus.branching_candidates(
-    ::DummyBranchingRule,
     ::Cerberus.DMIPFormulation,
     ::Cerberus.NodeResult,
-    config::Cerberus.AlgorithmConfig,
+    config::Cerberus.AlgorithmConfig{DummyBranchingRule},
 )
     @assert config.branching_rule === DummyBranchingRule()
     return [DummyBranchingCandidate(_CVI(1)), DummyBranchingCandidate(_CVI(3))]
@@ -329,7 +328,7 @@ function Cerberus.branching_score(
     ::Cerberus.CurrentState,
     dbc::DummyBranchingCandidate,
     ::Cerberus.NodeResult,
-    config::Cerberus.AlgorithmConfig,
+    config::Cerberus.AlgorithmConfig{DummyBranchingRule},
 )
     @assert config.branching_rule === DummyBranchingRule()
     return DummyBranchingScore(Cerberus.index(dbc.cvi))
