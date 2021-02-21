@@ -83,6 +83,7 @@ mutable struct CurrentState
     warm_starts::Dict{Node,Basis}
     primal_bound::Float64
     dual_bound::Float64
+    current_solution::Vector{Float64}
     best_solution::Vector{Float64}
     starting_time::Float64
     total_elapsed_time_sec::Float64
@@ -95,8 +96,7 @@ mutable struct CurrentState
     disjunction_state::Dict{DisjunctiveFormulater,Any}
     polling_state::PollingState
 
-    function CurrentState(form::DMIPFormulation; primal_bound::Real = Inf)
-        nvars = num_variables(form)
+    function CurrentState(; primal_bound::Real = Inf)
         state = new()
         state.gurobi_env = Gurobi.Env()
         state.backtracking = false
@@ -107,8 +107,9 @@ mutable struct CurrentState
         state.warm_starts = Dict{Node,Basis}()
         state.primal_bound = primal_bound
         state.dual_bound = -Inf
-        state.best_solution = fill(NaN, nvars)
         state.starting_time = time()
+        state.current_solution = Float64[]
+        state.best_solution = Float64[]
         state.total_elapsed_time_sec = 0.0
         state.total_node_count = 0
         state.total_simplex_iters = 0

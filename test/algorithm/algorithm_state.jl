@@ -1,23 +1,4 @@
-@testset "NodeResult" begin
-    cost = 5.6
-    x = [1.2, 3.4]
-    simplex_iters = 3
-    depth = 12
-    int_infeas = 4
-    let nr1 = @inferred Cerberus.NodeResult(
-            cost,
-            x,
-            simplex_iters,
-            depth,
-            int_infeas,
-        )
-        @test nr1.cost == cost
-        @test nr1.x == x
-        @test nr1.simplex_iters == simplex_iters
-        @test nr1.depth == depth
-        @test nr1.int_infeas == int_infeas
-    end
-end
+@testset "NodeResult" begin end
 
 @testset "CurrentState" begin
     fm = _build_dmip_formulation()
@@ -26,9 +7,9 @@ end
     pb_float = 12.4
     pb_int = 12
 
-    cs1 = @inferred _CurrentState(fm)
-    cs2 = @inferred _CurrentState(fm, primal_bound = pb_float)
-    cs3 = @inferred _CurrentState(fm, primal_bound = pb_int)
+    cs1 = @inferred _CurrentState()
+    cs2 = @inferred _CurrentState(primal_bound = pb_float)
+    cs3 = @inferred _CurrentState(primal_bound = pb_int)
 
     @test length(cs1.tree) == 1
     @test length(cs2.tree) == 1
@@ -46,12 +27,9 @@ end
     @test cs2.dual_bound == -Inf
     @test cs3.dual_bound == -Inf
 
-    @test length(cs1.best_solution) == nvars
-    @test length(cs2.best_solution) == nvars
-    @test length(cs3.best_solution) == nvars
-    @test all(isnan, values(cs1.best_solution))
-    @test all(isnan, values(cs2.best_solution))
-    @test all(isnan, values(cs3.best_solution))
+    @test isempty(cs1.best_solution)
+    @test isempty(cs2.best_solution)
+    @test isempty(cs3.best_solution)
 
     @test cs1.total_node_count == 0
     @test cs2.total_node_count == 0
@@ -95,7 +73,7 @@ end
 
 @testset "reset_formulation_state!" begin
     form = _build_formulation_with_single_disjunction()
-    state = Cerberus.CurrentState(form)
+    state = Cerberus.CurrentState()
     node = Cerberus.Node(
         [Cerberus.BoundUpdate(_CVI(5), _LT(0.0))],
         [Cerberus.BoundUpdate(_CVI(3), _GT(1.0))],
@@ -132,7 +110,7 @@ end
 
 @testset "instantiate" begin
     form = _build_dmip_formulation()
-    state = Cerberus.CurrentState(form)
+    state = Cerberus.CurrentState()
     vis = state._variable_indices
     @test isempty(vis)
     Cerberus.populate_base_model!(state, form, Cerberus.Node(), CONFIG)

@@ -25,7 +25,7 @@ function _has_feasible_solution(opt::Optimizer)
         return false
     end
     x = opt.result.best_solution
-    return all(!isnan, x)
+    return !isempty(x)
 end
 
 function MOI.get(opt::Optimizer, ::MOI.PrimalStatus)
