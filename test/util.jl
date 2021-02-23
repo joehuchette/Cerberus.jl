@@ -207,3 +207,9 @@ function _test_roundtrip_model(
         @test s_actual == s_expected
     end
 end
+
+function _CurrentState(; primal_bound = Inf)
+    state = Cerberus.CurrentState(primal_bound = primal_bound)
+    state.gurobi_env = GRB_ENV
+    return state
+end

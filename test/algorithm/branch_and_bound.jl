@@ -14,7 +14,7 @@ end
     # A feasible model
     let
         fm = _build_dmip_formulation()
-        state = _CurrentState(fm)
+        state = _CurrentState()
         node = Cerberus.Node()
         result = @inferred Cerberus.process_node!(state, fm, node, CONFIG)
         @test result.cost ≈ 0.5 - 2.5 / 2.1
@@ -33,7 +33,7 @@ end
             warm_start_strategy = Cerberus.NO_WARM_STARTS,
             model_reuse_strategy = Cerberus.NO_MODEL_REUSE,
         )
-        state = _CurrentState(fm)
+        state = _CurrentState()
         node = Cerberus.Node()
         result =
             @inferred Cerberus.process_node!(state, fm, node, no_inc_config)
@@ -46,7 +46,7 @@ end
     # An infeasible model
     let
         fm = _build_dmip_formulation()
-        state = _CurrentState(fm)
+        state = _CurrentState()
         # A bit hacky, but force infeasibility by branching both up and down.
         node = Cerberus.Node(
             [Cerberus.BoundUpdate(_CVI(1), _LT(0.0))],
@@ -65,32 +65,41 @@ end
 
 @testset "_num_int_infeasible" begin
     config = Cerberus.AlgorithmConfig()
-    let fm = _build_dmip_formulation()
-        x_int = [1.0, 3.2, 0.0]
-        @test Cerberus._num_int_infeasible(fm, x_int, CONFIG) == 0
-        x_int_2 = [1.0 - 0.9CONFIG.int_tol, 3.2, 0.0 + 0.9CONFIG.int_tol]
-        @test Cerberus._num_int_infeasible(fm, x_int_2, config) == 0
-        x_int_3 = [1.0 - 2CONFIG.int_tol, 3.2, 0.0 + 1.1CONFIG.int_tol]
-        @test Cerberus._num_int_infeasible(fm, x_int_3, CONFIG) == 2
+    let form = _build_dmip_formulation()
+        state = Cerberus.CurrentState()
+        let x_int = [1.0, 3.2, 0.0]
+            state.current_solution = x_int
+            @test Cerberus._num_int_infeasible(state, form, CONFIG) == 0
+        end
+        let x_int = [1.0 - 0.9CONFIG.int_tol, 3.2, 0.0 + 0.9CONFIG.int_tol]
+            state.current_solution = x_int
+            @test Cerberus._num_int_infeasible(state, form, CONFIG) == 0
+        end
+        let x_int = [1.0 - 2CONFIG.int_tol, 3.2, 0.0 + 1.1CONFIG.int_tol]
+            state.current_solution = x_int
+            @test Cerberus._num_int_infeasible(state, form, CONFIG) == 2
+        end
     end
 
-    let fm = _build_gi_dmip_formulation()
+    let form = _build_gi_dmip_formulation()
+        state = Cerberus.CurrentState()
         x_int = [0.6, 0.0, 2.0]
-        @test Cerberus._num_int_infeasible(fm, x_int, CONFIG) == 0
+        state.current_solution = x_int
+        @test Cerberus._num_int_infeasible(state, form, CONFIG) == 0
         x_int[2] = 0.9
-        @test Cerberus._num_int_infeasible(fm, x_int, CONFIG) == 1
+        @test Cerberus._num_int_infeasible(state, form, CONFIG) == 1
         x_int[2] = 1.0
         x_int[3] = 3.0
-        @test Cerberus._num_int_infeasible(fm, x_int, CONFIG) == 0
+        @test Cerberus._num_int_infeasible(state, form, CONFIG) == 0
         x_int[2] = 1.0
         x_int[3] = 2.9
-        @test Cerberus._num_int_infeasible(fm, x_int, CONFIG) == 1
+        @test Cerberus._num_int_infeasible(state, form, CONFIG) == 1
     end
 end
 
 @testset "_store_basis_if_desired!" begin
     fm = _build_dmip_formulation()
-    state = Cerberus.CurrentState(fm)
+    state = Cerberus.CurrentState()
     node = Cerberus.Node()
     Cerberus.process_node!(state, fm, node, CONFIG)
     fc = Cerberus.Node(
@@ -115,8 +124,7 @@ end
         )
         @inferred Cerberus._store_basis_if_desired!(
             state,
-            fc,
-            oc,
+            (oc, fc),
             no_incrementalism_config,
         )
         @test isempty(state.warm_starts)
@@ -127,8 +135,7 @@ end
         )
         @inferred Cerberus._store_basis_if_desired!(
             state,
-            fc,
-            oc,
+            (oc, fc),
             warm_start_only_config,
         )
         @test length(state.warm_starts) == 2
@@ -138,6 +145,7 @@ end
         @test haskey(state.warm_starts, oc)
         oc_basis = state.warm_starts[oc]
         _test_is_equal_to_dmip_basis(oc_basis)
+        # TODO: Test more than one child
     end
     empty!(state.warm_starts)
     let warm_start_off_dives_config = Cerberus.AlgorithmConfig(
@@ -146,8 +154,7 @@ end
         )
         @inferred Cerberus._store_basis_if_desired!(
             state,
-            fc,
-            oc,
+            (oc, fc),
             warm_start_off_dives_config,
         )
         @test length(state.warm_starts) == 1
@@ -162,51 +169,51 @@ end
     starting_pb = 12.3
     simplex_iters_per = 18
     depth = 7
-    cs = _CurrentState(fm, primal_bound = starting_pb)
-    @test Cerberus._is_root_node(Cerberus.pop_node!(cs.tree))
+    state = _CurrentState(primal_bound = starting_pb)
+    @test Cerberus._is_root_node(Cerberus.pop_node!(state.tree))
     node = Cerberus.Node()
 
-    @test isempty(cs.warm_starts)
+    @test isempty(state.warm_starts)
 
     # 1. Prune by infeasibility
     let nr = Cerberus.NodeResult()
         nr.cost = Inf
         nr.simplex_iters = simplex_iters_per
         nr.int_infeas = 0
-        @inferred Cerberus.update_state!(cs, fm, node, nr, CONFIG)
-        @test isempty(cs.tree)
-        @test cs.total_node_count == 1
-        @test cs.primal_bound == starting_pb
-        @test cs.dual_bound == -Inf
-        @test length(cs.best_solution) == Cerberus.num_variables(fm)
-        @test all(isnan, values(cs.best_solution))
-        @test cs.total_simplex_iters == simplex_iters_per
-        @test isempty(cs.warm_starts)
+        @inferred Cerberus.update_state!(state, fm, node, nr, CONFIG)
+        @test isempty(state.tree)
+        @test state.total_node_count == 1
+        @test state.primal_bound == starting_pb
+        @test state.dual_bound == -Inf
+        @test length(state.best_solution) == 0
+        @test all(isnan, values(state.best_solution))
+        @test state.total_simplex_iters == simplex_iters_per
+        @test isempty(state.warm_starts)
     end
-    cs.backtracking = false
-    cs.rebuild_model = true
+    state.backtracking = false
+    state.rebuild_model = true
 
     # 2. Prune by bound
     let nr = Cerberus.NodeResult()
         nr.cost = 13.5
         frac_soln = [0.2, 3.4, 0.6]
         nr.x = frac_soln
+        state.current_solution = nr.x
         nr.simplex_iters = simplex_iters_per
         nr.depth = depth
-        nr.int_infeas = Cerberus._num_int_infeasible(fm, nr.x, CONFIG)
-        @test nr.int_infeas == 2
-        @inferred Cerberus.update_state!(cs, fm, node, nr, CONFIG)
-        @test isempty(cs.tree)
-        @test cs.total_node_count == 2
-        @test cs.primal_bound == starting_pb
-        @test cs.dual_bound == -Inf
-        @test length(cs.best_solution) == Cerberus.num_variables(fm)
-        @test all(isnan, values(cs.best_solution))
-        @test cs.total_simplex_iters == 2 * simplex_iters_per
-        @test isempty(cs.warm_starts)
+        nr.int_infeas = Cerberus._num_int_infeasible(state, fm, CONFIG) == 2
+        @inferred Cerberus.update_state!(state, fm, node, nr, CONFIG)
+        @test isempty(state.tree)
+        @test state.total_node_count == 2
+        @test state.primal_bound == starting_pb
+        @test state.dual_bound == -Inf
+        @test length(state.best_solution) == 0
+        @test all(isnan, values(state.best_solution))
+        @test state.total_simplex_iters == 2 * simplex_iters_per
+        @test isempty(state.warm_starts)
     end
-    cs.backtracking = false
-    cs.rebuild_model = true
+    state.backtracking = false
+    state.rebuild_model = true
 
     # 3. Prune by integrality
     new_pb = 11.1
@@ -214,52 +221,57 @@ end
     let nr = Cerberus.NodeResult()
         nr.cost = new_pb
         nr.x = copy(int_soln)
+        state.current_solution = nr.x
         nr.simplex_iters = simplex_iters_per
         nr.depth = depth
-        nr.int_infeas = Cerberus._num_int_infeasible(fm, nr.x, CONFIG)
+        nr.int_infeas = Cerberus._num_int_infeasible(state, fm, CONFIG)
         @test nr.int_infeas == 0
-        @inferred Cerberus.update_state!(cs, fm, node, nr, CONFIG)
-        @test isempty(cs.tree)
-        @test cs.total_node_count == 3
-        @test cs.primal_bound == new_pb
-        @test cs.dual_bound == -Inf
-        @test cs.best_solution == int_soln
-        @test cs.total_simplex_iters == 3 * simplex_iters_per
-        @test isempty(cs.warm_starts)
+        @inferred Cerberus.update_state!(state, fm, node, nr, CONFIG)
+        @test isempty(state.tree)
+        @test state.total_node_count == 3
+        @test state.primal_bound == new_pb
+        @test state.dual_bound == -Inf
+        @test state.best_solution == int_soln
+        @test state.total_simplex_iters == 3 * simplex_iters_per
+        @test isempty(state.warm_starts)
     end
-    cs.backtracking = false
-    cs.rebuild_model = true
+    state.backtracking = false
+    state.rebuild_model = true
 
     # 4. Branch
-    let nr = Cerberus.process_node!(cs, fm, node, CONFIG)
+    let nr = Cerberus.process_node!(state, fm, node, CONFIG)
         db = 10.1
         frac_soln_2 = [0.0, 2.9, 0.6]
         nr.cost = db
         nr.x = frac_soln_2
+        state.current_solution = nr.x
         nr.simplex_iters = simplex_iters_per
         nr.depth = depth
-        nr.int_infeas = Cerberus._num_int_infeasible(fm, nr.x, CONFIG)
-        @inferred Cerberus.update_state!(cs, fm, node, nr, CONFIG)
-        @test Cerberus.num_open_nodes(cs.tree) == 2
-        @test cs.total_node_count == 4
-        @test cs.primal_bound == new_pb
-        @test cs.dual_bound == -Inf
-        @test cs.best_solution == int_soln
-        @test cs.total_simplex_iters == 4 * simplex_iters_per
-        @inferred Cerberus.update_dual_bound!(cs)
-        @test cs.dual_bound == db
-        fc = Cerberus.pop_node!(cs.tree)
-        @test isempty(fc.lt_bounds)
-        @test fc.gt_bounds == [Cerberus.BoundUpdate(_CVI(3), _GT(1.0))]
-        @test fc.dual_bound == db
-        @test length(cs.warm_starts) == 1
-        @test !haskey(cs.warm_starts, fc)
-        oc = Cerberus.pop_node!(cs.tree)
-        @test oc.lt_bounds == [Cerberus.BoundUpdate(_CVI(3), _LT(0.0))]
-        @test isempty(oc.gt_bounds)
-        @test oc.dual_bound == db
-        @test haskey(cs.warm_starts, oc)
-        oc_basis = cs.warm_starts[oc]
-        _test_is_equal_to_dmip_basis(oc_basis)
+        nr.int_infeas = Cerberus._num_int_infeasible(state, fm, CONFIG)
+        @test nr.int_infeas == 1
+        @inferred Cerberus.update_state!(state, fm, node, nr, CONFIG)
+        @test Cerberus.num_open_nodes(state.tree) == 2
+        @test state.total_node_count == 4
+        @test state.primal_bound == new_pb
+        @test state.dual_bound == -Inf
+        @test state.best_solution == int_soln
+        @test state.total_simplex_iters == 4 * simplex_iters_per
+        @inferred Cerberus.update_dual_bound!(state)
+        @test state.dual_bound == db
+        let fc = Cerberus.pop_node!(state.tree)
+            @test fc.lt_bounds == [Cerberus.BoundUpdate(_CVI(3), _LT(0.0))]
+            @test isempty(fc.gt_bounds)
+            @test fc.dual_bound == db
+            @test length(state.warm_starts) == 1
+            @test !haskey(state.warm_starts, fc)
+        end
+        let oc = Cerberus.pop_node!(state.tree)
+            @test isempty(oc.lt_bounds)
+            @test oc.gt_bounds == [Cerberus.BoundUpdate(_CVI(3), _GT(1.0))]
+            @test oc.dual_bound == db
+            @test haskey(state.warm_starts, oc)
+            oc_basis = state.warm_starts[oc]
+            _test_is_equal_to_dmip_basis(oc_basis)
+        end
     end
 end

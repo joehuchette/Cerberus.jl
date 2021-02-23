@@ -16,7 +16,7 @@ function optimize!(
     result = Result()
     # TODO: Model presolve. Must happen before initial state is built.
     # Initialize search tree with LP relaxation
-    state = CurrentState(form, primal_bound = primal_bound)
+    state = CurrentState(primal_bound = primal_bound)
     _log_preamble(form, primal_bound, config)
     while !isempty(state.tree)
         node = pop_node!(state.tree)
@@ -39,10 +39,7 @@ mutable struct NodeResult
     depth::Int
     int_infeas::Int
 end
-
-function NodeResult()
-    return NodeResult(NaN, Float64[], 0, 0, 0)
-end
+NodeResult() = NodeResult(NaN, Float64[], 0, -1, 0)
 
 # TODO: Store config in CurrentState, remove as argument here.
 function process_node!(
@@ -69,9 +66,9 @@ function process_node!(
     term_status = MOI.get(model, MOI.TerminationStatus())
     if term_status == MOI.OPTIMAL
         node_result.cost = MOI.get(model, MOI.ObjectiveValue())
-        node_result.x = _get_lp_solution!(model)
-        node_result.int_infeas =
-            _num_int_infeasible(form, node_result.x, config)
+        _update_lp_solution!(state, form)
+        node_result.x = state.current_solution
+        node_result.int_infeas = _num_int_infeasible(state, form, config)
     elseif term_status == MOI.INFEASIBLE
         node_result.cost = Inf
     elseif term_status == MOI.DUAL_INFEASIBLE
@@ -84,18 +81,17 @@ end
 
 # Only checks feasibility w.r.t. integrality constraints!
 function _num_int_infeasible(
+    state::CurrentState,
     form::DMIPFormulation,
-    x::Vector{Float64},
     config::AlgorithmConfig,
 )::Int
     cnt = 0
-    for i in 1:num_variables(form)
-        cvi = CVI(i)
+    for cvi in all_variables(form)
         v_set = get_variable_kind(form, cvi)
         if v_set === nothing
             continue
         end
-        xi = x[i]
+        xi = state.current_solution[index(cvi)]
         ϵ = config.int_tol
         xi_f = _approx_floor(xi, ϵ)
         xi_c = _approx_ceil(xi, ϵ)
@@ -147,13 +143,12 @@ function update_state!(
         end
     else
         # 5. Branch!
-        favorite_child, other_child =
-            branch(form, config.branching_rule, node, node_result, config)
-        favorite_child.dual_bound = node_result.cost
-        other_child.dual_bound = node_result.cost
-        push_node!(state.tree, other_child)
-        push_node!(state.tree, favorite_child)
-        _store_basis_if_desired!(state, favorite_child, other_child, config)
+        children = branch(state, form, node, node_result, config)
+        _store_basis_if_desired!(state, children, config)
+        for child in children
+            child.dual_bound = node_result.cost
+            push_node!(state.tree, child)
+        end
         # TODO: Can be even more clever with this and reuse the same model
         # throughout the tree. However, we currently update bounds based on a
         # diff with the root. So, after backtracking we will need to reset all
@@ -176,20 +171,25 @@ end
 
 function _store_basis_if_desired!(
     state::CurrentState,
-    favorite_child::Node,
-    other_child::Node,
+    children::NTuple{N,Node},
     config::AlgorithmConfig,
-)
+) where {N}
+    @assert N == length(children) >= 2
     if config.warm_start_strategy == NO_WARM_STARTS
         # Do nothing
     else
         basis = get_basis(state)
-        if config.warm_start_strategy == WARM_START_WHEN_BACKTRACKING
-            state.warm_starts[other_child] = basis
-        else
-            @assert config.warm_start_strategy == WARM_START_WHENEVER_POSSIBLE
-            state.warm_starts[favorite_child] = copy(basis)
-            state.warm_starts[other_child] = basis
+        state.warm_starts[children[1]] = basis
+        ending_index = (
+            if config.warm_start_strategy == WARM_START_WHEN_BACKTRACKING
+                N - 1
+            else
+                @assert config.warm_start_strategy == WARM_START_WHENEVER_POSSIBLE
+                N
+            end
+        )
+        for i in 2:ending_index
+            state.warm_starts[children[i]] = copy(basis)
         end
     end
     return nothing

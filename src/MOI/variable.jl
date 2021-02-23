@@ -118,8 +118,8 @@ function MOI.get(
     ::MOI.NumberOfConstraints{SV,S},
 ) where {S<:_V_BOUND_SETS}
     cnt = 0
-    for i in 1:num_variables(opt.form)
-        if S == _get_scalar_set(opt.form, CVI(i))
+    for cvi in all_variables(opt.form)
+        if S == _get_scalar_set(opt.form, cvi)
             cnt += 1
         end
     end
@@ -131,8 +131,8 @@ function MOI.get(
     ::MOI.ListOfConstraintIndices{SV,S},
 ) where {S<:_V_BOUND_SETS}
     indices = CI{SV,S}[]
-    for i in 1:num_variables(opt.form)
-        if S == _get_scalar_set(opt.form, CVI(i))
+    for cvi in all_variables(opt.form)
+        if S == _get_scalar_set(opt.form, cvi)
             push!(indices, CI{SV,S}(i))
         end
     end
