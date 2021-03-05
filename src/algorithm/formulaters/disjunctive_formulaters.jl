@@ -43,6 +43,14 @@ Notes:
 """
 function compute_disjunction_activity end
 
+"""
+    delete_all_constraints!(model::Gurobi.Optimizer, disjunction_state)
+
+Delete all constraints in `model` that were added to formulate a given
+disjunctive constraint.
+"""
+function delete_all_constraints! end
+
 function formulate!(
     state::CurrentState,
     form::DMIPFormulation,

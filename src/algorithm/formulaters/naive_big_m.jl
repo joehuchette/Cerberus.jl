@@ -64,3 +64,17 @@ function compute_disjunction_activity(
     end
     return activity
 end
+
+function delete_all_constraints!(model::Gurobi.Optimizer, disjunction_state::DisjunctiveConstraints.NaiveBigMState)
+    for lt_ci in disjunction_state.lt_cis
+        if lt_ci !== nothing
+            MOI.delete(model, lt_ci)
+        end
+    end
+    for gt_ci in disjunction_state.gt_cis
+        if gt_ci !== nothing
+            MOI.delete(model, gt_ci)
+        end
+    end
+    return nothing
+end

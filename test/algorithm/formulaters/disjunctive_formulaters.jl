@@ -57,6 +57,17 @@
                     expected_gt_acs,
                     expected_et_acs,
                 )
+
+                disjunction_state = state.disjunction_state[formulater]
+                @inferred Cerberus.delete_all_constraints!(state.gurobi_model, disjunction_state)
+
+                _test_roundtrip_model(
+                    state.gurobi_model,
+                    expected_bounds,
+                    expected_lt_acs[1:0],
+                    expected_gt_acs[1:1],
+                    expected_et_acs,
+                )
             end
 
             let node = Cerberus.Node(
@@ -105,6 +116,17 @@
                     expected_bounds,
                     expected_lt_acs,
                     expected_gt_acs,
+                    expected_et_acs,
+                )
+
+                disjunction_state = state.disjunction_state[formulater]
+                @inferred Cerberus.delete_all_constraints!(state.gurobi_model, disjunction_state)
+
+                _test_roundtrip_model(
+                    state.gurobi_model,
+                    expected_bounds,
+                    expected_lt_acs[1:0],
+                    expected_gt_acs[1:1],
                     expected_et_acs,
                 )
             end
