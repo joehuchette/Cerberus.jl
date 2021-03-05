@@ -221,6 +221,7 @@ end
 
 @testset "attach_formulater!" begin
     form = _build_dmip_formulation()
+    @test Cerberus.num_disjunctive_constraints(form) == 0
     @assert Cerberus.num_variables(form) == 3
     disjunction = Cerberus.Disjunction(
         _CSAF[],
@@ -236,6 +237,7 @@ end
     @test haskey(form.disjunction_formulaters, formulater)
     @test form.disjunction_formulaters[formulater] ==
           [_CVI(i) for i in (3+1):(3+6)]
+    @test Cerberus.num_disjunctive_constraints(form) == 1
 
     @test_throws ArgumentError Cerberus.attach_formulater!(form, formulater)
 end
