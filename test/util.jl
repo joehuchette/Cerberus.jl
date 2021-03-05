@@ -79,10 +79,8 @@ function _test_is_equal_to_dmip_basis(basis::Cerberus.Basis)
 end
 
 function _is_equal(u::_CSAF, v::_CSAF)
-    u_terms = [Cerberus.index(u.indices[i]) => u.coeffs[i] for
-     i in 1:length(u.indices)]
-    v_terms = [Cerberus.index(v.indices[i]) => v.coeffs[i] for
-     i in 1:length(v.indices)]
+    u_terms = [Cerberus.index(u.indices[i]) => u.coeffs[i] for i in 1:length(u.indices)]
+    v_terms = [Cerberus.index(v.indices[i]) => v.coeffs[i] for i in 1:length(v.indices)]
     u_t = sort(u_terms, lt = (x, y) -> x[1] < y[1])
     v_t = sort(v_terms, lt = (x, y) -> x[1] < y[1])
     if !(u.constant ≈ v.constant)
@@ -173,8 +171,20 @@ function _test_roundtrip_model(
         @test MOIU.get_bounds(model, Float64, _VI(i)) == expected_bounds[i]
     end
 
-    @test Set(MOI.get(model, MOI.ListOfConstraints())) ==
-          Set([(_SAF, _ET), (_SAF, _GT), (_SAF, _LT), (_SV, _IN)])
+    expected_loc = Set([])
+    if !isempty(expected_bounds)
+        push!(expected_loc, (_SV, _IN))
+    end
+    if !isempty(expected_lt_acs)
+        push!(expected_loc, (_SAF, _LT))
+    end
+    if !isempty(expected_gt_acs)
+        push!(expected_loc, (_SAF, _GT))
+    end
+    if !isempty(expected_et_acs)
+        push!(expected_loc, (_SAF, _ET))
+    end
+    @test Set(MOI.get(model, MOI.ListOfConstraints())) == expected_loc
 
     lt_constr_cis = MOI.get(model, MOI.ListOfConstraintIndices{_SAF,_LT}())
     @test length(lt_constr_cis) == length(expected_lt_acs)
