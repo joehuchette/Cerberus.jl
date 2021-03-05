@@ -3,6 +3,8 @@ function _is_time_to_terminate(state::CurrentState, config::AlgorithmConfig)
     if state.total_node_count >= config.node_limit ||
        state.total_elapsed_time_sec >= config.time_limit_sec
         return true
+    elseif _optimality_gap(state.primal_bound, state.dual_bound) <= config.gap_tol
+        return true
     else
         return false
     end
