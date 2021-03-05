@@ -51,7 +51,7 @@ function process_node!(
     config::AlgorithmConfig,
 )::NodeResult
     # 1. Build model
-    populate_base_model!(state, form, node, config)
+    populate_lp_model!(state, form, node, config)
     # Update bounds on binary variables at the current node
     apply_branchings!(state, node)
     formulate_disjunctions!(state, form, node, config)

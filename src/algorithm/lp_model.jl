@@ -1,8 +1,9 @@
 # NOTE: This does NOT touch the disjunctive formulations
-function reset_base_formulation_upon_backtracking!(
+function reset_lp_model_upon_backtracking!(
     state::CurrentState,
     form::DMIPFormulation,
     node::Node,
+    config::AlgorithmConfig,
 )
     model = state.gurobi_model
     cs = state.constraint_state
@@ -25,7 +26,7 @@ end
 # may add additional continuous variables, but they must come after this chunk.
 # This means that these variables will present, in the same order, in every
 # node LP.
-function populate_base_model!(
+function populate_lp_model!(
     state::CurrentState,
     form::DMIPFormulation,
     node::Node,
@@ -37,7 +38,7 @@ function populate_base_model!(
         if state.backtracking
             # ...however, upon backtracking we need to reset bounds and reapply
             # (or reset) disjunctive formulations.
-            reset_base_formulation_upon_backtracking!(state, form, node)
+            reset_lp_model_upon_backtracking!(state, form, node, config)
         end
         if config.formulation_tightening_strategy == TIGHTEN_AT_EACH_NODE
             error(

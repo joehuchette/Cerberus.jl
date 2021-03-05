@@ -11,7 +11,7 @@
 
             let node = Cerberus.Node()
                 state = Cerberus.CurrentState()
-                Cerberus.populate_base_model!(state, form, node, CONFIG)
+                Cerberus.populate_lp_model!(state, form, node, CONFIG)
                 Cerberus.apply_branchings!(state, node)
                 @inferred Cerberus.formulate!(
                     state,
@@ -76,7 +76,7 @@
                     1,
                 )
                 state = Cerberus.CurrentState()
-                Cerberus.populate_base_model!(state, form, node, CONFIG)
+                Cerberus.populate_lp_model!(state, form, node, CONFIG)
                 Cerberus.apply_branchings!(state, node)
                 @inferred Cerberus.formulate!(
                     state,
