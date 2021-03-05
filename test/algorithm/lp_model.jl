@@ -188,7 +188,7 @@ end
         [Cerberus.AffineConstraint{_GT}(f_gt, s_gt)],
         2,
     )
-    Cerberus.reset_lp_model_upon_backtracking(state, form, node_2)
+    Cerberus.reset_lp_model_upon_backtracking!(state, form, node_2, CONFIG)
     @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
     @test MOI.Utilities.get_bounds(
         model,
