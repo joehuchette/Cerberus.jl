@@ -11,7 +11,7 @@
 
             let node = Cerberus.Node()
                 state = Cerberus.CurrentState()
-                Cerberus.populate_lp_model!(state, form, node, CONFIG)
+                Cerberus.create_base_model!(state, form, node, CONFIG)
                 Cerberus.apply_branchings!(state, node)
                 @inferred Cerberus.formulate!(
                     state,
@@ -59,7 +59,10 @@
                 )
 
                 disjunction_state = state.disjunction_state[formulater]
-                @inferred Cerberus.delete_all_constraints!(state.gurobi_model, disjunction_state)
+                @inferred Cerberus.delete_all_constraints!(
+                    state.gurobi_model,
+                    disjunction_state,
+                )
 
                 _test_roundtrip_model(
                     state.gurobi_model,
@@ -76,15 +79,8 @@
                     1,
                 )
                 state = Cerberus.CurrentState()
+                # Instead of directly calling formulate!, do it through populate_lp_model!
                 Cerberus.populate_lp_model!(state, form, node, CONFIG)
-                Cerberus.apply_branchings!(state, node)
-                @inferred Cerberus.formulate!(
-                    state,
-                    form,
-                    formulater,
-                    node,
-                    CONFIG,
-                )
                 x = [_SV(Cerberus.instantiate(_CVI(i), state)) for i in 1:5]
                 @assert [v.variable.value for v in x] == collect(1:5)
 
@@ -120,7 +116,10 @@
                 )
 
                 disjunction_state = state.disjunction_state[formulater]
-                @inferred Cerberus.delete_all_constraints!(state.gurobi_model, disjunction_state)
+                @inferred Cerberus.delete_all_constraints!(
+                    state.gurobi_model,
+                    disjunction_state,
+                )
 
                 _test_roundtrip_model(
                     state.gurobi_model,

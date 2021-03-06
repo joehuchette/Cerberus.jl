@@ -17,10 +17,13 @@ end
         state = _CurrentState()
         node = Cerberus.Node()
         result = @inferred Cerberus.process_node!(state, fm, node, CONFIG)
+        @test result.status == Cerberus.OPTIMAL_LP
         @test result.cost ≈ 0.5 - 2.5 / 2.1
-        @test result.simplex_iters == 0
         @test length(result.x) == 3
         @test result.x ≈ [0.5, 2.5 / 2.1, 0.0]
+        @test result.simplex_iters == 0
+        @test result.depth == 0
+        result.int_infeas == 0
 
         true_basis = @inferred Cerberus.get_basis(state)
         _test_is_equal_to_dmip_basis(true_basis)
@@ -37,10 +40,14 @@ end
         node = Cerberus.Node()
         result =
             @inferred Cerberus.process_node!(state, fm, node, no_inc_config)
+
+        @test result.status == Cerberus.OPTIMAL_LP
         @test result.cost ≈ 0.5 - 2.5 / 2.1
-        @test result.simplex_iters == 0
         @test length(result.x) == 3
         @test result.x ≈ [0.5, 2.5 / 2.1, 0.0]
+        @test result.simplex_iters == 0
+        @test result.depth == 0
+        result.int_infeas == 0
     end
 
     # An infeasible model
@@ -56,10 +63,12 @@ end
             2,
         )
         result = @inferred Cerberus.process_node!(state, fm, node, CONFIG)
+        @test result.status == Cerberus.INFEASIBLE_LP
         @test result.cost == Inf
+        @test !isdefined(result, :x)
         @test result.simplex_iters == 0
-        @test isempty(result.x)
-        @test all(isnan, values(result.x))
+        @test result.depth == 2
+        @test result.int_infeas == 0
     end
 end
 
@@ -117,7 +126,14 @@ end
         2,
     )
     cost = 12.3
-    result = Cerberus.NodeResult(cost, [1.2, 2.3, 3.4], 1492, 12, 13)
+    result = Cerberus.NodeResult(
+        Cerberus.OPTIMAL_LP,
+        cost,
+        [1.2, 2.3, 3.4],
+        1492,
+        12,
+        13,
+    )
     let no_incrementalism_config = Cerberus.AlgorithmConfig(
             warm_start_strategy = Cerberus.NO_WARM_STARTS,
             model_reuse_strategy = Cerberus.NO_MODEL_REUSE,
@@ -176,7 +192,7 @@ end
     @test isempty(state.warm_starts)
 
     # 1. Prune by infeasibility
-    let nr = Cerberus.NodeResult()
+    let nr = Cerberus.NodeResult(node)
         nr.cost = Inf
         nr.simplex_iters = simplex_iters_per
         nr.int_infeas = 0
@@ -190,11 +206,11 @@ end
         @test state.total_simplex_iters == simplex_iters_per
         @test isempty(state.warm_starts)
     end
-    state.backtracking = false
+    state.on_a_dive = true
     state.rebuild_model = true
 
     # 2. Prune by bound
-    let nr = Cerberus.NodeResult()
+    let nr = Cerberus.NodeResult(node)
         nr.cost = 13.5
         frac_soln = [0.2, 3.4, 0.6]
         nr.x = frac_soln
@@ -212,13 +228,13 @@ end
         @test state.total_simplex_iters == 2 * simplex_iters_per
         @test isempty(state.warm_starts)
     end
-    state.backtracking = false
+    state.on_a_dive = true
     state.rebuild_model = true
 
     # 3. Prune by integrality
     new_pb = 11.1
     int_soln = [1.0, 3.4, 0.0]
-    let nr = Cerberus.NodeResult()
+    let nr = Cerberus.NodeResult(node)
         nr.cost = new_pb
         nr.x = copy(int_soln)
         state.current_solution = nr.x
@@ -235,7 +251,7 @@ end
         @test state.total_simplex_iters == 3 * simplex_iters_per
         @test isempty(state.warm_starts)
     end
-    state.backtracking = false
+    state.on_a_dive = true
     state.rebuild_model = true
 
     # 4. Branch

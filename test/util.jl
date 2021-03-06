@@ -79,8 +79,10 @@ function _test_is_equal_to_dmip_basis(basis::Cerberus.Basis)
 end
 
 function _is_equal(u::_CSAF, v::_CSAF)
-    u_terms = [Cerberus.index(u.indices[i]) => u.coeffs[i] for i in 1:length(u.indices)]
-    v_terms = [Cerberus.index(v.indices[i]) => v.coeffs[i] for i in 1:length(v.indices)]
+    u_terms = [Cerberus.index(u.indices[i]) => u.coeffs[i] for
+     i in 1:length(u.indices)]
+    v_terms = [Cerberus.index(v.indices[i]) => v.coeffs[i] for
+     i in 1:length(v.indices)]
     u_t = sort(u_terms, lt = (x, y) -> x[1] < y[1])
     v_t = sort(v_terms, lt = (x, y) -> x[1] < y[1])
     if !(u.constant ≈ v.constant)

@@ -1,4 +1,4 @@
-@testset "build_base_model" begin
+@testset "populate_lp_model!" begin
     form = _build_dmip_formulation()
     state = Cerberus.CurrentState()
     node = Cerberus.Node()
@@ -38,10 +38,11 @@
         Cerberus.instantiate(_CVI(3), state),
     ) == (0.0, 1.0)
 
-    # TODO: Test obj, objsense
     @test MOI.get(model, MOI.ObjectiveSense()) == MOI.MIN_SENSE
     obj = MOI.get(model, MOI.ObjectiveFunction{_SAF}())
     _is_equal(obj, 1.0 * _SV(_VI(1)) - 1.0 * _SV(_VI(2)))
+
+    # TODO: Test that model does NOT get created if the config/state says not to.
 end
 
 @testset "update_node_bounds!" begin
@@ -128,11 +129,11 @@ end
     end
 end
 
-@testset "reset_lp_model_upon_backtracking" begin
+@testset "remove_branchings!" begin
     form = _build_dmip_formulation()
     state = Cerberus.CurrentState()
     node = Cerberus.Node()
-    Cerberus.populate_lp_model!(state, form, node, CONFIG)
+    Cerberus.create_base_model!(state, form, node, CONFIG)
     f_lt = _CSAF([1.2, 3.4], [_CVI(1), _CVI(2)], 0.0)
     s_lt = _LT(7.8)
     f_gt = _CSAF([2.4, 6.4], [_CVI(3), _CVI(1)], 0.0)
@@ -181,6 +182,27 @@ end
     end
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_ET}()) == 1
 
+    @inferred Cerberus.remove_branchings!(state, form)
+    @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
+    @test MOI.Utilities.get_bounds(
+        model,
+        Float64,
+        Cerberus.instantiate(_CVI(1), state),
+    ) == (0.5, 1.0)
+    @test MOI.Utilities.get_bounds(
+        model,
+        Float64,
+        Cerberus.instantiate(_CVI(2), state),
+    ) == (-1.3, 2.3)
+    @test MOI.Utilities.get_bounds(
+        model,
+        Float64,
+        Cerberus.instantiate(_CVI(3), state),
+    ) == (0.0, 1.0)
+    @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_LT}()) == 1
+    @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_GT}()) == 0
+    @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_ET}()) == 1
+
     node_2 = Cerberus.Node(
         [Cerberus.BoundUpdate(_CVI(1), _LT(0.0))],
         Cerberus.BoundUpdate{_GT}[],
@@ -188,7 +210,7 @@ end
         [Cerberus.AffineConstraint{_GT}(f_gt, s_gt)],
         2,
     )
-    Cerberus.reset_lp_model_upon_backtracking!(state, form, node_2, CONFIG)
+    Cerberus.apply_branchings!(state, node_2)
     @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
     @test MOI.Utilities.get_bounds(
         model,
@@ -215,6 +237,27 @@ end
         @test s_gt_rt == s_gt
     end
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_ET}()) == 1
+
+    @inferred Cerberus.remove_branchings!(state, form)
+    @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
+    @test MOI.Utilities.get_bounds(
+        model,
+        Float64,
+        Cerberus.instantiate(_CVI(1), state),
+    ) == (0.5, 1.0)
+    @test MOI.Utilities.get_bounds(
+        model,
+        Float64,
+        Cerberus.instantiate(_CVI(2), state),
+    ) == (-1.3, 2.3)
+    @test MOI.Utilities.get_bounds(
+        model,
+        Float64,
+        Cerberus.instantiate(_CVI(3), state),
+    ) == (0.0, 1.0)
+    @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_LT}()) == 1
+    @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_GT}()) == 0
+    @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_ET}()) == 1
 end
 
 @testset "apply_branchings!" begin
@@ -223,7 +266,7 @@ end
     cs = state.constraint_state
 
     node = Cerberus.Node()
-    Cerberus.populate_lp_model!(state, form, node, CONFIG)
+    Cerberus.create_base_model!(state, form, node, CONFIG)
     @test isempty(Cerberus._unattached_bounds(cs, node, _LT))
     @test isempty(Cerberus._unattached_bounds(cs, node, _GT))
     @test isempty(Cerberus._unattached_constraints(cs, node, _LT))
@@ -385,7 +428,6 @@ end
         state = Cerberus.CurrentState()
         Cerberus.populate_lp_model!(state, form, node, CONFIG)
         Cerberus.apply_branchings!(state, node)
-        @inferred Cerberus.formulate_disjunctions!(state, form, node, CONFIG)
         x = [_SV(Cerberus.instantiate(_CVI(i), state)) for i in 1:5]
         @assert [v.variable.value for v in x] == collect(1:5)
 
@@ -427,7 +469,6 @@ end
         state = Cerberus.CurrentState()
         Cerberus.populate_lp_model!(state, form, node, CONFIG)
         Cerberus.apply_branchings!(state, node)
-        @inferred Cerberus.formulate_disjunctions!(state, form, node, CONFIG)
         x = [_SV(Cerberus.instantiate(_CVI(i), state)) for i in 1:5]
         @assert [v.variable.value for v in x] == collect(1:5)
 
