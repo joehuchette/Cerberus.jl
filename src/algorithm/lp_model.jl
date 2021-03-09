@@ -20,7 +20,7 @@ function populate_lp_model!(
         if !state.on_a_dive
             # ...however, upon backtracking we need to reset bounds and reapply
             # (or reset) disjunctive formulations.
-            remove_branchings!(state, form)
+            remove_all_branchings!(state, form)
         end
         apply_branchings!(state, node)
         if config.formulation_tightening_strategy == TIGHTEN_AT_EACH_NODE
@@ -144,7 +144,7 @@ function _unattached_constraints(cs::ConstraintState, node::Node, ::Type{GT})
     )
 end
 
-function remove_branchings!(state::CurrentState, form::DMIPFormulation)
+function remove_all_branchings!(state::CurrentState, form::DMIPFormulation)
     model = state.gurobi_model
     cs = state.constraint_state
     for cvi in all_variables(form)

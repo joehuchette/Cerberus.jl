@@ -1,48 +1,118 @@
 @testset "populate_lp_model!" begin
     form = _build_dmip_formulation()
     state = Cerberus.CurrentState()
-    node = Cerberus.Node()
-    @inferred Cerberus.populate_lp_model!(state, form, node, CONFIG)
+    let node = Cerberus.Node()
+        @inferred Cerberus.populate_lp_model!(state, form, node, CONFIG)
+        model = state.gurobi_model
+
+        @test MOI.get(model, MOI.NumberOfVariables()) == 3
+        @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_ET}()) == 1
+        c1 = MOI.get(model, MOI.ListOfConstraintIndices{_SAF,_ET}())[1]
+        f1 = MOI.get(model, MOI.ConstraintFunction(), c1)
+        _is_equal(f1, 1.0 * _SV(_VI(1)) + 2.1 * _SV(_VI(2)) + 3.0 * _SV(_VI(3)))
+        s1 = MOI.get(model, MOI.ConstraintSet(), c1)
+        @test s1 == _ET(3.0)
+
+        @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_LT}()) == 1
+        c2 = MOI.get(model, MOI.ListOfConstraintIndices{_SAF,_LT}())[1]
+        f2 = MOI.get(model, MOI.ConstraintFunction(), c2)
+        _is_equal(f2, -3.5 * _SV(_VI(1)) + 1.2 * _SV(_VI(2)))
+        s2 = MOI.get(model, MOI.ConstraintSet(), c2)
+        @test s2 == _LT(4.0)
+        @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_GT}()) == 0
+
+        @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
+        @test MOI.Utilities.get_bounds(
+            model,
+            Float64,
+            Cerberus.instantiate(_CVI(1), state),
+        ) == (0.5, 1.0)
+        @test MOI.Utilities.get_bounds(
+            model,
+            Float64,
+            Cerberus.instantiate(_CVI(2), state),
+        ) == (-1.3, 2.3)
+        @test MOI.Utilities.get_bounds(
+            model,
+            Float64,
+            Cerberus.instantiate(_CVI(3), state),
+        ) == (0.0, 1.0)
+
+        @test MOI.get(model, MOI.ObjectiveSense()) == MOI.MIN_SENSE
+        obj = MOI.get(model, MOI.ObjectiveFunction{_SAF}())
+        _is_equal(obj, 1.0 * _SV(_VI(1)) - 1.0 * _SV(_VI(2)))
+    end
+
+    # Safe to do this now that we've populated the model once (undefined reference otherwise).
     model = state.gurobi_model
-
-    @test MOI.get(model, MOI.NumberOfVariables()) == 3
-    @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_ET}()) == 1
-    c1 = MOI.get(model, MOI.ListOfConstraintIndices{_SAF,_ET}())[1]
-    f1 = MOI.get(model, MOI.ConstraintFunction(), c1)
-    _is_equal(f1, 1.0 * _SV(_VI(1)) + 2.1 * _SV(_VI(2)) + 3.0 * _SV(_VI(3)))
-    s1 = MOI.get(model, MOI.ConstraintSet(), c1)
-    @test s1 == _ET(3.0)
-
-    @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_LT}()) == 1
-    c2 = MOI.get(model, MOI.ListOfConstraintIndices{_SAF,_LT}())[1]
-    f2 = MOI.get(model, MOI.ConstraintFunction(), c2)
-    _is_equal(f2, -3.5 * _SV(_VI(1)) + 1.2 * _SV(_VI(2)))
-    s2 = MOI.get(model, MOI.ConstraintSet(), c2)
-    @test s2 == _LT(4.0)
-    @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_GT}()) == 0
-
-    @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
-    @test MOI.Utilities.get_bounds(
-        model,
-        Float64,
-        Cerberus.instantiate(_CVI(1), state),
-    ) == (0.5, 1.0)
-    @test MOI.Utilities.get_bounds(
-        model,
-        Float64,
-        Cerberus.instantiate(_CVI(2), state),
-    ) == (-1.3, 2.3)
-    @test MOI.Utilities.get_bounds(
-        model,
-        Float64,
-        Cerberus.instantiate(_CVI(3), state),
-    ) == (0.0, 1.0)
-
-    @test MOI.get(model, MOI.ObjectiveSense()) == MOI.MIN_SENSE
-    obj = MOI.get(model, MOI.ObjectiveFunction{_SAF}())
-    _is_equal(obj, 1.0 * _SV(_VI(1)) - 1.0 * _SV(_VI(2)))
-
     # TODO: Test that model does NOT get created if the config/state says not to.
+    state.rebuild_model = false
+    let node = Cerberus.Node(
+            [Cerberus.BoundUpdate(_CVI(1), _LT(0.0))],
+            [Cerberus.BoundUpdate(_CVI(3), _GT(1.0))],
+            2,
+        )
+        @inferred Cerberus.populate_lp_model!(state, form, node, CONFIG)
+        @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
+        @test MOI.Utilities.get_bounds(
+            model,
+            Float64,
+            Cerberus.instantiate(_CVI(1), state),
+        ) == (0.5, 0.0)
+        @test MOI.Utilities.get_bounds(
+            model,
+            Float64,
+            Cerberus.instantiate(_CVI(2), state),
+        ) == (-1.3, 2.3)
+        @test MOI.Utilities.get_bounds(
+            model,
+            Float64,
+            Cerberus.instantiate(_CVI(3), state),
+        ) == (1.0, 1.0)
+    end
+
+    # Lie to Cerberus so that it doesn't reset the bounds
+    state.on_a_dive = true
+    let node = Cerberus.Node()
+        @inferred Cerberus.populate_lp_model!(state, form, node, CONFIG)
+        @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
+        @test MOI.Utilities.get_bounds(
+            model,
+            Float64,
+            Cerberus.instantiate(_CVI(1), state),
+        ) == (0.5, 0.0)
+        @test MOI.Utilities.get_bounds(
+            model,
+            Float64,
+            Cerberus.instantiate(_CVI(2), state),
+        ) == (-1.3, 2.3)
+        @test MOI.Utilities.get_bounds(
+            model,
+            Float64,
+            Cerberus.instantiate(_CVI(3), state),
+        ) == (1.0, 1.0)
+    end
+
+    state.on_a_dive = false
+    let node = Cerberus.Node()
+        @inferred Cerberus.populate_lp_model!(state, form, node, CONFIG)
+        @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
+        @test MOI.Utilities.get_bounds(
+            model,
+            Float64,
+            Cerberus.instantiate(_CVI(1), state),
+        ) == (0.5, 1.0)
+        @test MOI.Utilities.get_bounds(
+            model,
+            Float64,
+            Cerberus.instantiate(_CVI(2), state),
+        ) == (-1.3, 2.3)
+        @test MOI.Utilities.get_bounds(
+            model,
+            Float64,
+            Cerberus.instantiate(_CVI(3), state),
+        ) == (0.0, 1.0)
+    end
 end
 
 @testset "update_node_bounds!" begin
@@ -129,7 +199,7 @@ end
     end
 end
 
-@testset "remove_branchings!" begin
+@testset "remove_all_branchings!" begin
     form = _build_dmip_formulation()
     state = Cerberus.CurrentState()
     node = Cerberus.Node()
@@ -182,7 +252,7 @@ end
     end
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_ET}()) == 1
 
-    @inferred Cerberus.remove_branchings!(state, form)
+    @inferred Cerberus.remove_all_branchings!(state, form)
     @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
     @test MOI.Utilities.get_bounds(
         model,
@@ -238,7 +308,7 @@ end
     end
     @test MOI.get(model, MOI.NumberOfConstraints{_SAF,_ET}()) == 1
 
-    @inferred Cerberus.remove_branchings!(state, form)
+    @inferred Cerberus.remove_all_branchings!(state, form)
     @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
     @test MOI.Utilities.get_bounds(
         model,

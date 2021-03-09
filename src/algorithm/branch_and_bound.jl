@@ -1,7 +1,8 @@
 # TODO: Unit test
 function _is_time_to_terminate(state::CurrentState, config::AlgorithmConfig)
-    if state.total_node_count >= config.node_limit ||
-       state.total_elapsed_time_sec >= config.time_limit_sec
+    if state.total_node_count >= config.node_limit
+        return true
+    elseif state.total_elapsed_time_sec >= config.time_limit_sec
         return true
     elseif _optimality_gap(state.primal_bound, state.dual_bound) <=
            config.gap_tol
@@ -35,7 +36,7 @@ function optimize!(
     return result
 end
 
-@enum NodeResultStatus PRUNED_BY_PARENT_BOUND OPTIMAL_LP INFEASIBLE_LP UNBOUNDED_LP
+@enum NodeResultStatus NOT_SOLVED PRUNED_BY_PARENT_BOUND OPTIMAL_LP INFEASIBLE_LP UNBOUNDED_LP
 
 mutable struct NodeResult
     status::NodeResultStatus
@@ -47,6 +48,7 @@ mutable struct NodeResult
 
     function NodeResult(node::Node)
         node_result = new()
+        node_result.status = NOT_SOLVED
         node_result.cost = NaN
         node_result.simplex_iters = 0
         node_result.depth = node.depth
@@ -151,20 +153,24 @@ function update_state!(
     state.polling_state.period_simplex_iters += node_result.simplex_iters
     state.on_a_dive = false
     # 1. Prune by infeasibility
-    if node_result.cost == Inf
+    if node_result.status == INFEASIBLE_LP
         # Do nothing
-    elseif node_result.cost > state.primal_bound
+        @assert node_result.cost == Inf
+    elseif node_result.status == PRUNED_BY_PARENT_BOUND ||
+           node_result.cost > state.primal_bound
         # 2. Prune by bound
         # Do nothing
-    elseif node_result.cost == -Inf
+    elseif node_result.status == UNBOUNDED_LP
         # 3. LP is unbounded.
         #  Implies MIP is infeasible or unbounded. Should only happen at root.
         @assert _is_root_node(node)
-        state.primal_bound = node_result.cost
+        @assert node_result.cost == -Inf
+        state.primal_bound = -Inf
     elseif node_result.int_infeas == 0
         # 4. Prune by integrality
         # Have <= to handle case where we seed the optimal cost but
         # not the optimal solution
+        @assert node_result.status == OPTIMAL_LP
         if node_result.cost <= state.primal_bound
             state.primal_bound = node_result.cost
             # TODO: Make this more efficient, keys should not change.
@@ -172,6 +178,7 @@ function update_state!(
         end
     else
         # 5. Branch!
+        @assert node_result.status == OPTIMAL_LP
         children = branch(state, form, node, node_result, config)
         _store_basis_if_desired!(state, children, config)
         for child in children

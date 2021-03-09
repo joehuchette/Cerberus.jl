@@ -70,6 +70,20 @@ end
         @test result.depth == 2
         @test result.int_infeas == 0
     end
+
+    @testset "prune by parent bound" begin
+        fm = _build_dmip_formulation()
+        node = Cerberus.Node()
+        node.dual_bound = 1.0
+        state = _CurrentState(primal_bound = 0.0)
+        result = @inferred Cerberus.process_node!(state, fm, node, CONFIG)
+        @test result.status == Cerberus.PRUNED_BY_PARENT_BOUND
+        @test isnan(result.cost)
+        @test !isdefined(result, :x)
+        @test result.simplex_iters == 0
+        @test result.depth == 0
+        result.int_infeas == 0
+    end
 end
 
 @testset "_num_int_infeasible" begin
@@ -193,6 +207,7 @@ end
 
     # 1. Prune by infeasibility
     let nr = Cerberus.NodeResult(node)
+        nr.status = Cerberus.INFEASIBLE_LP
         nr.cost = Inf
         nr.simplex_iters = simplex_iters_per
         nr.int_infeas = 0
@@ -211,6 +226,7 @@ end
 
     # 2. Prune by bound
     let nr = Cerberus.NodeResult(node)
+        nr.status = Cerberus.OPTIMAL_LP
         nr.cost = 13.5
         frac_soln = [0.2, 3.4, 0.6]
         nr.x = frac_soln
@@ -235,6 +251,7 @@ end
     new_pb = 11.1
     int_soln = [1.0, 3.4, 0.0]
     let nr = Cerberus.NodeResult(node)
+        nr.status = Cerberus.OPTIMAL_LP
         nr.cost = new_pb
         nr.x = copy(int_soln)
         state.current_solution = nr.x
@@ -255,8 +272,8 @@ end
     state.rebuild_model = true
 
     # 4. Branch
+    db = 10.1
     let nr = Cerberus.process_node!(state, fm, node, CONFIG)
-        db = 10.1
         frac_soln_2 = [0.0, 2.9, 0.6]
         nr.cost = db
         nr.x = frac_soln_2
@@ -289,5 +306,19 @@ end
             oc_basis = state.warm_starts[oc]
             _test_is_equal_to_dmip_basis(oc_basis)
         end
+    end
+
+    # 5. Prune by parent bound
+    let nr = Cerberus.NodeResult(node)
+        nr.status = Cerberus.PRUNED_BY_PARENT_BOUND
+        nr.depth = depth
+        @inferred Cerberus.update_state!(state, fm, node, nr, CONFIG)
+        @test isempty(state.tree)
+        @test state.total_node_count == 5
+        @test state.primal_bound == new_pb
+        @test state.dual_bound == db
+        @test state.best_solution == int_soln
+        @test state.total_simplex_iters == 4 * simplex_iters_per
+        @test length(state.warm_starts) == 1
     end
 end
