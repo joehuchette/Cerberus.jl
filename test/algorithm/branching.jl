@@ -90,18 +90,39 @@ struct DummyVariableBranchingRule <: Cerberus.AbstractVariableBranchingRule end
     config =
         Cerberus.AlgorithmConfig(branching_rule = DummyVariableBranchingRule())
     @testset "branching_candidates" begin
-        let nr = Cerberus.NodeResult(12.3, [0.6, 0.7, 0.1], 12, 13, 14)
+        let nr = Cerberus.NodeResult(
+                Cerberus.OPTIMAL_LP,
+                12.3,
+                [0.6, 0.7, 0.1],
+                12,
+                13,
+                14,
+            )
             bc = @inferred Cerberus.branching_candidates(form, nr, config)
             @test bc == [
                 Cerberus.VariableBranchingCandidate(_CVI(1), 0.6),
                 Cerberus.VariableBranchingCandidate(_CVI(3), 0.1),
             ]
         end
-        let nr = Cerberus.NodeResult(12.3, [0.8, 0.7, 0.0], 12, 13, 14)
+        let nr = Cerberus.NodeResult(
+                Cerberus.OPTIMAL_LP,
+                12.3,
+                [0.8, 0.7, 0.0],
+                12,
+                13,
+                14,
+            )
             bc = @inferred Cerberus.branching_candidates(form, nr, config)
             @test bc == [Cerberus.VariableBranchingCandidate(_CVI(1), 0.8)]
         end
-        let nr = Cerberus.NodeResult(12.3, [1.0, 0.7, 0.0], 12, 13, 14)
+        let nr = Cerberus.NodeResult(
+                Cerberus.OPTIMAL_LP,
+                12.3,
+                [1.0, 0.7, 0.0],
+                12,
+                13,
+                14,
+            )
             bc = @inferred Cerberus.branching_candidates(form, nr, config)
             @test isempty(bc)
         end
@@ -215,7 +236,7 @@ end
     @testset "branching_score" begin
         state = Cerberus.CurrentState()
         let x = [0.6, 0.5, 0.35]
-            nr = Cerberus.NodeResult(12.3, x, 12, 13, 14)
+            nr = Cerberus.NodeResult(Cerberus.OPTIMAL_LP, 12.3, x, 12, 13, 14)
             let bc = Cerberus.VariableBranchingCandidate(_CVI(1), 0.6)
                 vbs =
                     @inferred Cerberus.branching_score(state, bc, nr, mi_config)
@@ -235,7 +256,8 @@ end
             node = Cerberus.Node()
             x = [0.6, 0.7, 0.1]
             cost = 1.2
-            result = Cerberus.NodeResult(cost, x, 12, 13, 14)
+            result =
+                Cerberus.NodeResult(Cerberus.OPTIMAL_LP, cost, x, 12, 13, 14)
             n1, n2 =
                 @inferred Cerberus.branch(state, fm, node, result, mi_config)
             @test isempty(n1.lt_bounds)
@@ -282,7 +304,8 @@ end
             node = Cerberus.Node()
             x = [0.6, 0.4, 0.7]
             cost = 1.2
-            result = Cerberus.NodeResult(cost, x, 12, 13, 14)
+            result =
+                Cerberus.NodeResult(Cerberus.OPTIMAL_LP, cost, x, 12, 13, 14)
             fc, oc =
                 @inferred Cerberus.branch(state, fm, node, result, mi_config)
             @test fc.lt_bounds == [Cerberus.BoundUpdate(_CVI(2), _LT(0.0))]
@@ -370,7 +393,14 @@ end
         [Cerberus.BoundUpdate(_CVI(1), _GT(1.0))],
         1,
     )
-    nr = Cerberus.NodeResult(12.3, [0.6, 0.5, 1.0], 12, 13, 14)
+    nr = Cerberus.NodeResult(
+        Cerberus.OPTIMAL_LP,
+        12.3,
+        [0.6, 0.5, 1.0],
+        12,
+        13,
+        14,
+    )
     nodes = @inferred Cerberus.branch(state, form, node, nr, config)
     @test length(nodes) == 3
     for i in 1:3

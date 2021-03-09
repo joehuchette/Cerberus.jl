@@ -4,7 +4,7 @@
 Returns a vector of the kinds (from `_V_INT_SETS`) of the variables added
 _every time_ that `formulater` is applied to a model. The contract is: these
 variables will always be included in a model, regardless of which node it is
-created at. Variable creation will be handled by `populate_base_model!`; it is
+created at. Variable creation will be handled by `populate_lp_model!`; it is
 not the role of `formulater` to create them.
 
 This function returns the CVIs used to reference these variables in the model.
