@@ -309,6 +309,38 @@ end
     end
 end
 
+@testset "StrongBranching" begin
+    sb_config = Cerberus.AlgorithmConfig(
+        branching_rule = Cerberus.StrongBranching(),
+        silent = true,
+    )
+    @testset "branching_score" begin
+        state = Cerberus.CurrentState()
+        model = Gurobi.Optimizer(state.gurobi_env)
+        x = MOI.add_variables(model, 3)
+        MOI.set(model, MOI.ObjectiveFunction{_SAF}(), _SAF(_SAT.([-1.0, 1.0, 0.0], x), 0.0))
+        MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+        MOI.add_constraint(model, _SAF(_SAT.([4.0, 5.0, 2.0], x), 0.0), _GT(5.0))
+        MOI.add_constraint(model, _SAF(_SAT.([4.0, 2.0, 5.0], x), 0.0), _LT(5.0))
+        MOI.add_constraint(model, _SV(x[1]), _GT(0.0))
+        MOI.add_constraint(model, _SV(x[2]), _GT(0.0))
+        MOI.add_constraint(model, _SV(x[3]), _GT(0.0))
+        MOI.set(model, MOI.Silent(), true)
+        state.gurobi_model = model
+
+        MOI.optimize!(model)
+        opt_sol = MOI.get(model, MOI.VariablePrimal(), x)
+        cost = MOI.get(model, MOI.ObjectiveValue())
+        nr = Cerberus.NodeResult(cost, opt_sol, 1, 1, 1)
+
+        new_con = MOI.add_constraint(model, _SV(x[1]), _LT(1.0))
+
+        #bc = Cerberus.VariableBranchingCandidate(_CVI(1), opt_sol[1])
+        #vbs =
+        #    @inferred Cerberus.branching_score(state, bc, nr, sb_config)
+    end
+end
+
 struct DummyBranchingRule <: Cerberus.AbstractBranchingRule end
 struct DummyBranchingCandidate <: Cerberus.AbstractBranchingCandidate
     cvi::_CVI
@@ -385,3 +417,31 @@ end
         @test node.depth == 2
     end
 end
+
+@testset "StrongBranching" begin
+    @testset "branching_score" begin
+    end
+end
+
+
+state = Cerberus.CurrentState()
+model = Gurobi.Optimizer(state.gurobi_env)
+x = MOI.add_variables(model, 3)
+MOI.set(model, MOI.ObjectiveFunction{_SAF}(), _SAF(_SAT.([-1.0, 1.0, 0.0], x), 0.0))
+MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+c = MOI.add_constraint(model, _SAF(_SAT.([4.0, 5.0, 2.0], x), 0.0), _GT(5.0))
+MOI.add_constraint(model, _SAF(_SAT.([4.0, 2.0, 5.0], x), 0.0), _LT(5.0))
+MOI.add_constraint(model, _SV(x[1]), _GT(0.0))
+MOI.add_constraint(model, _SV(x[2]), _GT(0.0))
+MOI.add_constraint(model, _SV(x[3]), _GT(0.0))
+MOI.set(model, MOI.Silent(), true)
+state.gurobi_model = model
+
+MOI.optimize!(model)
+opt_sol = MOI.get(model, MOI.VariablePrimal(), x)
+cost = MOI.get(model, MOI.ObjectiveValue())
+nr = Cerberus.NodeResult(cost, opt_sol, 1, 1, 1)
+
+new_con = MOI.add_constraint(model, _SV(x[1]), _LT(1.0))
+
+optc

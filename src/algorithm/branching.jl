@@ -174,6 +174,74 @@ function branching_score(
     return VariableBranchingScore(f⁻, f⁺, min(f⁻, f⁺))
 end
 
+function branching_score(
+    state::CurrentState,
+    bc::VariableBranchingCandidate,
+    parent_result::NodeResult,
+    config::AlgorithmConfig{StrongBranching},
+    μ::Float64 = 1/6,
+)
+    parent_model = state.gurobi_model
+    c = MOI.get(parent_model, MOI.ObjectiveValue()) # parent model's cost
+    cvi = bc.index
+    xi = parent_result.x[index(cvi)]
+
+    low_bound = _approx_floor(xi, config.int_tol)
+    up_bound = _approx_ceil(xi, config.int_tol)
+    ci = state.constraint_state.base_state.var_constrs[index(cvi)]
+
+    c_down = _branch_cost!(parent_model, LT(low_bound), ci)
+    c_up = _branch_cost!(parent_model, GT(up_bound), ci)
+    f⁺ = c_down - c
+    f⁻ = c_up - c
+    f = (1 - μ)*min(f⁺, f⁻) + μ*max(f⁺, f⁻)
+    return VariableBranchingScore(f⁺, f⁻, f)
+end
+
+function _branch_cost!(
+    model::Gurobi.Optimizer,
+    constraint::LT,
+    ci::CI,
+)
+    interval = MOI.get(model, MOI.ConstraintSet(), ci)
+    temp_interval = IN(interval.lower, min(constraint.upper, interval.upper))
+    MOI.set(model, MOI.ConstraintSet(), ci, temp_interval)
+    MOI.optimize!(model)
+    term_status = MOI.get(model, MOI.TerminationStatus())
+    if term_status == MOI.OPTIMAL
+        cost = MOI.get(model, MOI.ObjectiveValue())
+    elseif term_status == MOI.INFEASIBLE
+        cost = Inf
+    else
+        cost = -Inf
+    end
+    # revert back to original parent node
+    MOI.set(model, MOI.ConstraintSet(), ci, interval)
+    return cost
+end
+
+function _branch_cost!(
+    model::Gurobi.Optimizer,
+    constraint::GT,
+    ci::CI,
+)
+    interval = MOI.get(model, MOI.ConstraintSet(), ci)
+    temp_interval = IN(max(constraint.lower, interval.lower), interval.upper)
+    MOI.set(model, MOI.ConstraintSet(), ci, temp_interval)
+    MOI.optimize!(model)
+    term_status = MOI.get(model, MOI.TerminationStatus())
+    if term_status == MOI.OPTIMAL
+        cost = MOI.get(model, MOI.ObjectiveValue())
+    elseif term_status == MOI.INFEASIBLE
+        cost = Inf
+    else
+        cost = -Inf
+    end
+    # revert back to original parent node
+    MOI.set(model, MOI.ConstraintSet(), ci, interval)
+    return cost
+end
+
 """
 Given a current node and node LP result, branch. The return value will be a
 tuple of `Node`s corresponding to the childen created by the branching.
