@@ -162,8 +162,10 @@ function branching_score end
 
 function branching_score(
     ::CurrentState,
+    ::DMIPFormulation,
     bc::VariableBranchingCandidate,
     parent_result::NodeResult,
+    ::Node,
     config::AlgorithmConfig{MostInfeasible},
 )
     xi = parent_result.x[index(bc.index)]
@@ -176,13 +178,24 @@ end
 
 function branching_score(
     state::CurrentState,
+    form::DMIPFormulation,
     bc::VariableBranchingCandidate,
     parent_result::NodeResult,
+    parent_node::Node,
     config::AlgorithmConfig{StrongBranching},
-    μ::Float64 = 1/6,
 )
-    parent_model = state.gurobi_model
-    c = MOI.get(parent_model, MOI.ObjectiveValue()) # parent model's cost
+    sb_state = config.branching_rule.strong_branching_state
+    if !config.branching_rule.init
+        populate_base_model!(sb_state, form, parent_node, config)
+        config.branching_rule.init = true
+    elseif state.backtracking
+        reset_base_formulation_upon_backtracking!(sb_state, form, parent_node)
+    else
+        apply_branchings!(sb_state, parent_node)
+    end
+    sb_model = sb_state.gurobi_model
+
+    c = parent_result.cost
     cvi = bc.index
     xi = parent_result.x[index(cvi)]
 
@@ -190,8 +203,10 @@ function branching_score(
     up_bound = _approx_ceil(xi, config.int_tol)
     ci = state.constraint_state.base_state.var_constrs[index(cvi)]
 
-    c_down = _branch_cost!(parent_model, LT(low_bound), ci)
-    c_up = _branch_cost!(parent_model, GT(up_bound), ci)
+    c_up = _branch_cost!(sb_model, GT(up_bound), ci)
+    c_down = _branch_cost!(sb_model, LT(low_bound), ci)
+
+    μ = config.branching_rule.μ
     f⁺ = c_down - c
     f⁻ = c_up - c
     f = (1 - μ)*min(f⁺, f⁻) + μ*max(f⁺, f⁻)
@@ -215,7 +230,6 @@ function _branch_cost!(
     else
         cost = -Inf
     end
-    # revert back to original parent node
     MOI.set(model, MOI.ConstraintSet(), ci, interval)
     return cost
 end
@@ -237,7 +251,6 @@ function _branch_cost!(
     else
         cost = -Inf
     end
-    # revert back to original parent node
     MOI.set(model, MOI.ConstraintSet(), ci, interval)
     return cost
 end
@@ -271,7 +284,7 @@ function branch(
     end
     scores = Dict(
         candidate =>
-            branching_score(state, candidate, parent_result, config) for
+            branching_score(state, form, candidate, parent_result, parent_node, config) for
         candidate in candidates
     )
     # TODO: Can make all of this more efficient, if bottleneck.

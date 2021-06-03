@@ -310,34 +310,60 @@ end
 end
 
 @testset "StrongBranching" begin
-    sb_config = Cerberus.AlgorithmConfig(
-        branching_rule = Cerberus.StrongBranching(),
-        silent = true,
-    )
     @testset "branching_score" begin
-        state = Cerberus.CurrentState()
-        model = Gurobi.Optimizer(state.gurobi_env)
-        x = MOI.add_variables(model, 3)
-        MOI.set(model, MOI.ObjectiveFunction{_SAF}(), _SAF(_SAT.([-1.0, 1.0, 0.0], x), 0.0))
-        MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-        MOI.add_constraint(model, _SAF(_SAT.([4.0, 5.0, 2.0], x), 0.0), _GT(5.0))
-        MOI.add_constraint(model, _SAF(_SAT.([4.0, 2.0, 5.0], x), 0.0), _LT(5.0))
-        MOI.add_constraint(model, _SV(x[1]), _GT(0.0))
-        MOI.add_constraint(model, _SV(x[2]), _GT(0.0))
-        MOI.add_constraint(model, _SV(x[3]), _GT(0.0))
-        MOI.set(model, MOI.Silent(), true)
-        state.gurobi_model = model
+        let sb_config = Cerberus.AlgorithmConfig(
+                branching_rule = Cerberus.StrongBranching(),
+                silent = true,
+            )
+            v = [_SV(_VI(i)) for i in 1:3]
+            ac1 = Cerberus.AffineConstraint(4.0*v[1] + 2.0*v[2] + 2.0*v[3], _GT(5.0))
+            ac2 = Cerberus.AffineConstraint(4.0*v[1] + 2.0*v[2] + 5.0*v[3], _LT(5.0))
+            aff_constrs = [ac1, ac2]
+            bounds = [_IN(0.0, Inf) for i in 1:3]
+            p = Cerberus.Polyhedron(aff_constrs, bounds)
+            variable_kind = [_GI() for i in 1:3]
+            obj = _CSAF([-1.0, 1.0, 0.0], [_CVI(1), _CVI(2), _CVI(3)], 0.0)
+            form = Cerberus.DMIPFormulation(p, variable_kind, obj)
 
-        MOI.optimize!(model)
-        opt_sol = MOI.get(model, MOI.VariablePrimal(), x)
-        cost = MOI.get(model, MOI.ObjectiveValue())
-        nr = Cerberus.NodeResult(cost, opt_sol, 1, 1, 1)
+            state = Cerberus.CurrentState()
+            node = Cerberus.pop_node!(state.tree)
+            Cerberus.populate_base_model!(state, form, node, sb_config)
+            nr = Cerberus.process_node!(state, form, node, sb_config)
 
-        new_con = MOI.add_constraint(model, _SV(x[1]), _LT(1.0))
+            bc = Cerberus.VariableBranchingCandidate(_CVI(1), nr.x[1])
+            vbs =
+                @inferred Cerberus.branching_score(state, form, bc, nr, node, sb_config)
+            @test vbs == Cerberus.VariableBranchingScore(0.75, Inf, Inf)
+        end
 
-        #bc = Cerberus.VariableBranchingCandidate(_CVI(1), opt_sol[1])
-        #vbs =
-        #    @inferred Cerberus.branching_score(state, bc, nr, sb_config)
+        let sb_config = Cerberus.AlgorithmConfig(
+                branching_rule = Cerberus.StrongBranching(),
+                silent = true,
+            )
+            v = [_SV(_VI(i)) for i in 1:3]
+            ac1 = Cerberus.AffineConstraint(1.0*v[1] + 1/9*v[2] + 5/3*v[3], _LT(2.0))
+            ac2 = Cerberus.AffineConstraint(1/9*v[1] + 1.0*v[2] + 5/3*v[3], _LT(2.0))
+            ac3 = Cerberus.AffineConstraint(1.0*v[1] + 1.0*v[2] + 1.0*v[3], _LT(2.0))
+            aff_constrs = [ac1, ac2]
+            bounds = [_IN(0.0, Inf) for i in 1:3]
+            p = Cerberus.Polyhedron(aff_constrs, bounds)
+            variable_kind = [_ZO(), _ZO(), _GI()]
+            obj = _CSAF([-1.0, -1.0, -1.5], [_CVI(1), _CVI(2), _CVI(3)], 0.0)
+            form = Cerberus.DMIPFormulation(p, variable_kind, obj)
+
+            state = Cerberus.CurrentState()
+            node = Cerberus.pop_node!(state.tree)
+            Cerberus.populate_base_model!(state, form, node, sb_config)
+            nr = Cerberus.process_node!(state, form, node, sb_config)
+            print(nr)
+
+            bc = Cerberus.VariableBranchingCandidate(_CVI(3), nr.x[3])
+            vbs =
+                @inferred Cerberus.branching_score(state, form, bc, nr, node, sb_config)
+            @test isapprox(vbs.down_branch_score, 0.8)
+            @test isapprox(vbs.up_branch_score, 0.7)
+            @test isapprox(vbs.aggregate_score, 43/60)
+        end
     end
 end
 
@@ -358,8 +384,10 @@ function Cerberus.branching_candidates(
 end
 function Cerberus.branching_score(
     ::Cerberus.CurrentState,
+    ::Cerberus.DMIPFormulation,
     dbc::DummyBranchingCandidate,
     ::Cerberus.NodeResult,
+    ::Cerberus.Node,
     config::Cerberus.AlgorithmConfig{DummyBranchingRule},
 )
     @assert config.branching_rule === DummyBranchingRule()
@@ -417,31 +445,3 @@ end
         @test node.depth == 2
     end
 end
-
-@testset "StrongBranching" begin
-    @testset "branching_score" begin
-    end
-end
-
-
-state = Cerberus.CurrentState()
-model = Gurobi.Optimizer(state.gurobi_env)
-x = MOI.add_variables(model, 3)
-MOI.set(model, MOI.ObjectiveFunction{_SAF}(), _SAF(_SAT.([-1.0, 1.0, 0.0], x), 0.0))
-MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-c = MOI.add_constraint(model, _SAF(_SAT.([4.0, 5.0, 2.0], x), 0.0), _GT(5.0))
-MOI.add_constraint(model, _SAF(_SAT.([4.0, 2.0, 5.0], x), 0.0), _LT(5.0))
-MOI.add_constraint(model, _SV(x[1]), _GT(0.0))
-MOI.add_constraint(model, _SV(x[2]), _GT(0.0))
-MOI.add_constraint(model, _SV(x[3]), _GT(0.0))
-MOI.set(model, MOI.Silent(), true)
-state.gurobi_model = model
-
-MOI.optimize!(model)
-opt_sol = MOI.get(model, MOI.VariablePrimal(), x)
-cost = MOI.get(model, MOI.ObjectiveValue())
-nr = Cerberus.NodeResult(cost, opt_sol, 1, 1, 1)
-
-new_con = MOI.add_constraint(model, _SV(x[1]), _LT(1.0))
-
-optc
