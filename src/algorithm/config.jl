@@ -3,18 +3,11 @@ abstract type AbstractVariableBranchingRule <: AbstractBranchingRule end
 struct MostInfeasible <: AbstractVariableBranchingRule end
 struct PseudocostBranching <: AbstractVariableBranchingRule end
 mutable struct StrongBranching <: AbstractVariableBranchingRule
-    μ :: Real
-    strong_branching_state :: CurrentState
-    init :: Bool
-    # Check if the root model has been initialized
-    function StrongBranching(; μ::Real = 1/6)
-        branching_rule = new()
-        branching_rule.μ = μ
-        branching_rule.strong_branching_state = CurrentState()
-        branching_rule.init = false
-        return branching_rule
-    end
+    μ::Real
+    strong_branching_model::Gurobi.Optimizer
+    StrongBranching(; μ::Real = 1/6) = new(μ, Gurobi.Optimizer(Gurobi.Env()))
 end
+
 
 @enum WarmStartStrategy NO_WARM_STARTS WARM_START_WHEN_BACKTRACKING WARM_START_WHENEVER_POSSIBLE
 @enum ModelReuseStrategy NO_MODEL_REUSE REUSE_MODEL_ON_DIVES USE_SINGLE_MODEL

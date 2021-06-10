@@ -162,10 +162,8 @@ function branching_score end
 
 function branching_score(
     ::CurrentState,
-    ::DMIPFormulation,
     bc::VariableBranchingCandidate,
     parent_result::NodeResult,
-    ::Node,
     config::AlgorithmConfig{MostInfeasible},
 )
     xi = parent_result.x[index(bc.index)]
@@ -178,22 +176,13 @@ end
 
 function branching_score(
     state::CurrentState,
-    form::DMIPFormulation,
     bc::VariableBranchingCandidate,
     parent_result::NodeResult,
-    parent_node::Node,
     config::AlgorithmConfig{StrongBranching},
 )
-    sb_state = config.branching_rule.strong_branching_state
-    if !config.branching_rule.init
-        populate_base_model!(sb_state, form, parent_node, config)
-        config.branching_rule.init = true
-    elseif state.backtracking
-        reset_base_formulation_upon_backtracking!(sb_state, form, parent_node)
-    else
-        apply_branchings!(sb_state, parent_node)
-    end
-    sb_model = sb_state.gurobi_model
+    sb_model = config.branching_rule.strong_branching_model
+    MOI.copy_to(sb_model, state.gurobi_model)
+    MOI.set(sb_model, MOI.Silent(), true)
 
     c = parent_result.cost
     cvi = bc.index
@@ -203,54 +192,45 @@ function branching_score(
     up_bound = _approx_ceil(xi, config.int_tol)
     ci = state.constraint_state.base_state.var_constrs[index(cvi)]
 
-    c_up = _branch_cost!(sb_model, GT(up_bound), ci)
-    c_down = _branch_cost!(sb_model, LT(low_bound), ci)
+    c_up = _branch_cost(sb_model, GT(up_bound), ci)
+    c_down = _branch_cost(sb_model, LT(low_bound), ci)
 
     μ = config.branching_rule.μ
     f⁺ = c_down - c
     f⁻ = c_up - c
-    f = (1 - μ)*min(f⁺, f⁻) + μ*max(f⁺, f⁻)
-    return VariableBranchingScore(f⁺, f⁻, f)
+    f = (1 - μ) * min(f⁺, f⁻) + μ * max(f⁺, f⁻)
+    return VariableBranchingScore(f⁻, f⁺, f)
 end
 
-function _branch_cost!(
+"""
+    _branch_cost(model::Gurobi.Optimizer, constraint::Union{LT, GT}, ci::CI)
+
+Computes the optimal objective cost of a branch.
+
+The model is added with the new constraint, solved to optimal, and then
+set back to the original.
+"""
+function _branch_cost(
     model::Gurobi.Optimizer,
-    constraint::LT,
+    constraint::Union{LT, GT},
     ci::CI,
 )
     interval = MOI.get(model, MOI.ConstraintSet(), ci)
-    temp_interval = IN(interval.lower, min(constraint.upper, interval.upper))
-    MOI.set(model, MOI.ConstraintSet(), ci, temp_interval)
-    MOI.optimize!(model)
-    term_status = MOI.get(model, MOI.TerminationStatus())
-    if term_status == MOI.OPTIMAL
-        cost = MOI.get(model, MOI.ObjectiveValue())
-    elseif term_status == MOI.INFEASIBLE
-        cost = Inf
-    else
-        cost = -Inf
-    end
-    MOI.set(model, MOI.ConstraintSet(), ci, interval)
-    return cost
-end
+    temp_interval = IN(
+    constraint isa LT ? interval.lower : max(constraint.lower, interval.lower),
+    constraint isa GT ? interval.upper : min(constraint.upper, interval.upper))
 
-function _branch_cost!(
-    model::Gurobi.Optimizer,
-    constraint::GT,
-    ci::CI,
-)
-    interval = MOI.get(model, MOI.ConstraintSet(), ci)
-    temp_interval = IN(max(constraint.lower, interval.lower), interval.upper)
     MOI.set(model, MOI.ConstraintSet(), ci, temp_interval)
     MOI.optimize!(model)
     term_status = MOI.get(model, MOI.TerminationStatus())
-    if term_status == MOI.OPTIMAL
-        cost = MOI.get(model, MOI.ObjectiveValue())
-    elseif term_status == MOI.INFEASIBLE
-        cost = Inf
-    else
-        cost = -Inf
-    end
+
+    # assume that the case where a branch is unbounded will never happen
+    cost = (if term_status == MOI.OPTIMAL
+                MOI.get(model, MOI.ObjectiveValue())
+            else
+                Inf
+            end
+            )
     MOI.set(model, MOI.ConstraintSet(), ci, interval)
     return cost
 end
@@ -284,7 +264,7 @@ function branch(
     end
     scores = Dict(
         candidate =>
-            branching_score(state, form, candidate, parent_result, parent_node, config) for
+            branching_score(state, candidate, parent_result, config) for
         candidate in candidates
     )
     # TODO: Can make all of this more efficient, if bottleneck.
