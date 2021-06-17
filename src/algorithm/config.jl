@@ -4,8 +4,7 @@ struct MostInfeasible <: AbstractVariableBranchingRule end
 struct PseudocostBranching <: AbstractVariableBranchingRule end
 mutable struct StrongBranching <: AbstractVariableBranchingRule
     μ::Real
-    strong_branching_model::Gurobi.Optimizer
-    StrongBranching(; μ::Real = 1/6) = new(μ, Gurobi.Optimizer(Gurobi.Env()))
+    StrongBranching(; μ::Real = 1/6) = new(μ)
 end
 
 

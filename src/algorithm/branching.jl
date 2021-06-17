@@ -180,9 +180,8 @@ function branching_score(
     parent_result::NodeResult,
     config::AlgorithmConfig{StrongBranching},
 )
-    sb_model = config.branching_rule.strong_branching_model
+    sb_model = _default_lp_solver_factory(state, config)
     MOI.copy_to(sb_model, state.gurobi_model)
-    MOI.set(sb_model, MOI.Silent(), true)
 
     c = parent_result.cost
     cvi = bc.index
@@ -196,8 +195,8 @@ function branching_score(
     c_down = _branch_cost(sb_model, LT(low_bound), ci)
 
     μ = config.branching_rule.μ
-    f⁺ = c_down - c
-    f⁻ = c_up - c
+    f⁻ = c_down - c
+    f⁺ = c_up - c
     f = (1 - μ) * min(f⁺, f⁻) + μ * max(f⁺, f⁻)
     return VariableBranchingScore(f⁻, f⁺, f)
 end
@@ -227,8 +226,11 @@ function _branch_cost(
     # assume that the case where a branch is unbounded will never happen
     cost = (if term_status == MOI.OPTIMAL
                 MOI.get(model, MOI.ObjectiveValue())
-            else
+            elseif term_status == MOI.INFEASIBLE || term_status == MOI.INFEASIBLE_OR_UNBOUNDED
                 Inf
+            else
+                error("Unexpected termination status $term_status at node LP
+                       when performing strong branching.")
             end
             )
     MOI.set(model, MOI.ConstraintSet(), ci, interval)
