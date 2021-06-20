@@ -386,14 +386,6 @@ end
             Cerberus.populate_base_model!(state, fm, node, sb_config)
             nr = Cerberus.process_node!(state, fm, node, sb_config)
 
-            #=
-            bc = Cerberus.VariableBranchingCandidate(_CVI(3), nr.x[3])
-            vbs =
-                @inferred Cerberus.branching_score(state, bc, nr, sb_config)
-            print("\n----------------\n")
-            print(vbs)
-            =#
-
             n1, n2 =
                 @inferred Cerberus.branch(state, fm, node, nr, sb_config)
 

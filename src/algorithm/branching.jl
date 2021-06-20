@@ -180,7 +180,7 @@ function branching_score(
     parent_result::NodeResult,
     config::AlgorithmConfig{StrongBranching},
 )
-    sb_model = _default_lp_solver_factory(state, config)
+    sb_model = config.lp_solver_factory(state, config)
     MOI.copy_to(sb_model, state.gurobi_model)
 
     c = parent_result.cost
