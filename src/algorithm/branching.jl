@@ -174,6 +174,8 @@ function branching_score(
     return VariableBranchingScore(f⁻, f⁺, min(f⁻, f⁺))
 end
 
+# TODO: Make this function more efficient by caching sb_model somewhere (likely
+# in config object, rather than as a function argument).
 function branching_score(
     state::CurrentState,
     bc::VariableBranchingCandidate,
@@ -223,7 +225,8 @@ function _branch_cost(
     MOI.optimize!(model)
     term_status = MOI.get(model, MOI.TerminationStatus())
 
-    # assume that the case where a branch is unbounded will never happen
+    # NOTE: If the parent node LP was unbounded, we should never enter this
+    # function. Therefore, we should never see an unbounded LP result.
     cost = (if term_status == MOI.OPTIMAL
                 MOI.get(model, MOI.ObjectiveValue())
             elseif term_status == MOI.INFEASIBLE || term_status == MOI.INFEASIBLE_OR_UNBOUNDED
@@ -266,13 +269,11 @@ function branch(
     end
     scores = Dict(
         candidate =>
-            branching_score(state, candidate, parent_result, config) for
-        candidate in candidates
+            branching_score(state, candidate, parent_result, config) for candidate in candidates
     )
     # TODO: Can make all of this more efficient, if bottleneck.
     agg_scores = Dict(
-        candidate => aggregate_score(scores[candidate]) for
-        candidate in candidates
+        candidate => aggregate_score(scores[candidate]) for candidate in candidates
     )
     best_agg_score, best_candidate = findmax(agg_scores)
     return branch_on(parent_node, best_candidate, scores[best_candidate])
