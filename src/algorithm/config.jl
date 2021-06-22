@@ -4,9 +4,8 @@ struct MostInfeasible <: AbstractVariableBranchingRule end
 struct PseudocostBranching <: AbstractVariableBranchingRule end
 mutable struct StrongBranching <: AbstractVariableBranchingRule
     μ::Real
-    StrongBranching(; μ::Real = 1/6) = new(μ)
+    StrongBranching(; μ::Real = 1 / 6) = new(μ)
 end
-
 
 @enum WarmStartStrategy NO_WARM_STARTS WARM_START_WHEN_BACKTRACKING WARM_START_WHENEVER_POSSIBLE
 @enum ModelReuseStrategy NO_MODEL_REUSE REUSE_MODEL_ON_DIVES USE_SINGLE_MODEL

@@ -211,15 +211,20 @@ Computes the optimal objective cost of a branch.
 The model is added with the new constraint, solved to optimal, and then
 set back to the original.
 """
-function _branch_cost(
-    model::Gurobi.Optimizer,
-    constraint::Union{LT, GT},
-    ci::CI,
-)
+function _branch_cost(model::Gurobi.Optimizer, constraint::Union{LT,GT}, ci::CI)
     interval = MOI.get(model, MOI.ConstraintSet(), ci)
     temp_interval = IN(
-    constraint isa LT ? interval.lower : max(constraint.lower, interval.lower),
-    constraint isa GT ? interval.upper : min(constraint.upper, interval.upper))
+        if constraint isa LT
+            interval.lower
+        else
+            max(constraint.lower, interval.lower)
+        end,
+        if constraint isa GT
+            interval.upper
+        else
+            min(constraint.upper, interval.upper)
+        end,
+    )
 
     MOI.set(model, MOI.ConstraintSet(), ci, temp_interval)
     MOI.optimize!(model)
@@ -227,15 +232,17 @@ function _branch_cost(
 
     # NOTE: If the parent node LP was unbounded, we should never enter this
     # function. Therefore, we should never see an unbounded LP result.
-    cost = (if term_status == MOI.OPTIMAL
-                MOI.get(model, MOI.ObjectiveValue())
-            elseif term_status == MOI.INFEASIBLE || term_status == MOI.INFEASIBLE_OR_UNBOUNDED
-                Inf
-            else
-                error("Unexpected termination status $term_status at node LP
-                       when performing strong branching.")
-            end
-            )
+    cost = (
+        if term_status == MOI.OPTIMAL
+            MOI.get(model, MOI.ObjectiveValue())
+        elseif term_status == MOI.INFEASIBLE ||
+               term_status == MOI.INFEASIBLE_OR_UNBOUNDED
+            Inf
+        else
+            error("Unexpected termination status $term_status at node LP
+                   when performing strong branching.")
+        end
+    )
     MOI.set(model, MOI.ConstraintSet(), ci, interval)
     return cost
 end
@@ -269,11 +276,13 @@ function branch(
     end
     scores = Dict(
         candidate =>
-            branching_score(state, candidate, parent_result, config) for candidate in candidates
+            branching_score(state, candidate, parent_result, config) for
+        candidate in candidates
     )
     # TODO: Can make all of this more efficient, if bottleneck.
     agg_scores = Dict(
-        candidate => aggregate_score(scores[candidate]) for candidate in candidates
+        candidate => aggregate_score(scores[candidate]) for
+        candidate in candidates
     )
     best_agg_score, best_candidate = findmax(agg_scores)
     return branch_on(parent_node, best_candidate, scores[best_candidate])
