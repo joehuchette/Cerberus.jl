@@ -356,7 +356,7 @@ end
 
             state = Cerberus.CurrentState()
             node = Cerberus.pop_node!(state.tree)
-            Cerberus.populate_base_model!(state, form, node, sb_config)
+            Cerberus.populate_lp_model!(state, form, node, sb_config)
             nr = Cerberus.process_node!(state, form, node, sb_config)
 
             bc = Cerberus.VariableBranchingCandidate(_CVI(1), nr.x[1])
@@ -390,7 +390,7 @@ end
 
             state = Cerberus.CurrentState()
             node = Cerberus.pop_node!(state.tree)
-            Cerberus.populate_base_model!(state, form, node, sb_config)
+            Cerberus.populate_lp_model!(state, form, node, sb_config)
             nr = Cerberus.process_node!(state, form, node, sb_config)
 
             bc = Cerberus.VariableBranchingCandidate(_CVI(3), nr.x[3])
@@ -428,7 +428,7 @@ end
 
             state = Cerberus.CurrentState()
             node = Cerberus.pop_node!(state.tree)
-            Cerberus.populate_base_model!(state, fm, node, sb_config)
+            Cerberus.populate_lp_model!(state, fm, node, sb_config)
             nr = Cerberus.process_node!(state, fm, node, sb_config)
 
             n1, n2 = @inferred Cerberus.branch(state, fm, node, nr, sb_config)
