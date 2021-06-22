@@ -174,6 +174,69 @@ function branching_score(
     return VariableBranchingScore(f⁻, f⁺, min(f⁻, f⁺))
 end
 
+function branching_score(
+    state::CurrentState,
+    bc::VariableBranchingCandidate,
+    parent_result::NodeResult,
+    config::AlgorithmConfig{StrongBranching},
+)
+    sb_model = config.lp_solver_factory(state, config)
+    MOI.copy_to(sb_model, state.gurobi_model)
+
+    c = parent_result.cost
+    cvi = bc.index
+    xi = parent_result.x[index(cvi)]
+
+    low_bound = _approx_floor(xi, config.int_tol)
+    up_bound = _approx_ceil(xi, config.int_tol)
+    ci = state.constraint_state.base_state.var_constrs[index(cvi)]
+
+    c_up = _branch_cost(sb_model, GT(up_bound), ci)
+    c_down = _branch_cost(sb_model, LT(low_bound), ci)
+
+    μ = config.branching_rule.μ
+    f⁻ = c_down - c
+    f⁺ = c_up - c
+    f = (1 - μ) * min(f⁺, f⁻) + μ * max(f⁺, f⁻)
+    return VariableBranchingScore(f⁻, f⁺, f)
+end
+
+"""
+    _branch_cost(model::Gurobi.Optimizer, constraint::Union{LT, GT}, ci::CI)
+
+Computes the optimal objective cost of a branch.
+
+The model is added with the new constraint, solved to optimal, and then
+set back to the original.
+"""
+function _branch_cost(
+    model::Gurobi.Optimizer,
+    constraint::Union{LT, GT},
+    ci::CI,
+)
+    interval = MOI.get(model, MOI.ConstraintSet(), ci)
+    temp_interval = IN(
+    constraint isa LT ? interval.lower : max(constraint.lower, interval.lower),
+    constraint isa GT ? interval.upper : min(constraint.upper, interval.upper))
+
+    MOI.set(model, MOI.ConstraintSet(), ci, temp_interval)
+    MOI.optimize!(model)
+    term_status = MOI.get(model, MOI.TerminationStatus())
+
+    # assume that the case where a branch is unbounded will never happen
+    cost = (if term_status == MOI.OPTIMAL
+                MOI.get(model, MOI.ObjectiveValue())
+            elseif term_status == MOI.INFEASIBLE || term_status == MOI.INFEASIBLE_OR_UNBOUNDED
+                Inf
+            else
+                error("Unexpected termination status $term_status at node LP
+                       when performing strong branching.")
+            end
+            )
+    MOI.set(model, MOI.ConstraintSet(), ci, interval)
+    return cost
+end
+
 """
 Given a current node and node LP result, branch. The return value will be a
 tuple of `Node`s corresponding to the childen created by the branching.

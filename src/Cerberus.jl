@@ -40,8 +40,8 @@ const _V_INT_SETS = Union{Nothing,ZO,GI}
 include("problem.jl")
 include("tree.jl")
 
-include("algorithm/config.jl")
 include("algorithm/algorithm_state.jl")
+include("algorithm/config.jl")
 include("algorithm/results.jl")
 include("algorithm/lp_model.jl")
 include("algorithm/util.jl")
