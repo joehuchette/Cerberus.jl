@@ -56,6 +56,7 @@ function formulate!(
     form::DMIPFormulation,
     formulater::DisjunctiveFormulater,
     node::Node,
+    node_result::NodeResult,
     config::AlgorithmConfig,
 )
     cvis = form.disjunction_formulaters[formulater]
@@ -82,5 +83,9 @@ function formulate!(
         [instantiate(cvi, state) for cvi in cvis],
     )
     state.disjunction_state[formulater] = disj_state
+    if disj_state.proven_infeasible
+        node_result.status = INFEASIBLE_LP
+        node_result.cost = Inf
+    end
     return nothing
 end

@@ -11,6 +11,7 @@
 
             let node = Cerberus.Node()
                 state = Cerberus.CurrentState()
+                node_result = Cerberus.NodeResult(node)
                 Cerberus.create_base_model!(state, form, node, CONFIG)
                 Cerberus.apply_branchings!(state, node)
                 @inferred Cerberus.formulate!(
@@ -18,6 +19,7 @@
                     form,
                     formulater,
                     node,
+                    node_result,
                     CONFIG,
                 )
                 x = [_SV(Cerberus.instantiate(_CVI(i), state)) for i in 1:5]
@@ -79,8 +81,9 @@
                     1,
                 )
                 state = Cerberus.CurrentState()
+                node_result = Cerberus.NodeResult(node)
                 # Instead of directly calling formulate!, do it through populate_lp_model!
-                Cerberus.populate_lp_model!(state, form, node, CONFIG)
+                Cerberus.populate_lp_model!(state, form, node, node_result, CONFIG)
                 x = [_SV(Cerberus.instantiate(_CVI(i), state)) for i in 1:5]
                 @assert [v.variable.value for v in x] == collect(1:5)
 

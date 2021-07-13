@@ -8,12 +8,13 @@ function populate_lp_model!(
     state::CurrentState,
     form::DMIPFormulation,
     node::Node,
+    node_result::NodeResult,
     config::AlgorithmConfig,
 )
     if state.rebuild_model
         create_base_model!(state, form, node, config)
         apply_branchings!(state, node)
-        formulate_disjunctions!(state, form, node, config)
+        formulate_disjunctions!(state, form, node, node_result, config)
     else
         # If this case we would like to reuse the same model and not rebuild
         # from scratch...
@@ -93,6 +94,7 @@ function formulate_disjunctions!(
     state::CurrentState,
     form::DMIPFormulation,
     node::Node,
+    node_result::NodeResult,
     config::AlgorithmConfig,
 )
     for (formulater, cvis) in form.disjunction_formulaters
@@ -107,6 +109,7 @@ function formulate_disjunctions!(
             else
                 node
             end,
+            node_result,
             config,
         )
     end

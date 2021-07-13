@@ -2,7 +2,8 @@
     form = _build_dmip_formulation()
     state = Cerberus.CurrentState()
     let node = Cerberus.Node()
-        @inferred Cerberus.populate_lp_model!(state, form, node, CONFIG)
+        node_result = Cerberus.NodeResult(node)
+        @inferred Cerberus.populate_lp_model!(state, form, node, node_result, CONFIG)
         model = state.gurobi_model
 
         @test MOI.get(model, MOI.NumberOfVariables()) == 3
@@ -52,7 +53,8 @@
             [Cerberus.BoundUpdate(_CVI(3), _GT(1.0))],
             2,
         )
-        @inferred Cerberus.populate_lp_model!(state, form, node, CONFIG)
+        node_result = Cerberus.NodeResult(node)
+        @inferred Cerberus.populate_lp_model!(state, form, node, node_result, CONFIG)
         @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
         @test MOI.Utilities.get_bounds(
             model,
@@ -74,7 +76,8 @@
     # Lie to Cerberus so that it doesn't reset the bounds
     state.on_a_dive = true
     let node = Cerberus.Node()
-        @inferred Cerberus.populate_lp_model!(state, form, node, CONFIG)
+        node_result = Cerberus.NodeResult(node)
+        @inferred Cerberus.populate_lp_model!(state, form, node, node_result, CONFIG)
         @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
         @test MOI.Utilities.get_bounds(
             model,
@@ -95,7 +98,8 @@
 
     state.on_a_dive = false
     let node = Cerberus.Node()
-        @inferred Cerberus.populate_lp_model!(state, form, node, CONFIG)
+        node_result = Cerberus.NodeResult(node)
+        @inferred Cerberus.populate_lp_model!(state, form, node, node_result, CONFIG)
         @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
         @test MOI.Utilities.get_bounds(
             model,
@@ -119,7 +123,8 @@ end
     form = _build_dmip_formulation()
     state = _CurrentState()
     node = Cerberus.Node()
-    @inferred Cerberus.populate_lp_model!(state, form, node, CONFIG)
+    node_result = Cerberus.NodeResult(node)
+    @inferred Cerberus.populate_lp_model!(state, form, node, node_result, CONFIG)
     model = state.gurobi_model
     @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
     @test MOI.Utilities.get_bounds(
@@ -348,7 +353,8 @@ end
     @test isempty(cs.branch_state.lt_general_constrs)
     @test isempty(cs.branch_state.gt_general_constrs)
 
-    Cerberus.populate_lp_model!(state, form, node, CONFIG)
+    node_result = Cerberus.NodeResult(node)
+    Cerberus.populate_lp_model!(state, form, node, node_result, CONFIG)
     @test MOIU.get_bounds(
         state.gurobi_model,
         Float64,
@@ -496,7 +502,8 @@ end
     )
     let node = Cerberus.Node()
         state = Cerberus.CurrentState()
-        Cerberus.populate_lp_model!(state, form, node, CONFIG)
+        node_result = Cerberus.NodeResult(node)
+        Cerberus.populate_lp_model!(state, form, node, node_result, CONFIG)
         Cerberus.apply_branchings!(state, node)
         x = [_SV(Cerberus.instantiate(_CVI(i), state)) for i in 1:5]
         @assert [v.variable.value for v in x] == collect(1:5)
@@ -537,7 +544,8 @@ end
             1,
         )
         state = Cerberus.CurrentState()
-        Cerberus.populate_lp_model!(state, form, node, CONFIG)
+        node_result = Cerberus.NodeResult(node)
+        Cerberus.populate_lp_model!(state, form, node, node_result, CONFIG)
         Cerberus.apply_branchings!(state, node)
         x = [_SV(Cerberus.instantiate(_CVI(i), state)) for i in 1:5]
         @assert [v.variable.value for v in x] == collect(1:5)
@@ -572,7 +580,8 @@ end
     form = _build_dmip_formulation()
     state = _CurrentState()
     node = Cerberus.Node()
-    Cerberus.populate_lp_model!(state, form, node, CONFIG)
+    node_result = Cerberus.NodeResult(node)
+    Cerberus.populate_lp_model!(state, form, node, node_result, CONFIG)
     model = state.gurobi_model
     MOI.optimize!(model)
     @test MOI.get(model, MOI.TerminationStatus()) == MOI.OPTIMAL
@@ -586,7 +595,8 @@ end
     form = _build_dmip_formulation()
     state = _CurrentState()
     node = Cerberus.Node()
-    Cerberus.populate_lp_model!(state, form, node, CONFIG)
+    node_result = Cerberus.NodeResult(node)
+    Cerberus.populate_lp_model!(state, form, node, node_result, CONFIG)
     model = state.gurobi_model
     MOI.optimize!(model)
     @assert MOI.get(model, MOI.PrimalStatus()) == MOI.FEASIBLE_POINT
@@ -600,7 +610,8 @@ end
     form = _build_dmip_formulation()
     state = _CurrentState()
     node = Cerberus.Node()
-    Cerberus.populate_lp_model!(state, form, node, CONFIG)
+    node_result = Cerberus.NodeResult(node)
+    Cerberus.populate_lp_model!(state, form, node, node_result, CONFIG)
     model = state.gurobi_model
     MOI.optimize!(model)
     @assert MOI.get(model, MOI.PrimalStatus()) == MOI.FEASIBLE_POINT
@@ -632,7 +643,8 @@ function _set_basis_model(basis::Cerberus.Basis)
         0,
         -Inf,
     )
-    Cerberus.populate_lp_model!(state, form, node, CONFIG)
+    node_result = Cerberus.NodeResult(node)
+    Cerberus.populate_lp_model!(state, form, node, node_result, CONFIG)
     state.warm_starts[node] = basis
     Cerberus.set_basis_if_available!(state, node)
     return state.gurobi_model
