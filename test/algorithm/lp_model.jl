@@ -495,12 +495,37 @@ end
 end
 
 @testset "formulate_disjunctions!" begin
+    # min  y + 1.2
+    # s.t. (-2 <= x <= -1 & y = -x - 1) or
+    #          (-1 <= x <= +1 & y = 0) or
+    #          (+1 <= x <= +2 & y = x - 1)
+    #      x + y >= -0.5
+    #      x in [-1.5, 3.0]
+    #      y in [0.0, 0.5]
     form = _build_formulation_with_single_disjunction(
         DisjunctiveConstraints.NaiveBigM(
             DisjunctiveConstraints.IntervalArithmetic(),
         ),
     )
     let node = Cerberus.Node()
+        # min  y + 1.2
+        # s.t. z_1 + z_2 + z_3 = 1
+        #      x + y >= -0.5
+        #      x >= -1.5 - 0.5 z_1
+        #      x >= -1.5 + 0.5 z_2
+        #      x >= -1.5 + 2.5 z_3
+        #      y >= -x - 1.5 + 0.5 z_1
+        #      y >= 0
+        # .    y >= x - 3 + 2.0 z_3
+        #      x <=  3.0 - 4.0 z_1
+        #      x <=  3.0 - 2.0 z_2
+        #      x <=  3.0 - 1.0 z_3
+        #      y <= -x + 3.5 - 4.5 z_1
+        #      y <= 0.5 - 0.5 z_2
+        #      y <= x + 2.0 - 3.0 z_3
+        #      x in [-1.5, 3.0]
+        #      y in [0.0, 0.5]
+        #      z in [0,1]^3
         state = Cerberus.CurrentState()
         node_result = Cerberus.NodeResult(node)
         Cerberus.populate_lp_model!(state, form, node, node_result, CONFIG)
@@ -513,20 +538,20 @@ end
         expected_et_acs = [(1.0 * x[3] + 1.0 * x[4] + 1.0 * x[5], _ET(1.0))]
         expected_gt_acs = [
             (1.0 * x[1] + 1.0 * x[2], _GT(-0.5)),
-            (1.0 * x[1] - 0.5 * x[3], _GT(-2.0)),
-            (1.0 * x[1] + 0.5 * x[4], _GT(-1.0)),
-            (1.0 * x[1] + 2.5 * x[5], _GT(+1.0)),
-            (1.0 * x[1] + 1.0 * x[2] + 0.5 * x[3], _GT(-1.0)),
+            (1.0 * x[1] + 0.5 * x[3], _GT(-1.5)),
+            (1.0 * x[1] - 0.5 * x[4], _GT(-1.5)),
+            (1.0 * x[1] - 2.5 * x[5], _GT(-1.5)),
+            (1.0 * x[1] + 1.0 * x[2] - 0.5 * x[3], _GT(-1.5)),
             (1.0 * x[2], _GT(0.0)),
-            (-1.0 * x[1] + 1.0 * x[2] + 2.0 * x[5], _GT(-1.0)),
+            (-1.0 * x[1] + 1.0 * x[2] - 2.0 * x[5], _GT(-3.0)),
         ]
         expected_lt_acs = [
-            (1.0 * x[1] - 4.0 * x[3], _LT(-1.0)),
-            (1.0 * x[1] - 2.0 * x[4], _LT(+1.0)),
-            (1.0 * x[1] - 1.0 * x[5], _LT(+2.0)),
-            (1.0 * x[1] + 1.0 * x[2] - 4.5 * x[3], _LT(-1.0)),
-            (1.0 * x[2] - 0.5 * x[4], _LT(0.0)),
-            (-1.0 * x[1] + 1.0 * x[2] - 3.0 * x[5], _LT(-1.0)),
+            (1.0 * x[1] + 4.0 * x[3], _LT(+3.0)),
+            (1.0 * x[1] + 2.0 * x[4], _LT(+3.0)),
+            (1.0 * x[1] + 1.0 * x[5], _LT(+3.0)),
+            (1.0 * x[1] + 1.0 * x[2] + 4.5 * x[3], _LT(+3.5)),
+            (1.0 * x[2] + 0.5 * x[4], _LT(0.5)),
+            (-1.0 * x[1] + 1.0 * x[2] + 3.0 * x[5], _LT(+2.0)),
         ]
 
         _test_roundtrip_model(
@@ -543,6 +568,21 @@ end
             Cerberus.BoundUpdate{_GT}[],
             1,
         )
+        # min  y + 1.2
+        # s.t. z_1 + z_2 + z_3 = 1
+        #      x + y >= -0.5
+        #      x >= -1.5 + 0.5 z_2
+        #      x >= -1.5 + 2.5 z_3
+        #      y >= 0
+        # .    y >= x - 3 + 2.0 z_3
+        #      x <=  3.0 - 2.0 z_2
+        #      x <=  3.0 - 1.0 z_3
+        #      y <= 0.5 - 0.5 z_2
+        #      y <= x + 2.0 - 3.0 z_3
+        #      x in [-1.5, 3.0]
+        #      y in [0.0, 0.5]
+        #      z in [0,1]^3
+        #      z_1 = 0
         state = Cerberus.CurrentState()
         node_result = Cerberus.NodeResult(node)
         Cerberus.populate_lp_model!(state, form, node, node_result, CONFIG)
@@ -555,16 +595,16 @@ end
         expected_et_acs = [(1.0 * x[3] + 1.0 * x[4] + 1.0 * x[5], _ET(1.0))]
         expected_gt_acs = [
             (1.0 * x[1] + 1.0 * x[2], _GT(-0.5)),
-            (1.0 * x[1] + 0.5 * x[4], _GT(-1.0)),
-            (1.0 * x[1] + 2.5 * x[5], _GT(+1.0)),
+            (1.0 * x[1] - 0.5 * x[4], _GT(-1.5)),
+            (1.0 * x[1] - 2.5 * x[5], _GT(-1.5)),
             (1.0 * x[2], _GT(0.0)),
-            (-1.0 * x[1] + 1.0 * x[2] + 2.0 * x[5], _GT(-1.0)),
+            (-1.0 * x[1] + 1.0 * x[2] - 2.0 * x[5], _GT(-3.0)),
         ]
         expected_lt_acs = [
-            (1.0 * x[1] - 2.0 * x[4], _LT(+1.0)),
-            (1.0 * x[1] - 1.0 * x[5], _LT(+2.0)),
-            (1.0 * x[2] - 0.5 * x[4], _LT(0.0)),
-            (-1.0 * x[1] + 1.0 * x[2] - 3.0 * x[5], _LT(-1.0)),
+            (1.0 * x[1] + 2.0 * x[4], _LT(+3.0)),
+            (1.0 * x[1] + 1.0 * x[5], _LT(+3.0)),
+            (1.0 * x[2] + 0.5 * x[4], _LT(0.5)),
+            (-1.0 * x[1] + 1.0 * x[2] + 3.0 * x[5], _LT(+2.0)),
         ]
         _test_roundtrip_model(
             state.gurobi_model,
