@@ -41,15 +41,24 @@ function MOI.get(opt::Optimizer, ::MOI.PrimalStatus)
     end
 end
 
+function MOI.set(opt::Optimizer, ::MOI.ObjectiveValue, value::Real)
+    @assert opt.result === nothing
+    opt.primal_bound = value
+    return nothing
+end
+
 function MOI.get(opt::Optimizer, ::MOI.ObjectiveValue)
-    return if _is_max_sense(opt)
+    return if opt.result === nothing
+        opt.primal_bound
+    elseif _is_max_sense(opt)
         -opt.result.primal_bound
     else
         opt.result.primal_bound
     end
 end
 
-function MOI.get(opt::Optimizer, ::Union{MOI.ObjectiveBound})
+function MOI.get(opt::Optimizer, ::MOI.ObjectiveBound)
+    @assert opt.result !== nothing
     return _is_max_sense(opt) ? -opt.result.dual_bound : opt.result.dual_bound
 end
 
