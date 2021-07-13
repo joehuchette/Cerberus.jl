@@ -36,37 +36,6 @@ function optimize!(
     return result
 end
 
-@enum NodeResultStatus NOT_SOLVED PRUNED_BY_PARENT_BOUND OPTIMAL_LP INFEASIBLE_LP UNBOUNDED_LP
-
-mutable struct NodeResult
-    status::NodeResultStatus
-    cost::Float64
-    x::Vector{Float64}
-    simplex_iters::Int
-    depth::Int
-    int_infeas::Int
-
-    function NodeResult(node::Node)
-        node_result = new()
-        node_result.status = NOT_SOLVED
-        node_result.cost = NaN
-        node_result.simplex_iters = 0
-        node_result.depth = node.depth
-        node_result.int_infeas = 0
-        return node_result
-    end
-    function NodeResult(
-        status::NodeResultStatus,
-        cost::Float64,
-        x::Vector{Float64},
-        simplex_iters::Int,
-        depth::Int,
-        int_infeas::Int,
-    )
-        return new(status, cost, x, simplex_iters, depth, int_infeas)
-    end
-end
-
 # TODO: Store config in CurrentState, remove as argument here.
 function process_node!(
     state::CurrentState,
