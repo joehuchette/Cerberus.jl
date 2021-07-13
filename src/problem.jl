@@ -233,6 +233,10 @@ function num_constraints(
     return num_constraints(form._feasible_region, S)
 end
 
+function num_disjunctive_constraints(form::DMIPFormulation)
+    return length(form.disjunction_formulaters)
+end
+
 function get_constraint(form::DMIPFormulation, cci::CCI{S}) where {S<:_C_SETS}
     return get_constraint(form._feasible_region, S, index(cci))
 end

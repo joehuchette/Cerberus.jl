@@ -90,18 +90,39 @@ struct DummyVariableBranchingRule <: Cerberus.AbstractVariableBranchingRule end
     config =
         Cerberus.AlgorithmConfig(branching_rule = DummyVariableBranchingRule())
     @testset "branching_candidates" begin
-        let nr = Cerberus.NodeResult(12.3, [0.6, 0.7, 0.1], 12, 13, 14)
+        let nr = Cerberus.NodeResult(
+                Cerberus.OPTIMAL_LP,
+                12.3,
+                [0.6, 0.7, 0.1],
+                12,
+                13,
+                14,
+            )
             bc = @inferred Cerberus.branching_candidates(form, nr, config)
             @test bc == [
                 Cerberus.VariableBranchingCandidate(_CVI(1), 0.6),
                 Cerberus.VariableBranchingCandidate(_CVI(3), 0.1),
             ]
         end
-        let nr = Cerberus.NodeResult(12.3, [0.8, 0.7, 0.0], 12, 13, 14)
+        let nr = Cerberus.NodeResult(
+                Cerberus.OPTIMAL_LP,
+                12.3,
+                [0.8, 0.7, 0.0],
+                12,
+                13,
+                14,
+            )
             bc = @inferred Cerberus.branching_candidates(form, nr, config)
             @test bc == [Cerberus.VariableBranchingCandidate(_CVI(1), 0.8)]
         end
-        let nr = Cerberus.NodeResult(12.3, [1.0, 0.7, 0.0], 12, 13, 14)
+        let nr = Cerberus.NodeResult(
+                Cerberus.OPTIMAL_LP,
+                12.3,
+                [1.0, 0.7, 0.0],
+                12,
+                13,
+                14,
+            )
             bc = @inferred Cerberus.branching_candidates(form, nr, config)
             @test isempty(bc)
         end
@@ -215,7 +236,7 @@ end
     @testset "branching_score" begin
         state = Cerberus.CurrentState()
         let x = [0.6, 0.5, 0.35]
-            nr = Cerberus.NodeResult(12.3, x, 12, 13, 14)
+            nr = Cerberus.NodeResult(Cerberus.OPTIMAL_LP, 12.3, x, 12, 13, 14)
             let bc = Cerberus.VariableBranchingCandidate(_CVI(1), 0.6)
                 vbs =
                     @inferred Cerberus.branching_score(state, bc, nr, mi_config)
@@ -235,7 +256,8 @@ end
             node = Cerberus.Node()
             x = [0.6, 0.7, 0.1]
             cost = 1.2
-            result = Cerberus.NodeResult(cost, x, 12, 13, 14)
+            result =
+                Cerberus.NodeResult(Cerberus.OPTIMAL_LP, cost, x, 12, 13, 14)
             n1, n2 =
                 @inferred Cerberus.branch(state, fm, node, result, mi_config)
             @test isempty(n1.lt_bounds)
@@ -282,7 +304,8 @@ end
             node = Cerberus.Node()
             x = [0.6, 0.4, 0.7]
             cost = 1.2
-            result = Cerberus.NodeResult(cost, x, 12, 13, 14)
+            result =
+                Cerberus.NodeResult(Cerberus.OPTIMAL_LP, cost, x, 12, 13, 14)
             fc, oc =
                 @inferred Cerberus.branch(state, fm, node, result, mi_config)
             @test fc.lt_bounds == [Cerberus.BoundUpdate(_CVI(2), _LT(0.0))]
@@ -316,8 +339,14 @@ end
                 silent = true,
             )
             v = [_SV(_VI(i)) for i in 1:3]
-            ac1 = Cerberus.AffineConstraint(4.0*v[1] + 2.0*v[2] + 2.0*v[3], _GT(5.0))
-            ac2 = Cerberus.AffineConstraint(4.0*v[1] + 2.0*v[2] + 5.0*v[3], _LT(5.0))
+            ac1 = Cerberus.AffineConstraint(
+                4.0 * v[1] + 2.0 * v[2] + 2.0 * v[3],
+                _GT(5.0),
+            )
+            ac2 = Cerberus.AffineConstraint(
+                4.0 * v[1] + 2.0 * v[2] + 5.0 * v[3],
+                _LT(5.0),
+            )
             aff_constrs = [ac1, ac2]
             bounds = [_IN(0.0, Inf) for i in 1:3]
             p = Cerberus.Polyhedron(aff_constrs, bounds)
@@ -327,12 +356,10 @@ end
 
             state = Cerberus.CurrentState()
             node = Cerberus.pop_node!(state.tree)
-            Cerberus.populate_base_model!(state, form, node, sb_config)
             nr = Cerberus.process_node!(state, form, node, sb_config)
 
             bc = Cerberus.VariableBranchingCandidate(_CVI(1), nr.x[1])
-            vbs =
-                @inferred Cerberus.branching_score(state, bc, nr, sb_config)
+            vbs = @inferred Cerberus.branching_score(state, bc, nr, sb_config)
             @test vbs == Cerberus.VariableBranchingScore(0.75, Inf, Inf)
         end
 
@@ -341,9 +368,18 @@ end
                 silent = true,
             )
             v = [_SV(_VI(i)) for i in 1:3]
-            ac1 = Cerberus.AffineConstraint(1.0*v[1] + 1/9*v[2] + 5/3*v[3], _LT(2.0))
-            ac2 = Cerberus.AffineConstraint(1/9*v[1] + 1.0*v[2] + 5/3*v[3], _LT(2.0))
-            ac3 = Cerberus.AffineConstraint(1.0*v[1] + 1.0*v[2] + 1.0*v[3], _LT(2.0))
+            ac1 = Cerberus.AffineConstraint(
+                1.0 * v[1] + 1 / 9 * v[2] + 5 / 3 * v[3],
+                _LT(2.0),
+            )
+            ac2 = Cerberus.AffineConstraint(
+                1 / 9 * v[1] + 1.0 * v[2] + 5 / 3 * v[3],
+                _LT(2.0),
+            )
+            ac3 = Cerberus.AffineConstraint(
+                1.0 * v[1] + 1.0 * v[2] + 1.0 * v[3],
+                _LT(2.0),
+            )
             aff_constrs = [ac1, ac2]
             bounds = [_IN(0.0, Inf) for i in 1:3]
             p = Cerberus.Polyhedron(aff_constrs, bounds)
@@ -353,15 +389,13 @@ end
 
             state = Cerberus.CurrentState()
             node = Cerberus.pop_node!(state.tree)
-            Cerberus.populate_base_model!(state, form, node, sb_config)
             nr = Cerberus.process_node!(state, form, node, sb_config)
 
             bc = Cerberus.VariableBranchingCandidate(_CVI(3), nr.x[3])
-            vbs =
-                @inferred Cerberus.branching_score(state, bc, nr, sb_config)
+            vbs = @inferred Cerberus.branching_score(state, bc, nr, sb_config)
             @test isapprox(vbs.down_branch_score, 0.8)
             @test isapprox(vbs.up_branch_score, 0.7)
-            @test isapprox(vbs.aggregate_score, 43/60)
+            @test isapprox(vbs.aggregate_score, 43 / 60)
         end
     end
 
@@ -371,9 +405,18 @@ end
                 silent = true,
             )
             v = [_SV(_VI(i)) for i in 1:3]
-            ac1 = Cerberus.AffineConstraint(1.0*v[1] + 1.0*v[2] + 2.0*v[3], _GT(4.5))
-            ac2 = Cerberus.AffineConstraint(1.0*v[1] + 2.0*v[2] + 1.0*v[3], _GT(4.5))
-            ac3 = Cerberus.AffineConstraint(2.0*v[1] + 1.0*v[2] + 1.0*v[3], _GT(4.5))
+            ac1 = Cerberus.AffineConstraint(
+                1.0 * v[1] + 1.0 * v[2] + 2.0 * v[3],
+                _GT(4.5),
+            )
+            ac2 = Cerberus.AffineConstraint(
+                1.0 * v[1] + 2.0 * v[2] + 1.0 * v[3],
+                _GT(4.5),
+            )
+            ac3 = Cerberus.AffineConstraint(
+                2.0 * v[1] + 1.0 * v[2] + 1.0 * v[3],
+                _GT(4.5),
+            )
             aff_constrs = [ac1, ac2, ac3]
             bounds = [_IN(0.0, 4.0) for i in 1:3]
             p = Cerberus.Polyhedron(aff_constrs, bounds)
@@ -383,11 +426,9 @@ end
 
             state = Cerberus.CurrentState()
             node = Cerberus.pop_node!(state.tree)
-            Cerberus.populate_base_model!(state, fm, node, sb_config)
             nr = Cerberus.process_node!(state, fm, node, sb_config)
 
-            n1, n2 =
-                @inferred Cerberus.branch(state, fm, node, nr, sb_config)
+            n1, n2 = @inferred Cerberus.branch(state, fm, node, nr, sb_config)
 
             @test isempty(n1.gt_bounds)
             @test n1.lt_bounds == [Cerberus.BoundUpdate(_CVI(2), _LT(0.0))]
@@ -399,10 +440,8 @@ end
             @test n2.depth == 1
             @test n2.dual_bound == -Inf
 
-
             nr1 = Cerberus.process_node!(state, fm, n1, sb_config)
-            n3, n4 =
-                @inferred Cerberus.branch(state, fm, n1, nr1, sb_config)
+            n3, n4 = @inferred Cerberus.branch(state, fm, n1, nr1, sb_config)
             @test n3.lt_bounds == [Cerberus.BoundUpdate(_CVI(2), _LT(0.0))]
             @test n3.gt_bounds == [Cerberus.BoundUpdate(_CVI(3), _GT(1.0))]
             @test n3.depth == 2
@@ -410,8 +449,8 @@ end
 
             @test n4.lt_bounds == [
                 Cerberus.BoundUpdate(_CVI(2), _LT(0.0)),
-                Cerberus.BoundUpdate(_CVI(3), _LT(0.0))
-                ]
+                Cerberus.BoundUpdate(_CVI(3), _LT(0.0)),
+            ]
             @test isempty(n4.gt_bounds)
             @test n4.depth == 2
             @test n4.dual_bound == -Inf
@@ -480,7 +519,14 @@ end
         [Cerberus.BoundUpdate(_CVI(1), _GT(1.0))],
         1,
     )
-    nr = Cerberus.NodeResult(12.3, [0.6, 0.5, 1.0], 12, 13, 14)
+    nr = Cerberus.NodeResult(
+        Cerberus.OPTIMAL_LP,
+        12.3,
+        [0.6, 0.5, 1.0],
+        12,
+        13,
+        14,
+    )
     nodes = @inferred Cerberus.branch(state, form, node, nr, config)
     @test length(nodes) == 3
     for i in 1:3

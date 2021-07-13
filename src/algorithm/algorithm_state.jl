@@ -77,7 +77,7 @@ mutable struct CurrentState
     gurobi_model::Gurobi.Optimizer
     rebuild_model::Bool
     tree::Tree
-    backtracking::Bool
+    on_a_dive::Bool
     # TODO: Hashing nodes might be more expensive than we'd like. Instead, just
     # attach an ID to each node and use Ints as keys.
     warm_starts::Dict{Node,Basis}
@@ -99,7 +99,7 @@ mutable struct CurrentState
     function CurrentState(; primal_bound::Real = Inf)
         state = new()
         state.gurobi_env = Gurobi.Env()
-        state.backtracking = false
+        state.on_a_dive = true
         # gurobi_model is left undefined; build it before accessing.
         state.rebuild_model = true
         state.tree = Tree()

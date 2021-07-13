@@ -1,7 +1,11 @@
 # TODO: Unit test
 function _is_time_to_terminate(state::CurrentState, config::AlgorithmConfig)
-    if state.total_node_count >= config.node_limit ||
-       state.total_elapsed_time_sec >= config.time_limit_sec
+    if state.total_node_count >= config.node_limit
+        return true
+    elseif state.total_elapsed_time_sec >= config.time_limit_sec
+        return true
+    elseif _optimality_gap(state.primal_bound, state.dual_bound) <=
+           config.gap_tol
         return true
     else
         return false
@@ -32,15 +36,6 @@ function optimize!(
     return result
 end
 
-mutable struct NodeResult
-    cost::Float64
-    x::Vector{Float64}
-    simplex_iters::Int
-    depth::Int
-    int_infeas::Int
-end
-NodeResult() = NodeResult(NaN, Float64[], 0, -1, 0)
-
 # TODO: Store config in CurrentState, remove as argument here.
 function process_node!(
     state::CurrentState,
@@ -48,11 +43,18 @@ function process_node!(
     node::Node,
     config::AlgorithmConfig,
 )::NodeResult
+    node_result = NodeResult(node)
+    # 0. Check if we can bail out early by pruning by bound
+    if node.dual_bound > state.primal_bound
+        node_result.status = PRUNED_BY_PARENT_BOUND
+        return node_result
+    end
     # 1. Build model
-    populate_base_model!(state, form, node, config)
-    # Update bounds on binary variables at the current node
-    apply_branchings!(state, node)
-    formulate_disjunctions!(state, form, node, config)
+    populate_lp_model!(state, form, node, node_result, config)
+    if node_result.status == INFEASIBLE_LP
+        # When trying to formulate the LP, we in fact proved it was infeasible
+        return node_result
+    end
     set_basis_if_available!(state, node)
 
     # 2. Solve model
@@ -60,18 +62,20 @@ function process_node!(
     MOI.optimize!(model)
 
     # 3. Grab solution data and bundle it into a NodeResult
-    node_result = NodeResult()
     node_result.simplex_iters = MOI.get(model, MOI.SimplexIterations())
     node_result.depth = node.depth
     term_status = MOI.get(model, MOI.TerminationStatus())
     if term_status == MOI.OPTIMAL
+        node_result.status = OPTIMAL_LP
         node_result.cost = MOI.get(model, MOI.ObjectiveValue())
         _update_lp_solution!(state, form)
         node_result.x = state.current_solution
         node_result.int_infeas = _num_int_infeasible(state, form, config)
     elseif term_status == MOI.INFEASIBLE
+        node_result.status = INFEASIBLE_LP
         node_result.cost = Inf
     elseif term_status == MOI.DUAL_INFEASIBLE
+        node_result.status = UNBOUNDED_LP
         node_result.cost = -Inf
     else
         error("Unexpected termination status $term_status at node LP.")
@@ -120,22 +124,26 @@ function update_state!(
     state.total_simplex_iters += node_result.simplex_iters
     state.polling_state.period_node_count += 1
     state.polling_state.period_simplex_iters += node_result.simplex_iters
-    state.backtracking = true
+    state.on_a_dive = false
     # 1. Prune by infeasibility
-    if node_result.cost == Inf
+    if node_result.status == INFEASIBLE_LP
         # Do nothing
-    elseif node_result.cost > state.primal_bound
+        @assert node_result.cost == Inf
+    elseif node_result.status == PRUNED_BY_PARENT_BOUND ||
+           node_result.cost > state.primal_bound
         # 2. Prune by bound
         # Do nothing
-    elseif node_result.cost == -Inf
+    elseif node_result.status == UNBOUNDED_LP
         # 3. LP is unbounded.
         #  Implies MIP is infeasible or unbounded. Should only happen at root.
         @assert _is_root_node(node)
-        state.primal_bound = node_result.cost
+        @assert node_result.cost == -Inf
+        state.primal_bound = -Inf
     elseif node_result.int_infeas == 0
         # 4. Prune by integrality
         # Have <= to handle case where we seed the optimal cost but
         # not the optimal solution
+        @assert node_result.status == OPTIMAL_LP
         if node_result.cost <= state.primal_bound
             state.primal_bound = node_result.cost
             # TODO: Make this more efficient, keys should not change.
@@ -143,6 +151,7 @@ function update_state!(
         end
     else
         # 5. Branch!
+        @assert node_result.status == OPTIMAL_LP
         children = branch(state, form, node, node_result, config)
         _store_basis_if_desired!(state, children, config)
         for child in children
@@ -153,16 +162,16 @@ function update_state!(
         # throughout the tree. However, we currently update bounds based on a
         # diff with the root. So, after backtracking we will need to reset all
         # bounds, but can otherwise reuse the same model.
-        state.backtracking = false
+        state.on_a_dive = true
         # TODO: Add a check in this branch to ensure we don't have a "funny"
         # return status. This is a little kludgy since we don't necessarily
         # store the MOI model in node_result. Maybe need to add termination
         # status as a field...
     end
-    state.rebuild_model = if state.backtracking
-        (config.model_reuse_strategy != USE_SINGLE_MODEL)
-    else
+    state.rebuild_model = if state.on_a_dive
         (config.model_reuse_strategy == NO_MODEL_REUSE)
+    else
+        (config.model_reuse_strategy != USE_SINGLE_MODEL)
     end
     state.total_elapsed_time_sec = time() - state.starting_time
     delete!(state.warm_starts, node)

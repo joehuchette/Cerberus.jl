@@ -81,9 +81,10 @@ end
         [Cerberus.AffineConstraint(_CSAF([2.3], [_CVI(2)], 0.0), _GT(2.3))],
         4,
     )
-    Cerberus.populate_base_model!(state, form, node, CONFIG)
+    node_result = Cerberus.NodeResult(node)
+    Cerberus.populate_lp_model!(state, form, node, node_result, CONFIG)
     Cerberus.apply_branchings!(state, node)
-    Cerberus.formulate_disjunctions!(state, form, node, CONFIG)
+    Cerberus.formulate_disjunctions!(state, form, node, node_result, CONFIG)
     @test length(state._variable_indices) == 5
     @test length(state.constraint_state.base_state.var_constrs) == 5
     @test isempty(state.constraint_state.base_state.lt_constrs)
@@ -113,7 +114,9 @@ end
     state = Cerberus.CurrentState()
     vis = state._variable_indices
     @test isempty(vis)
-    Cerberus.populate_base_model!(state, form, Cerberus.Node(), CONFIG)
+    node = Cerberus.Node()
+    node_result = Cerberus.NodeResult(node)
+    Cerberus.populate_lp_model!(state, form, node, node_result, CONFIG)
     @test length(vis) == 3
     vi_1 = @inferred Cerberus.instantiate(_CVI(1), state)
     @test vi_1 == vis[1]

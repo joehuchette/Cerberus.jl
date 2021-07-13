@@ -4,7 +4,7 @@
 Returns a vector of the kinds (from `_V_INT_SETS`) of the variables added
 _every time_ that `formulater` is applied to a model. The contract is: these
 variables will always be included in a model, regardless of which node it is
-created at. Variable creation will be handled by `populate_base_model!`; it is
+created at. Variable creation will be handled by `populate_lp_model!`; it is
 not the role of `formulater` to create them.
 
 This function returns the CVIs used to reference these variables in the model.
@@ -43,11 +43,20 @@ Notes:
 """
 function compute_disjunction_activity end
 
+"""
+    delete_all_constraints!(model::Gurobi.Optimizer, disjunction_state)
+
+Delete all constraints in `model` that were added to formulate a given
+disjunctive constraint.
+"""
+function delete_all_constraints! end
+
 function formulate!(
     state::CurrentState,
     form::DMIPFormulation,
     formulater::DisjunctiveFormulater,
     node::Node,
+    node_result::NodeResult,
     config::AlgorithmConfig,
 )
     cvis = form.disjunction_formulaters[formulater]
@@ -74,5 +83,9 @@ function formulate!(
         [instantiate(cvi, state) for cvi in cvis],
     )
     state.disjunction_state[formulater] = disj_state
+    if disj_state.proven_infeasible
+        node_result.status = INFEASIBLE_LP
+        node_result.cost = Inf
+    end
     return nothing
 end

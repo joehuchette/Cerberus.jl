@@ -4,7 +4,7 @@ struct MostInfeasible <: AbstractVariableBranchingRule end
 struct PseudocostBranching <: AbstractVariableBranchingRule end
 mutable struct StrongBranching <: AbstractVariableBranchingRule
     μ::Real
-    StrongBranching(; μ::Real = 1/6) = new(μ)
+    StrongBranching(; μ::Real = 1 / 6) = new(μ)
 end
 
 
@@ -34,13 +34,14 @@ const DEFAULT_LP_SOLVER_FACTORY = _default_lp_solver_factory
 const DEFAULT_SILENT = false
 const DEFAULT_BRANCHING_RULE = MostInfeasible()
 const DEFAULT_TIME_LIMIT_SEC = Inf
-const DEFAULT_NODE_LIMIT = 1_000_000
+const DEFAULT_NODE_LIMIT = 10_000_000
 const DEFAULT_GAP_TOL = 1e-4
 const DEFAULT_INTEGRALITY_TOL = 1e-5
 const DEFAULT_WARM_START_STRATEGY = WARM_START_WHEN_BACKTRACKING
-const DEFAULT_MODEL_REUSE_STRATEGY = USE_SINGLE_MODEL
+const DEFAULT_MODEL_REUSE_STRATEGY = REUSE_MODEL_ON_DIVES
 # TODO: Change this default to TIGHTEN_WHENEVER_POSSIBLE
 const DEFAULT_FORMULATION_TIGHTENING_STRATEGY = TIGHTEN_WHEN_REBUILDING
+const DEFAULT_ACTIVITY_METHOD = DisjunctiveConstraints.IntervalArithmetic()
 
 Base.@kwdef mutable struct AlgorithmConfig{B<:AbstractBranchingRule}
     lp_solver_factory::Function = DEFAULT_LP_SOLVER_FACTORY
@@ -54,4 +55,7 @@ Base.@kwdef mutable struct AlgorithmConfig{B<:AbstractBranchingRule}
     model_reuse_strategy::ModelReuseStrategy = DEFAULT_MODEL_REUSE_STRATEGY
     formulation_tightening_strategy::FormulationTighteningStrategy =
         DEFAULT_FORMULATION_TIGHTENING_STRATEGY
+    # TODO: Unit test this parameter
+    activity_method::DisjunctiveConstraints.AbstractActivityMethod =
+        DEFAULT_ACTIVITY_METHOD
 end

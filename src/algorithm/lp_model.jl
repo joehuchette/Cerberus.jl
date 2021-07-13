@@ -1,22 +1,36 @@
-# NOTE: This does NOT touch the disjunctive formulations
-function reset_base_formulation_upon_backtracking!(
+"""
+Ensures that the LP model in `state.gurobi_model` is up-to-date for the current
+`node`. Depending on how things are configured, this could require us doing
+some or all of: rebuilding the model from scratch, applying new branchings,
+and reformulating disjunctions.
+"""
+function populate_lp_model!(
     state::CurrentState,
     form::DMIPFormulation,
     node::Node,
+    node_result::NodeResult,
+    config::AlgorithmConfig,
 )
-    model = state.gurobi_model
-    cs = state.constraint_state
-    for cvi in all_variables(form)
-        l, u = get_bounds(form, cvi)
-        ci = cs.base_state.var_constrs[index(cvi)]
-        MOI.set(model, MOI.ConstraintSet(), ci, IN(l, u))
+    if state.rebuild_model
+        create_base_model!(state, form, node, config)
+        apply_branchings!(state, node)
+        formulate_disjunctions!(state, form, node, node_result, config)
+    else
+        # If this case we would like to reuse the same model and not rebuild
+        # from scratch...
+        if !state.on_a_dive
+            # ...however, upon backtracking we need to reset bounds and reapply
+            # (or reset) disjunctive formulations.
+            remove_all_branchings!(state, form)
+        end
+        apply_branchings!(state, node)
+        if config.formulation_tightening_strategy == TIGHTEN_AT_EACH_NODE
+            error(
+                "Cerberus does not currently support tightening formulations via problem modification; you must rebuild from scratch.",
+            )
+        end
+        return nothing
     end
-    # TODO: Can potentially be smarter about not deleting all of these
-    # constraints on a backtrack.
-    MOI.delete(model, cs.branch_state.lt_general_constrs)
-    MOI.delete(model, cs.branch_state.gt_general_constrs)
-    empty!(cs.branch_state)
-    apply_branchings!(state, node)
     return nothing
 end
 
@@ -25,29 +39,15 @@ end
 # may add additional continuous variables, but they must come after this chunk.
 # This means that these variables will present, in the same order, in every
 # node LP.
-function populate_base_model!(
+function create_base_model!(
     state::CurrentState,
     form::DMIPFormulation,
     node::Node,
     config::AlgorithmConfig,
 )
-    if !state.rebuild_model
-        # If the above check passed, we would like to reuse the same model and
-        # not rebuild from scratch...
-        if state.backtracking
-            # ...however, upon backtracking we need to reset bounds and reapply
-            # (or reset) disjunctive formulations.
-            reset_base_formulation_upon_backtracking!(state, form, node)
-        end
-        if config.formulation_tightening_strategy == TIGHTEN_AT_EACH_NODE
-            error(
-                "Cerberus does not currently support tightening formulations via problem modification; you must rebuild from scratch.",
-            )
-        end
-        return nothing
-    end
     reset_formulation_state!(state)
     model = config.lp_solver_factory(state, config)::Gurobi.Optimizer
+    state.gurobi_model = model
     for cvi in all_variables(form)
         l, u = get_bounds(form, cvi)
         # Cache the above updates in formulation. Even better,
@@ -85,7 +85,6 @@ function populate_base_model!(
     end
     MOI.set(model, MOI.ObjectiveFunction{SAF}(), instantiate(form.obj, state))
     MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-    state.gurobi_model = model
     state.rebuild_model = false
     state.total_model_builds += 1
     return nothing
@@ -95,10 +94,11 @@ function formulate_disjunctions!(
     state::CurrentState,
     form::DMIPFormulation,
     node::Node,
+    node_result::NodeResult,
     config::AlgorithmConfig,
 )
     for (formulater, cvis) in form.disjunction_formulaters
-        disjunction_state = formulate!(
+        formulate!(
             state,
             form,
             formulater,
@@ -109,9 +109,9 @@ function formulate_disjunctions!(
             else
                 node
             end,
+            node_result,
             config,
         )
-        state.disjunction_state[formulater] = disjunction_state
     end
     return nothing
 end
@@ -145,6 +145,22 @@ function _unattached_constraints(cs::ConstraintState, node::Node, ::Type{GT})
             length(node.gt_general_constrs),
         ),
     )
+end
+
+function remove_all_branchings!(state::CurrentState, form::DMIPFormulation)
+    model = state.gurobi_model
+    cs = state.constraint_state
+    for cvi in all_variables(form)
+        l, u = get_bounds(form, cvi)
+        ci = cs.base_state.var_constrs[index(cvi)]
+        MOI.set(model, MOI.ConstraintSet(), ci, IN(l, u))
+    end
+    # TODO: Can potentially be smarter about not deleting all of these
+    # constraints on a backtrack.
+    MOI.delete(model, cs.branch_state.lt_general_constrs)
+    MOI.delete(model, cs.branch_state.gt_general_constrs)
+    empty!(cs.branch_state)
+    return nothing
 end
 
 # We skip any bounds or constraints that are already added to the model. Note
