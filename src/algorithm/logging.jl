@@ -58,10 +58,14 @@ function _log_node_update(state::CurrentState, node_result::NodeResult)
     cost = node_result.cost
     gap = _optimality_gap(state.primal_bound, state.dual_bound)
     @info Printf.@sprintf(
-        "%5u %5u   %8.5f %4u %4s %8s %8.5f %8s  %5.1f %5us",
+        "%5u %5u   %8s %4u %4s %8s %8.5f %8s  %5.1f %5us",
         state.total_node_count,
         length(state.tree),
-        cost,
+        if cost == Inf
+            "Inf      "
+        else
+            Printf.@sprintf("%8.5f", cost)
+        end,
         node_result.depth,
         # If infeasible, don't report int infeasibility as 0.
         if cost == Inf
