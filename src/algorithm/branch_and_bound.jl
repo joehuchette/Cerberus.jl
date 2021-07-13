@@ -81,7 +81,11 @@ function process_node!(
         return node_result
     end
     # 1. Build model
-    populate_lp_model!(state, form, node, config)
+    populate_lp_model!(state, form, node, node_result, config)
+    if node_result.status == INFEASIBLE_LP
+        # When trying to formulate the LP, we in fact proved it was infeasible
+        return node_result
+    end
     set_basis_if_available!(state, node)
 
     # 2. Solve model
