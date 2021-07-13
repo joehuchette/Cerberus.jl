@@ -3,7 +3,13 @@
     state = Cerberus.CurrentState()
     let node = Cerberus.Node()
         node_result = Cerberus.NodeResult(node)
-        @inferred Cerberus.populate_lp_model!(state, form, node, node_result, CONFIG)
+        @inferred Cerberus.populate_lp_model!(
+            state,
+            form,
+            node,
+            node_result,
+            CONFIG,
+        )
         model = state.gurobi_model
 
         @test MOI.get(model, MOI.NumberOfVariables()) == 3
@@ -54,7 +60,13 @@
             2,
         )
         node_result = Cerberus.NodeResult(node)
-        @inferred Cerberus.populate_lp_model!(state, form, node, node_result, CONFIG)
+        @inferred Cerberus.populate_lp_model!(
+            state,
+            form,
+            node,
+            node_result,
+            CONFIG,
+        )
         @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
         @test MOI.Utilities.get_bounds(
             model,
@@ -77,7 +89,13 @@
     state.on_a_dive = true
     let node = Cerberus.Node()
         node_result = Cerberus.NodeResult(node)
-        @inferred Cerberus.populate_lp_model!(state, form, node, node_result, CONFIG)
+        @inferred Cerberus.populate_lp_model!(
+            state,
+            form,
+            node,
+            node_result,
+            CONFIG,
+        )
         @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
         @test MOI.Utilities.get_bounds(
             model,
@@ -99,7 +117,13 @@
     state.on_a_dive = false
     let node = Cerberus.Node()
         node_result = Cerberus.NodeResult(node)
-        @inferred Cerberus.populate_lp_model!(state, form, node, node_result, CONFIG)
+        @inferred Cerberus.populate_lp_model!(
+            state,
+            form,
+            node,
+            node_result,
+            CONFIG,
+        )
         @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
         @test MOI.Utilities.get_bounds(
             model,
@@ -124,7 +148,13 @@ end
     state = _CurrentState()
     node = Cerberus.Node()
     node_result = Cerberus.NodeResult(node)
-    @inferred Cerberus.populate_lp_model!(state, form, node, node_result, CONFIG)
+    @inferred Cerberus.populate_lp_model!(
+        state,
+        form,
+        node,
+        node_result,
+        CONFIG,
+    )
     model = state.gurobi_model
     @test MOI.get(model, MOI.NumberOfConstraints{_SV,_IN}()) == 3
     @test MOI.Utilities.get_bounds(

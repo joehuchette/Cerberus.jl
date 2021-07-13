@@ -5,9 +5,7 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     config::AlgorithmConfig
     result::Union{Nothing,Result}
 
-    function Optimizer(
-        config::AlgorithmConfig = AlgorithmConfig()
-    )
+    function Optimizer(config::AlgorithmConfig = AlgorithmConfig())
         return new(
             DMIPFormulation(),
             MOI.FEASIBILITY_SENSE,

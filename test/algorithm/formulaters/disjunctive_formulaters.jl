@@ -83,7 +83,13 @@
                 state = Cerberus.CurrentState()
                 node_result = Cerberus.NodeResult(node)
                 # Instead of directly calling formulate!, do it through populate_lp_model!
-                Cerberus.populate_lp_model!(state, form, node, node_result, CONFIG)
+                Cerberus.populate_lp_model!(
+                    state,
+                    form,
+                    node,
+                    node_result,
+                    CONFIG,
+                )
                 x = [_SV(Cerberus.instantiate(_CVI(i), state)) for i in 1:5]
                 @assert [v.variable.value for v in x] == collect(1:5)
 
