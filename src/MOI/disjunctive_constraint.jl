@@ -24,9 +24,7 @@ function MOI.add_constraint(
     # TODO: Make this configurable
     df = DisjunctiveFormulater(
         disj,
-        DisjunctiveConstraints.NaiveBigM(
-            DisjunctiveConstraints.IntervalArithmetic(),
-        ),
+        DisjunctiveConstraints.NaiveBigM(opt.config.activity_method),
     )
     attach_formulater!(opt.form, df)
     return CI{VAF,DisjunctiveConstraints.DisjunctiveSet{Float64}}(

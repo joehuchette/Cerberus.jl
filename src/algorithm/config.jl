@@ -54,6 +54,7 @@ Base.@kwdef mutable struct AlgorithmConfig{B<:AbstractBranchingRule}
     model_reuse_strategy::ModelReuseStrategy = DEFAULT_MODEL_REUSE_STRATEGY
     formulation_tightening_strategy::FormulationTighteningStrategy =
         DEFAULT_FORMULATION_TIGHTENING_STRATEGY
+    # TODO: Unit test this parameter
     activity_method::DisjunctiveConstraints.AbstractActivityMethod =
         DEFAULT_ACTIVITY_METHOD
 end
