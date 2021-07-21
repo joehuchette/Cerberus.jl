@@ -10,6 +10,8 @@ mutable struct Node
     gt_general_constrs::Vector{AffineConstraint{GT}}
     depth::Int
     dual_bound::Float64
+    branching_variable::BoundUpdate
+    branch_var_fractional::Float64
 end
 
 function Node()
@@ -20,6 +22,8 @@ function Node()
         AffineConstraint{GT}[],
         0,
         -Inf,
+        NaN,
+        NaN,
     )
 end
 
@@ -29,7 +33,7 @@ function Node(
     depth::Int,
     dual_bound::Float64 = -Inf,
 )
-    return Node(lt_bounds, gt_bounds, [], [], depth, dual_bound)
+    return Node(lt_bounds, gt_bounds, [], [], depth, dual_bound, NaN, NaN)
 end
 
 function Node(
@@ -46,6 +50,8 @@ function Node(
         gt_general_constrs,
         depth,
         -Inf,
+        NaN,
+        NaN,
     )
 end
 
@@ -57,6 +63,8 @@ function Base.copy(node::Node)
         copy(node.gt_general_constrs),
         node.depth,
         node.dual_bound,
+        node.branching_variable,
+        node.branch_var_fractional,
     )
 end
 

@@ -156,6 +156,11 @@ function update_state!(
         _store_basis_if_desired!(state, children, config)
         for child in children
             child.dual_bound = node_result.cost
+            bu = child.branching_variable
+            xi = node_result.x[index(bu)]
+            fractional_xi = bu isa BoundUpdate{LT} ?
+            xi - _approx_floor(xi, config.int_tol) : _approx_ceil(xi, config.int_tol) - xi
+            child.branch_var_fractional = fractional_xi
             push_node!(state.tree, child)
         end
         # TODO: Can be even more clever with this and reuse the same model

@@ -1,10 +1,27 @@
 abstract type AbstractBranchingRule end
 abstract type AbstractVariableBranchingRule <: AbstractBranchingRule end
 struct MostInfeasible <: AbstractVariableBranchingRule end
-struct PseudocostBranching <: AbstractVariableBranchingRule end
+mutable struct Pseudocost
+    η::Int
+    σ::Real
+    ψ::Real
+    Pseudocost(ψ::Real = 1) = new(0, 0, ψ)
+end
+mutable struct PseudocostBranching <: AbstractVariableBranchingRule
+    ψ⁺_average::Real # default ψ value for unitialized pseudocost.
+    ψ⁻_average::Real
+    var_up_init::Set{CVI} # set of upward initialized variables.
+    var_down_init::Set{CVI}
+    upward_pseudocost_hist::Dict{CVI, Psedocost}
+    downward_pseudocost_hist::Dict{CVI, Pseudocost}
+    μ::Real
+    function PseudocostBranching(μ::Real = 1/6)
+        return new(1, 1, Set(), Set(), Dict(), Dict(), μ)
+    end
+end
 mutable struct StrongBranching <: AbstractVariableBranchingRule
     μ::Real
-    StrongBranching(; μ::Real = 1 / 6) = new(μ)
+    StrongBranching(; μ::Real = 1/6) = new(μ)
 end
 
 

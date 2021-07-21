@@ -49,6 +49,9 @@ mutable struct NodeResult
     simplex_iters::Int
     depth::Int
     int_infeas::Int
+    branching_variable::BoundUpdate
+    parent_cost::Float64
+    branch_var_fractional::Float64
 
     function NodeResult(node::Node)
         node_result = new()
@@ -57,6 +60,9 @@ mutable struct NodeResult
         node_result.simplex_iters = 0
         node_result.depth = node.depth
         node_result.int_infeas = 0
+        node_result.branching_variable = node.branching_variable
+        node_result.parent_cost = node.dual_bound
+        node_result.branch_var_fractional = node.branch_var_fractional
         return node_result
     end
     function NodeResult(
@@ -67,6 +73,7 @@ mutable struct NodeResult
         depth::Int,
         int_infeas::Int,
     )
-        return new(status, cost, x, simplex_iters, depth, int_infeas)
+        return new(status, cost, x, simplex_iters, depth, int_infeas, branching_variable = NaN,
+                   parent_cost = -Inf, branch_var_fractional = NaN)
     end
 end
