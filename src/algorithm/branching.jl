@@ -1,13 +1,13 @@
 function apply_branching!(node::Node, bu::BoundUpdate{LT})
     node.depth += 1
-    node.variable_branching = bu
+    node.bound_update = bu
     push!(node.lt_bounds, bu)
     return nothing
 end
 
 function apply_branching!(node::Node, bu::BoundUpdate{GT})
     node.depth += 1
-    node.variable_branching = bu
+    node.bound_update = bu
     push!(node.gt_bounds, bu)
     return nothing
 end
@@ -165,6 +165,7 @@ function branching_score end
 function branching_score(
     ::CurrentState,
     bc::VariableBranchingCandidate,
+    ::Node,
     parent_result::NodeResult,
     config::AlgorithmConfig{MostInfeasible},
 )
@@ -178,15 +179,16 @@ end
 
 function branching_score(
     ::CurrentState,
-    bc::VariableBranchingScore,
+    bc::VariableBranchingCandidate,
+    parent_node::Node,
     parent_result::NodeResult,
     config::AlgorithmConfig{PseudocostBranching},
 )
     up_hist = config.branching_rule.upward_pseudocost_hist
-    down_hist = config.branching_score.downward_pseudocost_hist
+    down_hist = config.branching_rule.downward_pseudocost_hist
 
-    up_pseudo = get!(up_hist, bc.index, Pseudocost(config.branching_rule.ψ⁺_avarage))
-    down_pseudo = get!(down_hist, bc.index, Pseudocost(config.branching_rule.ψ⁻_average))
+    ψ⁺ = bc.index in keys(up_hist) ? up_hist[bc.index].ψ : config.branching_rule.ψ⁺_average
+    ψ⁻ = bc.index in keys(down_hist) ? down_hist[bc.index].ψ : config.branching_rule.ψ⁻_average
 
     xi = parent_result.x[index(bc.index)]
     xi_f = _approx_floor(xi, config.int_tol)
@@ -194,40 +196,9 @@ function branching_score(
     f⁺ = xi_c - xi
     f⁻ = xi - xi_f
 
-    bu = parent_result.branching_variable
-    ψ⁺ = up_pseudo.ψ
-    ψ⁻ = down_pseudo.ψ
-    if parent_result.parent_cost == -Inf || bc.index != bu.cvi
-        # do nothing
-    elseif parent_result.branching_variable isa BoundUpdate{GT}
-        @assert bc.index == bu.cvi
-        up_pseudo.η += 1
-        up_pseudo.σ +=
-        (parent_result.cost - parent_result.parent_cost)/parent_result.branch_var_fractional
-        ψ⁺ = up_pseudo.σ / up_pseudo.η
-        up_pseudo.ψ = ψ⁺
-        push!(config.branching_rule.var_up_init, bc.index)
-        #update ψ⁺_average
-        config.branching_rule.ψ⁺_average =
-        sum(up_hist[i].ψ for i in config.branching_rule.var_up_init)/
-        length(config.branching_rule.var_up_init)
-    elseif parent_result.branching_variable isa BoundUpdate{LT}
-        @assert bc.index == bu.cvi
-        down_pseudo.η += 1
-        down_pseudo.σ +=
-        (parent_result.cost - parent_result.parent_cost)/parent_result.branch_var_fractional
-        ψ⁻ = down_pseudo.σ / down_pseudo.η
-        down_pseudo.ψ = ψ⁻
-        push!(config.branching_rule.var_down_init, bc.index)
-        #update ψ⁺_average
-        config.branching_rule.ψ⁻_average =
-        sum(down_hist[i].ψ for i in config.branching_rule.var_down_init)/
-        length(config.branching_rule.var_down_init)
-    end
-
     μ = config.branching_rule.μ
-    ψ_aggregate = (1 - μ) * min(f⁺ψ⁺, f⁻ψ⁻) + μ * max(f⁺ψ⁺, f⁻ψ⁻)
-    return VariableBranchingScore(f⁻ψ⁻, f⁺ψ⁺, ψ_aggregate)
+    ψ_aggregate = (1 - μ) * min(f⁺*ψ⁺, f⁻*ψ⁻) + μ * max(f⁺*ψ⁺, f⁻*ψ⁻)
+    return VariableBranchingScore(f⁻*ψ⁻, f⁺*ψ⁺, ψ_aggregate)
 end
 
 # TODO: Make this function more efficient by caching sb_model somewhere (likely
@@ -235,6 +206,7 @@ end
 function branching_score(
     state::CurrentState,
     bc::VariableBranchingCandidate,
+    ::Node,
     parent_result::NodeResult,
     config::AlgorithmConfig{StrongBranching},
 )
@@ -332,7 +304,7 @@ function branch(
     end
     scores = Dict(
         candidate =>
-            branching_score(state, candidate, parent_result, config) for
+            branching_score(state, candidate, parent_node, parent_result, config) for
         candidate in candidates
     )
     # TODO: Can make all of this more efficient, if bottleneck.

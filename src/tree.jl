@@ -10,21 +10,20 @@ mutable struct Node
     gt_general_constrs::Vector{AffineConstraint{GT}}
     depth::Int
     dual_bound::Float64
-    branching_variable::BoundUpdate
-    branch_var_fractional::Float64
-end
+    bound_update::BoundUpdate
+    fractional_value::Float64
 
-function Node()
-    return Node(
-        BoundUpdate{LT}[],
-        BoundUpdate{GT}[],
-        AffineConstraint{LT}[],
-        AffineConstraint{GT}[],
-        0,
-        -Inf,
-        NaN,
-        NaN,
-    )
+    function Node()
+        node = new()
+        node.lt_bounds = BoundUpdate{LT}[]
+        node.gt_bounds = BoundUpdate{GT}[]
+        node.lt_general_constrs = AffineConstraint{LT}[]
+        node.gt_general_constrs = AffineConstraint{LT}[]
+        node.depth = 0
+        node.dual_bound = -Inf
+        # bound_update & fractional_value are left unitialized.
+        return node
+    end
 end
 
 function Node(
@@ -33,7 +32,14 @@ function Node(
     depth::Int,
     dual_bound::Float64 = -Inf,
 )
-    return Node(lt_bounds, gt_bounds, [], [], depth, dual_bound, NaN, NaN)
+    node = Node()
+    node.lt_bounds = lt_bounds
+    node.gt_bounds = gt_bounds
+    node.lt_general_constrs = []
+    node.gt_general_constrs = []
+    node.depth = depth
+    node.dual_bound = dual_bound
+    return node
 end
 
 function Node(
@@ -43,29 +49,25 @@ function Node(
     gt_general_constrs::Vector{AffineConstraint{GT}},
     depth::Int,
 )
-    return Node(
-        lt_bounds,
-        gt_bounds,
-        lt_general_constrs,
-        gt_general_constrs,
-        depth,
-        -Inf,
-        NaN,
-        NaN,
-    )
+    node = Node()
+    node.lt_bounds = lt_bounds
+    node.gt_bounds = gt_bounds
+    node.lt_general_constrs = lt_general_constrs
+    node.gt_general_constrs = gt_general_constrs
+    node.depth = depth
+    node.dual_bound = -Inf
+    return node
 end
 
 function Base.copy(node::Node)
-    return Node(
+    new_node =  Node(
         copy(node.lt_bounds),
         copy(node.gt_bounds),
         copy(node.lt_general_constrs),
         copy(node.gt_general_constrs),
-        node.depth,
-        node.dual_bound,
-        node.branching_variable,
-        node.branch_var_fractional,
-    )
+        node.depth)
+        new_node.dual_bound = node.dual_bound
+        return new_node
 end
 
 mutable struct Tree

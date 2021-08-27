@@ -12,7 +12,7 @@ mutable struct PseudocostBranching <: AbstractVariableBranchingRule
     ψ⁻_average::Real
     var_up_init::Set{CVI} # set of upward initialized variables.
     var_down_init::Set{CVI}
-    upward_pseudocost_hist::Dict{CVI, Psedocost}
+    upward_pseudocost_hist::Dict{CVI, Pseudocost}
     downward_pseudocost_hist::Dict{CVI, Pseudocost}
     μ::Real
     function PseudocostBranching(μ::Real = 1/6)
