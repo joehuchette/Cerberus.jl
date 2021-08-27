@@ -71,6 +71,7 @@ function process_node!(
         _update_lp_solution!(state, form)
         node_result.x = state.current_solution
         node_result.int_infeas = _num_int_infeasible(state, form, config)
+        update_variable_score!(node, node_result, config)
     elseif term_status == MOI.INFEASIBLE
         node_result.status = INFEASIBLE_LP
         node_result.cost = Inf
@@ -156,6 +157,11 @@ function update_state!(
         _store_basis_if_desired!(state, children, config)
         for child in children
             child.dual_bound = node_result.cost
+            bu = child.bound_update
+            xi = node_result.x[index(bu.cvi)]
+            fractional_xi = bu isa BoundUpdate{LT} ?
+            xi - _approx_floor(xi, config.int_tol) : _approx_ceil(xi, config.int_tol) - xi
+            child.fractional_value = fractional_xi
             push_node!(state.tree, child)
         end
         # TODO: Can be even more clever with this and reuse the same model
@@ -200,6 +206,59 @@ function _store_basis_if_desired!(
         for i in 2:ending_index
             state.warm_starts[children[i]] = copy(basis)
         end
+    end
+    return nothing
+end
+
+function update_variable_score! end
+
+function update_variable_score!(
+    node::Node,
+    node_result::NodeResult,
+    config::AlgorithmConfig{MostInfeasible},
+    )
+    return nothing
+end
+
+function update_variable_score!(
+    node::Node,
+    node_result::NodeResult,
+    config::AlgorithmConfig{StrongBranching},
+    )
+    return nothing
+end
+
+function update_variable_score!(
+    node::Node,
+    node_result::NodeResult,
+    config::AlgorithmConfig{PseudocostBranching},
+    )
+    if node.depth == 0 # root node
+        return nothing
+    end
+
+    bu = node.bound_update
+    branching_var = bu.cvi
+    if bu.s isa LT
+        down_hist = config.branching_rule.downward_pseudocost_hist
+        down_pseudo = get!(down_hist, branching_var, Pseudocost(1))
+        down_pseudo.σ += (node_result.cost - node.dual_bound)/
+                          node.fractional_value
+        down_pseudo.η += 1
+        down_pseudo.ψ = down_pseudo.σ / down_pseudo.η
+        push!(config.branching_rule.var_down_init, branching_var)
+        config.branching_rule.ψ⁻_average = sum([pseudo.ψ for (var, pseudo) in down_hist]) /
+                                           length(config.branching_rule.var_down_init)
+    elseif bu.s isa GT
+        up_hist = config.branching_rule.upward_pseudocost_hist
+        up_pseudo = get!(up_hist, branching_var, Pseudocost(1))
+        up_pseudo.σ += (node_result.cost - node.dual_bound)/
+                          node.fractional_value
+        up_pseudo.η += 1
+        up_pseudo.ψ = up_pseudo.σ / up_pseudo.η
+        push!(config.branching_rule.var_up_init, branching_var)
+        config.branching_rule.ψ⁺_average = sum([pseudo.ψ for (var, pseudo) in up_hist]) /
+                                           length(config.branching_rule.var_up_init)
     end
     return nothing
 end

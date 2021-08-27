@@ -1,11 +1,13 @@
 function apply_branching!(node::Node, bu::BoundUpdate{LT})
     node.depth += 1
+    node.bound_update = bu
     push!(node.lt_bounds, bu)
     return nothing
 end
 
 function apply_branching!(node::Node, bu::BoundUpdate{GT})
     node.depth += 1
+    node.bound_update = bu
     push!(node.gt_bounds, bu)
     return nothing
 end
@@ -163,6 +165,7 @@ function branching_score end
 function branching_score(
     ::CurrentState,
     bc::VariableBranchingCandidate,
+    ::Node,
     parent_result::NodeResult,
     config::AlgorithmConfig{MostInfeasible},
 )
@@ -174,11 +177,36 @@ function branching_score(
     return VariableBranchingScore(f⁻, f⁺, min(f⁻, f⁺))
 end
 
+function branching_score(
+    ::CurrentState,
+    bc::VariableBranchingCandidate,
+    parent_node::Node,
+    parent_result::NodeResult,
+    config::AlgorithmConfig{PseudocostBranching},
+)
+    up_hist = config.branching_rule.upward_pseudocost_hist
+    down_hist = config.branching_rule.downward_pseudocost_hist
+
+    ψ⁺ = bc.index in keys(up_hist) ? up_hist[bc.index].ψ : config.branching_rule.ψ⁺_average
+    ψ⁻ = bc.index in keys(down_hist) ? down_hist[bc.index].ψ : config.branching_rule.ψ⁻_average
+
+    xi = parent_result.x[index(bc.index)]
+    xi_f = _approx_floor(xi, config.int_tol)
+    xi_c = _approx_ceil(xi, config.int_tol)
+    f⁺ = xi_c - xi
+    f⁻ = xi - xi_f
+
+    μ = config.branching_rule.μ
+    ψ_aggregate = (1 - μ) * min(f⁺*ψ⁺, f⁻*ψ⁻) + μ * max(f⁺*ψ⁺, f⁻*ψ⁻)
+    return VariableBranchingScore(f⁻*ψ⁻, f⁺*ψ⁺, ψ_aggregate)
+end
+
 # TODO: Make this function more efficient by caching sb_model somewhere (likely
 # in config object, rather than as a function argument).
 function branching_score(
     state::CurrentState,
     bc::VariableBranchingCandidate,
+    ::Node,
     parent_result::NodeResult,
     config::AlgorithmConfig{StrongBranching},
 )
@@ -276,7 +304,7 @@ function branch(
     end
     scores = Dict(
         candidate =>
-            branching_score(state, candidate, parent_result, config) for
+            branching_score(state, candidate, parent_node, parent_result, config) for
         candidate in candidates
     )
     # TODO: Can make all of this more efficient, if bottleneck.

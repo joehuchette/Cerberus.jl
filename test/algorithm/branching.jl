@@ -236,15 +236,16 @@ end
     @testset "branching_score" begin
         state = Cerberus.CurrentState()
         let x = [0.6, 0.5, 0.35]
+            node = Cerberus.Node()
             nr = Cerberus.NodeResult(Cerberus.OPTIMAL_LP, 12.3, x, 12, 13, 14)
             let bc = Cerberus.VariableBranchingCandidate(_CVI(1), 0.6)
                 vbs =
-                    @inferred Cerberus.branching_score(state, bc, nr, mi_config)
+                    @inferred Cerberus.branching_score(state, bc, node, nr, mi_config)
                 @test vbs == Cerberus.VariableBranchingScore(0.6, 0.4, 0.4)
             end
             let bc = Cerberus.VariableBranchingCandidate(_CVI(3), 0.35)
                 vbs =
-                    @inferred Cerberus.branching_score(state, bc, nr, mi_config)
+                    @inferred Cerberus.branching_score(state, bc, node, nr, mi_config)
                 @test vbs == Cerberus.VariableBranchingScore(0.35, 0.65, 0.35)
             end
         end
@@ -359,7 +360,7 @@ end
             nr = Cerberus.process_node!(state, form, node, sb_config)
 
             bc = Cerberus.VariableBranchingCandidate(_CVI(1), nr.x[1])
-            vbs = @inferred Cerberus.branching_score(state, bc, nr, sb_config)
+            vbs = @inferred Cerberus.branching_score(state, bc, node, nr, sb_config)
             @test vbs == Cerberus.VariableBranchingScore(0.75, Inf, Inf)
         end
 
@@ -392,7 +393,7 @@ end
             nr = Cerberus.process_node!(state, form, node, sb_config)
 
             bc = Cerberus.VariableBranchingCandidate(_CVI(3), nr.x[3])
-            vbs = @inferred Cerberus.branching_score(state, bc, nr, sb_config)
+            vbs = @inferred Cerberus.branching_score(state, bc, node, nr, sb_config)
             @test isapprox(vbs.down_branch_score, 0.8)
             @test isapprox(vbs.up_branch_score, 0.7)
             @test isapprox(vbs.aggregate_score, 43 / 60)
@@ -458,6 +459,119 @@ end
     end
 end
 
+@testset "PseudocostBranching" begin
+    @testset "node" begin
+        let pb_config = Cerberus.AlgorithmConfig(
+                branching_rule = Cerberus.PseudocostBranching(),
+                silent = true,
+            )
+            v = [_SV(_VI(i)) for i in 1:2]
+            ac = Cerberus.AffineConstraint(
+                6/19 * v[1] + 4/19 * v[2],
+                _LT(1.0)
+            )
+            aff_constrs = [ac]
+            bounds = [_IN(0.0, Inf), _IN(0.0, 2.25)]
+            p = Cerberus.Polyhedron(aff_constrs, bounds)
+            variable_kind = [_GI(), _GI()]
+            obj = _CSAF([-1.0, -1.0], [_CVI(1), _CVI(2)], 0.0)
+            form = Cerberus.DMIPFormulation(p, variable_kind, obj)
+
+            state = Cerberus.CurrentState()
+            node = Cerberus.pop_node!(state.tree)
+            nr = Cerberus.process_node!(state, form, node, pb_config)
+            Cerberus.update_state!(state, form, node, nr, pb_config)
+
+            n1 = Cerberus.pop_node!(state.tree)
+            n2 = Cerberus.pop_node!(state.tree)
+            @test n1.dual_bound == nr.cost
+            @test n2.dual_bound == nr.cost
+            @test n1.bound_update == Cerberus.BoundUpdate(_CVI(1), _LT(1.0))
+            @test n2.bound_update == Cerberus.BoundUpdate(_CVI(1), _GT(2.0))
+            @test isapprox(n1.fractional_value, 2/3)
+            @test isapprox(n2.fractional_value, 1/3)
+        end
+    end
+
+    @testset "end to end" begin
+        let pb_config = Cerberus.AlgorithmConfig(
+                branching_rule = Cerberus.PseudocostBranching(),
+                silent = true,
+            )
+            v = [_SV(_VI(i)) for i in 1:2]
+            ac = Cerberus.AffineConstraint(
+                6/19 * v[1] + 4/19 * v[2],
+                _LT(1.0)
+            )
+            aff_constrs = [ac]
+            bounds = [_IN(0.0, Inf), _IN(0.0, 2.25)]
+            p = Cerberus.Polyhedron(aff_constrs, bounds)
+            variable_kind = [_GI(), _GI()]
+            obj = _CSAF([-1.0, -1.0], [_CVI(1), _CVI(2)], 0.0)
+            form = Cerberus.DMIPFormulation(p, variable_kind, obj)
+
+            state = Cerberus.CurrentState()
+            node = Cerberus.pop_node!(state.tree)
+            nr = Cerberus.process_node!(state, form, node, pb_config)
+
+            bc = Cerberus.VariableBranchingCandidate(_CVI(1), nr.x[1])
+            vbs = @inferred Cerberus.branching_score(state, bc, node, nr, pb_config)
+            @test isapprox(vbs.down_branch_score, 2/3)
+            @test isapprox(vbs.up_branch_score, 1/3)
+            @test isapprox(vbs.aggregate_score, 7/18)
+
+            bc = Cerberus.VariableBranchingCandidate(_CVI(2), nr.x[2])
+            vbs = @inferred Cerberus.branching_score(state, bc, node, nr, pb_config)
+            @test isapprox(vbs.down_branch_score, 1/4)
+            @test isapprox(vbs.up_branch_score, 3/4)
+            @test isapprox(vbs.aggregate_score, 1/3)
+
+            Cerberus.update_state!(state, form, node, nr, pb_config)
+            node1 = Cerberus.pop_node!(state.tree)
+            nr1 = Cerberus.process_node!(state, form, node1, pb_config)
+            pseudocost = pb_config.branching_rule.downward_pseudocost_hist[_CVI(1)]
+            @test pseudocost.η == 1
+            @test pseudocost.σ == 1.0
+            @test pseudocost.ψ == 1.0
+
+            bc = Cerberus.VariableBranchingCandidate(_CVI(2), nr1.x[2])
+            vbs = @inferred Cerberus.branching_score(state, bc, node, nr, pb_config)
+            @test isapprox(vbs.down_branch_score, 1/4)
+            @test isapprox(vbs.up_branch_score, 3/4)
+            @test isapprox(vbs.aggregate_score, 1/3)
+
+            Cerberus.update_state!(state, form, node1, nr1, pb_config)
+            node2 = Cerberus.pop_node!(state.tree)
+            nr2 = Cerberus.process_node!(state, form, node2, pb_config)
+            @test nr2.status == Cerberus.INFEASIBLE_LP
+
+            Cerberus.update_state!(state, form, node, nr2, pb_config)
+            node3 = Cerberus.pop_node!(state.tree)
+            nr3 = Cerberus.process_node!(state, form, node3, pb_config)
+            @test nr3.int_infeas == 0
+            pseudocost = pb_config.branching_rule.downward_pseudocost_hist[_CVI(2)]
+            @test pseudocost.η == 1
+            @test pseudocost.σ == 1.0
+            @test pseudocost.ψ == 1.0
+
+            Cerberus.update_state!(state, form, node, nr3, pb_config)
+            node4 = Cerberus.pop_node!(state.tree)
+            nr4 = Cerberus.process_node!(state, form, node4, pb_config)
+            pseudocost = pb_config.branching_rule.upward_pseudocost_hist[_CVI(1)]
+            @test pseudocost.η == 1
+            @test isapprox(pseudocost.σ, 0.5)
+            @test isapprox(pseudocost.ψ, 0.5)
+            @test isapprox(pb_config.branching_rule.ψ⁺_average, 0.5)
+
+            bc = Cerberus.VariableBranchingCandidate(_CVI(2), nr4.x[2])
+            vbs = @inferred Cerberus.branching_score(state, bc, node, nr, pb_config)
+            @test isapprox(vbs.down_branch_score, 3/4)
+            @test isapprox(vbs.up_branch_score, 1/8)
+            @test isapprox(vbs.aggregate_score, 11/48)
+        end
+    end
+end
+
 struct DummyBranchingRule <: Cerberus.AbstractBranchingRule end
 struct DummyBranchingCandidate <: Cerberus.AbstractBranchingCandidate
     cvi::_CVI
@@ -476,6 +590,7 @@ end
 function Cerberus.branching_score(
     ::Cerberus.CurrentState,
     dbc::DummyBranchingCandidate,
+    ::Cerberus.Node,
     ::Cerberus.NodeResult,
     config::Cerberus.AlgorithmConfig{DummyBranchingRule},
 )
@@ -541,3 +656,27 @@ end
         @test node.depth == 2
     end
 end
+
+pb_config = Cerberus.AlgorithmConfig(
+        branching_rule = Cerberus.PseudocostBranching(),
+        silent = true,
+    )
+v = [_SV(_VI(i)) for i in 1:2]
+ac = Cerberus.AffineConstraint(
+    6/19 * v[1] + 4/19 * v[2],
+    _LT(1.0)
+)
+aff_constrs = [ac]
+bounds = [_IN(0.0, Inf), _IN(0.0, 2.25)]
+p = Cerberus.Polyhedron(aff_constrs, bounds)
+variable_kind = [_GI(), _GI()]
+obj = _CSAF([-1.0, -1.0], [_CVI(1), _CVI(2)], 0.0)
+form = Cerberus.DMIPFormulation(p, variable_kind, obj)
+
+state = Cerberus.CurrentState()
+node = Cerberus.pop_node!(state.tree)
+nr = Cerberus.process_node!(state, form, node, pb_config)
+Cerberus.update_state!(state, form, node, nr, pb_config)
+
+n1 = Cerberus.pop_node!(state.tree)
+n2 = Cerberus.pop_node!(state.tree)
